@@ -84,16 +84,23 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
         This is the default base color for simulating the Antarctica PBR shader.
 
-        Args:
-            nt (bpy.types.ShaderNodeTree): The node tree which should be populated
-            nd_mainTex (bpy.types.ShaderNodeTexImage): The image texture node that provides the main material texture
-            nd_colorizable (bpy.types.ShaderNodeValue): A value node used as multiplier for the colorization amount
-            nd_colorizationMask (bpy.types.ShaderNodeTexImage): The image texture node that provides the colorization
-                mask for this material
-            nd_hue (bpy.types.ShaderNodeValue): A value node used for colorization hue shift
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+        nd_colorizable : bpy.types.ShaderNodeValue
+            A value node used as multiplier for the colorization amount
+        nd_colorizationMask : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the colorization
+        nd_hue : bpy.types.ShaderNodeValue
+            A value node used for colorization hue shift
 
-        Returns:
-            bpy.types.NodeSocketColor: An output node socket with the resulting color
+        Returns
+        -------
+        bpy.types.NodeSocketColor
+            An output node socket with the resulting color
         """
         nd_saturation = nt.nodes.new('ShaderNodeHueSaturation')
         nd_hue_add = nt.nodes.new('ShaderNodeMath')
@@ -150,14 +157,19 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
         the data output values 'specular', 'diffuse' and 'emission'.
         This is the default data interpretation for simulating the Antarctica PBR shader.
 
-        Args:
-            nt (bpy.types.ShaderNodeTree): The node tree which should be populated
-            nd_mainTex (bpy.types.ShaderNodeTexImage): The image texture node that provides the main material texture
-            nd_dataMap (bpy.types.ShaderNodeTexImage): The image texture node that provides the data map texture
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+        nd_dataMap : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the data map texture
 
-        Returns:
-            (bpy.types.NodeSocketFloat, bpy.types.NodeSocketFloat, bpy.types.NodeSocketColor):
-                The output node sockets for (specular, diffuse, emission)
+        Returns
+        -------
+        (bpy.types.NodeSocketFloat, bpy.types.NodeSocketFloat, bpy.types.NodeSocketColor)
+            The output node sockets for (specular, diffuse, emission)
         """
         nd_gloss_separate = nt.nodes.new('ShaderNodeSeparateRGB')
         nd_diffuse_invert = nt.nodes.new('ShaderNodeMath')
@@ -184,12 +196,17 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
         normal vector.
         This is the default normals calculation for simulating the Antarctica PBR shader.
 
-        Args:
-            nt (bpy.types.ShaderNodeTree): The node tree which should be populated
-            nd_normalMap (bpy.types.ShaderNodeTexImage): The image texture node that provides the normal map texture
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_normalMap : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the normal map texture
 
-        Returns:
-            bpy.types.NodeSocketVector: The output node socket for the materials normal
+        Returns
+        -------
+        bpy.types.NodeSocketVector
+            The output node socket for the materials normal
         """
         nd_normal_mapping = nt.nodes.new('ShaderNodeNormalMap')
         nd_normal_mix = nt.nodes.new('ShaderNodeMixRGB')
@@ -377,14 +394,21 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
         This is the default base color for simulating the Antarctica PBR shader.
 
-        Args:
-            nt (bpy.types.ShaderNodeTree): The node tree which should be populated
-            nd_mainTex (bpy.types.ShaderNodeTexImage): The image texture node that provides the main material texture
-            nd_colorizable (bpy.types.ShaderNodeValue): A value node used as multiplier for the colorization amount
-            nd_hue (bpy.types.ShaderNodeValue): A value node used for colorization hue shift
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+        nd_colorizable : bpy.types.ShaderNodeValue
+            A value node used as multiplier for the colorization amount
+        nd_hue : bpy.types.ShaderNodeValue
+            A value node used for colorization hue shift
 
-        Returns:
-            (bpy.types.NodeSocketColor, bpy.types.NodeSocketFloat): The output node sockets for (color, alpha)
+        Returns
+        -------
+        (bpy.types.NodeSocketColor, bpy.types.NodeSocketFloat)
+            The output node sockets for (color, alpha)
         """
         nd_saturation = nt.nodes.new('ShaderNodeHueSaturation')
         nd_hue_add = nt.nodes.new('ShaderNodeMath')
