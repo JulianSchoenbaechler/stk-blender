@@ -6,4 +6,5 @@
 
 tmp.py
 verify.py
+setup.cfg
 .flake8
