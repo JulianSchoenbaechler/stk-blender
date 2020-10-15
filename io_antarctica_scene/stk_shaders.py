@@ -24,7 +24,8 @@ import bpy
 
 
 class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
-    """
+    """Antarctica solid physical based rendering shader node.
+
     Represents a shader node that simulates the solid physical based shader in the 'Antarctica' render pipeline of
     SuperTuxKart. This class also stores shader specific properties for export.
     """
@@ -36,19 +37,19 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
     bl_width_min = 200
 
     def __get_colorizable(self):
-        """Internal getter of the colorizable toggle."""
+        """Get the colorizable toggle."""
         return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
 
     def __set_colorizable(self, value):
-        """Internal setter of the colorizable toggle."""
+        """Set the colorizable toggle."""
         self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value is True else 0.0
 
     def __get_hue(self):
-        """Internal getter of the currently displayed hue value."""
+        """Get the currently displayed hue value."""
         return self.node_tree.nodes['Hue'].outputs[0].default_value
 
     def __set_hue(self, value):
-        """Internal setter of the currently displayed hue value."""
+        """Set the currently displayed hue value."""
         self.node_tree.nodes['Hue'].outputs[0].default_value = value
 
     # Colorization and hue properties
