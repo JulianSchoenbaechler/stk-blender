@@ -104,6 +104,7 @@ classes = (
     stk_track.STK_Track_Export_Operator,
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
+    stk_shaders.AntarcticaTransparent,
 )
 
 
@@ -115,6 +116,7 @@ def register():
     shcat = [ShaderNodeCategory("SH_ANTARCTICA", "SuperTuxKart", items=[
         NodeItem("AntarcticaSolidPBR"),
         NodeItem("AntarcticaCutoutPBR"),
+        NodeItem("AntarcticaTransparent"),
     ])]
 
     register_node_categories("SH_ANTARCTICA", shcat)

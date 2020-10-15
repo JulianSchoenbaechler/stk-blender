@@ -37,19 +37,19 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
     bl_width_min = 200
 
     def __get_colorizable(self):
-        """Get the colorizable toggle."""
+        """Getter of the colorizable toggle."""
         return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
 
     def __set_colorizable(self, value):
-        """Set the colorizable toggle."""
+        """Setter of the colorizable toggle."""
         self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value is True else 0.0
 
     def __get_hue(self):
-        """Get the currently displayed hue value."""
+        """Getter of the currently displayed hue value."""
         return self.node_tree.nodes['Hue'].outputs[0].default_value
 
     def __set_hue(self, value):
-        """Set the currently displayed hue value."""
+        """Setter of the currently displayed hue value."""
         self.node_tree.nodes['Hue'].outputs[0].default_value = value
 
     # Colorization and hue properties
@@ -531,3 +531,139 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
             prop_layout = layout.row(align=True).split(factor=0.3)
             prop_layout.label(text='Hue Selection')
             prop_layout.prop(self, 'prop_hueSelect', text='')
+
+
+class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
+    """
+    Represents a shader node that simulates the transparent (alpha-blend) shader in the 'Antarctica' render pipeline of
+    SuperTuxKart. This class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaTransparent'
+    bl_label = 'Antarctica Transparent'
+    bl_description = "Simulates the SuperTuxKart Transparent shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def __get_mask(self):
+        """Internal getter of the alpha mask toggle."""
+        return self.node_tree.nodes['Mask Influence'].outputs[0].default_value == 1.0
+
+    def __set_mask(self, value):
+        """Internal setter of the alpha mask toggle."""
+        self.node_tree.nodes['Mask Influence'].outputs[0].default_value = 1.0 if value is True else 0.0
+
+    # Mask properties
+    prop_mask: bpy.props.BoolProperty(
+        name='Use Alpha Mask',
+        default=False,
+        get=__get_mask,
+        set=__set_mask
+    )
+
+    @staticmethod
+    def setup_transparency(nt, nd_mainTex, nd_mask, nd_maskTex):
+        """Setup a node tree in a given node group object and return the node socket that represents the shader output.
+        This is the default shader tree for simulating the Antarctica transparent (alpha-blend) shader.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+        nd_mask : bpy.types.ShaderNodeValue
+            A value node used as multiplier for the alpha mask influence
+        nd_maskTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the alpha mask
+
+        Returns
+        -------
+        bpy.types.NodeSocketShader
+            The output node socket for the transparency shader
+        """
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_shader_transparent = nt.nodes.new('ShaderNodeBsdfTransparent')
+        nd_shader_emission = nt.nodes.new('ShaderNodeEmission')
+        nd_map_range = nt.nodes.new('ShaderNodeMapRange')
+        nd_multiply = nt.nodes.new('ShaderNodeMath')
+        nd_light_path = nt.nodes.new('ShaderNodeLightPath')
+
+        nd_shader_transparent.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+        nd_shader_emission.inputs['Strength'].default_value = 1.0
+
+        nd_map_range.clamp = True
+        nd_map_range.interpolation_type = 'LINEAR'
+        nd_map_range.inputs['From Min'].default_value = 0.0
+        nd_map_range.inputs['From Max'].default_value = 1.0
+
+        nd_multiply.operation = 'MULTIPLY'
+
+        # Transparency factor
+        nt.links.new(nd_multiply.outputs[0], nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_light_path.outputs['Is Camera Ray'], nd_multiply.inputs[0])
+        nt.links.new(nd_map_range.outputs[0], nd_multiply.inputs[1])
+        nt.links.new(nd_mask.outputs[0], nd_map_range.inputs['Value'])
+        nt.links.new(nd_mainTex.outputs['Alpha'], nd_map_range.inputs['To Min'])
+        nt.links.new(nd_maskTex.outputs['Color'], nd_map_range.inputs['To Max'])
+
+        # Mixing shaders
+        nt.links.new(nd_shader_transparent.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nd_shader_emission.outputs[0], nd_shader_mix.inputs[2])
+        nt.links.new(nd_mainTex.outputs['Color'], nd_shader_emission.inputs['Color'])
+
+        return nd_shader_mix.outputs[0]
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        ntname = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+
+        # Image texture for main texture
+        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_mainTex.name = 'Main Texture'
+
+        # Image texture for alpha mask
+        nd_maskTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_maskTex.name = 'Alpha Mask'
+
+        # Alpha mask influence
+        nd_mask = nt.nodes.new('ShaderNodeValue')
+        nd_mask.name = 'Mask Influence'
+        nd_mask.outputs[0].default_value = 0.0
+
+        nds_transparency = self.setup_transparency(nt, nd_mainTex, nd_mask, nd_maskTex)
+        nt.links.new(nds_transparency, nd_output.inputs[0])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        # Main texture
+        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout.label(text='Main Texture')
+        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+
+        layout.separator()
+
+        # Mask properties
+        layout.prop(self, 'prop_mask')
+
+        if self.prop_mask is True:
+            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout.label(text='Alpha Mask')
+            prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
