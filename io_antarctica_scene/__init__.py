@@ -105,6 +105,9 @@ classes = (
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
     stk_shaders.AntarcticaTransparent,
+    stk_shaders.AntarcticaTransparentAdditive,
+    stk_shaders.AntarcticaUnlit,
+    stk_shaders.AntarcticaCustom,
 )
 
 
@@ -117,6 +120,9 @@ def register():
         NodeItem("AntarcticaSolidPBR"),
         NodeItem("AntarcticaCutoutPBR"),
         NodeItem("AntarcticaTransparent"),
+        NodeItem("AntarcticaTransparentAdditive"),
+        NodeItem("AntarcticaUnlit"),
+        NodeItem("AntarcticaCustom"),
     ])]
 
     register_node_categories("SH_ANTARCTICA", shcat)

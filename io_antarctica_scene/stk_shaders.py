@@ -24,9 +24,7 @@ import bpy
 
 
 class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
-    """Antarctica solid physical based rendering shader node.
-
-    Represents a shader node that simulates the solid physical based shader in the 'Antarctica' render pipeline of
+    """Represents a shader node that simulates the solid physical based shader in the 'Antarctica' render pipeline of
     SuperTuxKart. This class also stores shader specific properties for export.
     """
 
@@ -42,7 +40,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
 
     def __set_colorizable(self, value):
         """Setter of the colorizable toggle."""
-        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value is True else 0.0
+        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
 
     def __get_hue(self):
         """Getter of the currently displayed hue value."""
@@ -317,7 +315,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
         # Colorization properties
         layout.prop(self, 'prop_colorizable')
 
-        if self.prop_colorizable is True:
+        if self.prop_colorizable:
             prop_layout = layout.row(align=True).split(factor=0.3)
             prop_layout.label(text='Colorization Mask')
             prop_layout.template_ID(
@@ -352,7 +350,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
 
     def __set_colorizable(self, value):
         """Internal setter of the colorizable toggle."""
-        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value is True else 0.0
+        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
 
     def __get_hue(self):
         """Internal getter of the currently displayed hue value."""
@@ -525,7 +523,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
         # Colorization properties
         layout.prop(self, 'prop_colorizable')
 
-        if self.prop_colorizable is True:
+        if self.prop_colorizable:
             layout.prop(self, 'prop_colorizationFactor')
             layout.prop(self, 'prop_hue')
             prop_layout = layout.row(align=True).split(factor=0.3)
@@ -551,7 +549,7 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
 
     def __set_mask(self, value):
         """Internal setter of the alpha mask toggle."""
-        self.node_tree.nodes['Mask Influence'].outputs[0].default_value = 1.0 if value is True else 0.0
+        self.node_tree.nodes['Mask Influence'].outputs[0].default_value = 1.0 if value else 0.0
 
     # Mask properties
     prop_mask: bpy.props.BoolProperty(
@@ -562,9 +560,9 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
     )
 
     @staticmethod
-    def setup_transparency(nt, nd_mainTex, nd_mask, nd_maskTex):
-        """Setup a node tree in a given node group object and return the node socket that represents the shader output.
-        This is the default shader tree for simulating the Antarctica transparent (alpha-blend) shader.
+    def setup_alpha(nt, nd_mainTex, nd_mask, nd_maskTex):
+        """Setup a node tree in a given node group object and return the node socket that represents the alpha output of
+        the appliead alpha mask.
 
         Parameters
         ----------
@@ -579,18 +577,12 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
 
         Returns
         -------
-        bpy.types.NodeSocketShader
-            The output node socket for the transparency shader
+        bpy.types.NodeSocketFloat
+            The output node socket for the alpha value
         """
-        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
-        nd_shader_transparent = nt.nodes.new('ShaderNodeBsdfTransparent')
-        nd_shader_emission = nt.nodes.new('ShaderNodeEmission')
         nd_map_range = nt.nodes.new('ShaderNodeMapRange')
         nd_multiply = nt.nodes.new('ShaderNodeMath')
         nd_light_path = nt.nodes.new('ShaderNodeLightPath')
-
-        nd_shader_transparent.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
-        nd_shader_emission.inputs['Strength'].default_value = 1.0
 
         nd_map_range.clamp = True
         nd_map_range.interpolation_type = 'LINEAR'
@@ -600,19 +592,37 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
         nd_multiply.operation = 'MULTIPLY'
 
         # Transparency factor
-        nt.links.new(nd_multiply.outputs[0], nd_shader_mix.inputs['Fac'])
         nt.links.new(nd_light_path.outputs['Is Camera Ray'], nd_multiply.inputs[0])
         nt.links.new(nd_map_range.outputs[0], nd_multiply.inputs[1])
         nt.links.new(nd_mask.outputs[0], nd_map_range.inputs['Value'])
         nt.links.new(nd_mainTex.outputs['Alpha'], nd_map_range.inputs['To Min'])
         nt.links.new(nd_maskTex.outputs['Color'], nd_map_range.inputs['To Max'])
 
-        # Mixing shaders
-        nt.links.new(nd_shader_transparent.outputs[0], nd_shader_mix.inputs[1])
-        nt.links.new(nd_shader_emission.outputs[0], nd_shader_mix.inputs[2])
+        return nd_multiply.outputs[0]
+
+    @staticmethod
+    def setup_colorshader(nt, nd_mainTex):
+        """Setup a node tree in a given node group object and return the node socket that represents the shader output.
+        This is the default colored emission for simulating the Antarctica transparent (alpha-blend) shader.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+
+        Returns
+        -------
+        bpy.types.NodeSocketShader
+            The output node socket for the colored emission shader
+        """
+        nd_shader_emission = nt.nodes.new('ShaderNodeEmission')
+        nd_shader_emission.inputs['Strength'].default_value = 1.0
+
         nt.links.new(nd_mainTex.outputs['Color'], nd_shader_emission.inputs['Color'])
 
-        return nd_shader_mix.outputs[0]
+        return nd_shader_emission.outputs[0]
 
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
@@ -637,8 +647,19 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
         nd_mask.name = 'Mask Influence'
         nd_mask.outputs[0].default_value = 0.0
 
-        nds_transparency = self.setup_transparency(nt, nd_mainTex, nd_mask, nd_maskTex)
-        nt.links.new(nds_transparency, nd_output.inputs[0])
+        # Mixing transparent with color emission
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_shader_transparent = nt.nodes.new('ShaderNodeBsdfTransparent')
+        nd_shader_transparent.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+
+        nds_transparency = self.setup_alpha(nt, nd_mainTex, nd_mask, nd_maskTex)
+        nds_color = self.setup_colorshader(nt, nd_mainTex)
+
+        # Mixing shaders
+        nt.links.new(nds_transparency, nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_shader_transparent.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nds_color, nd_shader_mix.inputs[2])
+        nt.links.new(nd_shader_mix.outputs[0], nd_output.inputs[0])
 
         # Assign generated node tree
         self.node_tree = nt
@@ -663,7 +684,408 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
         # Mask properties
         layout.prop(self, 'prop_mask')
 
-        if self.prop_mask is True:
+        if self.prop_mask:
             prop_layout = layout.row(align=True).split(factor=0.3)
             prop_layout.label(text='Alpha Mask')
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
+
+
+class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
+    """
+    Represents a shader node that simulates the transparent additive (alpha-additive) shader in the 'Antarctica' render
+    pipeline of SuperTuxKart. This class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaTransparentAdditive'
+    bl_label = 'Antarctica Transparent Additive'
+    bl_description = "Simulates the SuperTuxKart Transparent Additive shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def __get_mask(self):
+        """Internal getter of the alpha mask toggle."""
+        return self.node_tree.nodes['Mask Influence'].outputs[0].default_value == 1.0
+
+    def __set_mask(self, value):
+        """Internal setter of the alpha mask toggle."""
+        self.node_tree.nodes['Mask Influence'].outputs[0].default_value = 1.0 if value else 0.0
+
+    # Mask properties
+    prop_mask: bpy.props.BoolProperty(
+        name='Use Alpha Mask',
+        default=False,
+        get=__get_mask,
+        set=__set_mask
+    )
+
+    @staticmethod
+    def setup_colorshader(nt, nd_mainTex):
+        """Setup a node tree in a given node group object and return the node socket that represents the shader output.
+        This is the default colored emission for simulating the Antarctica transparent additive (alpha-additive) shader.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_mainTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the main material texture
+
+        Returns
+        -------
+        bpy.types.NodeSocketShader
+            The output node socket for the colored emission shader
+        """
+        nd_shader_add = nt.nodes.new('ShaderNodeAddShader')
+        nd_shader_emission = nt.nodes.new('ShaderNodeEmission')
+        nd_color_mix = nt.nodes.new('ShaderNodeMixRGB')
+
+        nd_shader_emission.inputs['Strength'].default_value = 2.0
+
+        nd_color_mix.blend_type = 'MULTIPLY'
+        nd_color_mix.inputs['Fac'].default_value = 1.0
+        nd_color_mix.inputs['Color2'].default_value = (2.0, 2.0, 2.0, 2.0)
+
+        nt.links.new(nd_shader_emission.outputs[0], nd_shader_add.inputs[0])
+        nt.links.new(nd_shader_emission.outputs[0], nd_shader_add.inputs[1])
+        nt.links.new(nd_color_mix.outputs[0], nd_shader_emission.inputs['Color'])
+        nt.links.new(nd_mainTex.outputs['Color'], nd_color_mix.inputs['Color1'])
+
+        return nd_shader_add.outputs[0]
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        ntname = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+
+        # Image texture for main texture
+        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_mainTex.name = 'Main Texture'
+
+        # Image texture for alpha mask
+        nd_maskTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_maskTex.name = 'Alpha Mask'
+
+        # Alpha mask influence
+        nd_mask = nt.nodes.new('ShaderNodeValue')
+        nd_mask.name = 'Mask Influence'
+        nd_mask.outputs[0].default_value = 0.0
+
+        # Mixing transparent with color emission
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_shader_transparent = nt.nodes.new('ShaderNodeBsdfTransparent')
+        nd_shader_transparent.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+
+        nds_transparency = AntarcticaTransparent.setup_alpha(nt, nd_mainTex, nd_mask, nd_maskTex)
+        nds_color = self.setup_colorshader(nt, nd_mainTex)
+
+        # Mixing shaders
+        nt.links.new(nds_transparency, nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_shader_transparent.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nds_color, nd_shader_mix.inputs[2])
+        nt.links.new(nd_shader_mix.outputs[0], nd_output.inputs[0])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        # Main texture
+        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout.label(text='Main Texture')
+        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+
+        layout.separator()
+
+        # Mask properties
+        layout.prop(self, 'prop_mask')
+
+        if self.prop_mask:
+            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout.label(text='Alpha Mask')
+            prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
+
+
+class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup):
+    """
+    Represents a shader node that simulates the unlit shader in the 'Antarctica' render pipeline of SuperTuxKart. This
+    class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaUnlit'
+    bl_label = 'Antarctica Unlit'
+    bl_description = "Simulates the SuperTuxKart Unlit shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        ntname = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+
+        # Image texture for main texture
+        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_mainTex.name = 'Main Texture'
+
+        # Build up transparency for non-camera rays
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_shader_transparent = nt.nodes.new('ShaderNodeBsdfTransparent')
+        nd_light_path = nt.nodes.new('ShaderNodeLightPath')
+
+        nd_shader_transparent.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+
+        # Basic emission color
+        nds_color = AntarcticaTransparent.setup_colorshader(nt, nd_mainTex)
+
+        # Mixing shaders
+        nt.links.new(nd_light_path.outputs['Is Camera Ray'], nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_shader_transparent.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nds_color, nd_shader_mix.inputs[2])
+        nt.links.new(nd_shader_mix.outputs[0], nd_output.inputs[0])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        # Main texture
+        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout.label(text='Main Texture')
+        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+
+
+class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
+    """Represents a shader node that offers options for accessing a custom shader for the 'Antarctica' render pipeline
+    of SuperTuxKart. This class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaCustom'
+    bl_label = 'Antarctica Custom'
+    bl_description = "Accesses a custom SuperTuxKart shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def __get_colorizable(self):
+        """Getter of the colorizable toggle."""
+        return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
+
+    def __set_colorizable(self, value):
+        """Setter of the colorizable toggle."""
+        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
+
+    def __get_hue(self):
+        """Getter of the currently displayed hue value."""
+        return self.node_tree.nodes['Hue'].outputs[0].default_value
+
+    def __set_hue(self, value):
+        """Setter of the currently displayed hue value."""
+        self.node_tree.nodes['Hue'].outputs[0].default_value = value
+
+    # Shader properties
+    prop_shader: bpy.props.StringProperty(
+        name='Shader',
+        default=''
+    )
+    prop_secondary: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Secondary UV Texture'
+    )
+
+    # Additional samplers foldout
+    prop_texture_foldout: bpy.props.BoolProperty(
+        name='Additional Texture Samplers',
+        default=False
+    )
+
+    # Additional texture samplers
+    prop_texture2: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Texture Layer 2'
+    )
+    prop_texture3: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Texture Layer 2'
+    )
+    prop_texture4: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Texture Layer 2'
+    )
+    prop_texture5: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Texture Layer 2'
+    )
+    prop_mask: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name='Texture Layer 2'
+    )
+
+    # Colorization and hue properties
+    prop_colorizable: bpy.props.BoolProperty(
+        name='Colorizable',
+        default=False,
+        get=__get_colorizable,
+        set=__set_colorizable
+    )
+    prop_colorizationFactor: bpy.props.FloatProperty(
+        name='Colorization Factor',
+        default=0.0,
+        soft_min=0.0,
+        precision=3
+    )
+    prop_hue: bpy.props.FloatProperty(
+        name='Hue',
+        default=0.0,
+        soft_min=0.0,
+        soft_max=1.0,
+        precision=3,
+        get=__get_hue,
+        set=__set_hue
+    )
+    prop_hueSelect: bpy.props.StringProperty(
+        name='Hue Selection',
+        default=''
+    )
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        ntname = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+        nd_principled = nt.nodes.new('ShaderNodeBsdfPrincipled')
+
+        # Image texture for main texture
+        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_mainTex.name = 'Main Texture'
+
+        # Image texture for colorization mask
+        nd_colorizationMask = nt.nodes.new('ShaderNodeTexImage')
+        nd_colorizationMask.name = 'Colorization Mask'
+
+        # Colorization multiplier (for masking/enabling colorization)
+        nd_colorizable = nt.nodes.new('ShaderNodeValue')
+        nd_colorizable.name = 'Colorizable'
+        nd_colorizable.outputs[0].default_value = 0.0
+
+        # Colorization hue
+        nd_hue = nt.nodes.new('ShaderNodeValue')
+        nd_hue.name = 'Hue'
+        nd_hue.outputs[0].default_value = 0.0
+
+        # Default material
+        nd_principled.inputs['Specular'].default_value = 0.0
+        nd_principled.inputs['Roughness'].default_value = 1.0
+
+        nds_basecolor = AntarcticaSolidPBR.setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_colorizationMask, nd_hue)
+
+        nt.links.new(nd_principled.outputs[0], nd_output.inputs[0])
+        nt.links.new(nds_basecolor, nd_principled.inputs['Base Color'])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout.label(text='Shader')
+        prop_layout.prop(self, 'prop_shader', text='')
+
+        # Main texture
+        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout.label(text='Main Texture')
+        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+
+        # Secondary UV texture
+        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout.label(text='Secondary UV Texture')
+        prop_layout.template_ID(self, 'prop_secondary', new='image.new', open='image.open')
+
+        layout.separator()
+
+        prop_layout = layout.row(align=True)
+        prop_layout.alignment = 'LEFT'
+
+        prop_layout.prop(
+            self,
+            'prop_texture_foldout',
+            icon='TRIA_DOWN' if self.prop_texture_foldout else 'TRIA_RIGHT',
+            emboss=False
+        )
+
+        if self.prop_texture_foldout:
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Texture Layer 2')
+            prop_layout.template_ID(self, 'prop_texture2', new='image.new', open='image.open')
+
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Texture Layer 3')
+            prop_layout.template_ID(self, 'prop_texture3', new='image.new', open='image.open')
+
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Texture Layer 4')
+            prop_layout.template_ID(self, 'prop_texture4', new='image.new', open='image.open')
+
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Texture Layer 5')
+            prop_layout.template_ID(self, 'prop_texture5', new='image.new', open='image.open')
+
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Mask')
+            prop_layout.template_ID(self, 'prop_mask', new='image.new', open='image.open')
+
+        layout.separator()
+
+        # Colorization properties
+        layout.prop(self, 'prop_colorizable')
+
+        if self.prop_colorizable:
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Colorization Mask')
+            prop_layout.template_ID(
+                self.node_tree.nodes['Colorization Mask'],
+                'image',
+                new='image.new',
+                open='image.open'
+            )
+
+            layout.prop(self, 'prop_colorizationFactor')
+            layout.prop(self, 'prop_hue')
+            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout.label(text='Hue Selection')
+            prop_layout.prop(self, 'prop_hueSelect', text='')
