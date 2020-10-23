@@ -20,15 +20,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import bpy, os
+import bpy
+import os
 from collections import OrderedDict
 from bpy.types import Operator, AddonPreferences
-from bpy.props import StringProperty, IntProperty, BoolProperty
-from . import stk_utils
+from bpy.props import StringProperty, IntProperty, BoolProperty, PointerProperty
+from . import stk_utils, stk_props
 
 CONTEXT_OBJECT = 0
-CONTEXT_SCENE  = 1
-CONTEXT_MATERIAL  = 2
+CONTEXT_SCENE = 1
+CONTEXT_MATERIAL = 2
 
 datapath = stk_utils.getDataPath(os.path.dirname(__file__))
 
@@ -62,6 +63,7 @@ if os.path.exists(datapath):
 else:
     raise RuntimeError("(STK) Make sure the stkdata folder is installed, cannot locate it!!")
 
+
 class STK_TypeUnset(bpy.types.Operator):
     bl_idname = ("screen.stk_unset_type")
     bl_label = ("STK Object :: unset type")
@@ -70,6 +72,7 @@ class STK_TypeUnset(bpy.types.Operator):
         obj = context.object
         obj["type"] = ""
         return {'FINISHED'}
+
 
 class STK_MissingProps_Object(bpy.types.Operator):
     bl_idname = ("screen.stk_missing_props_" + str(CONTEXT_OBJECT))
@@ -97,6 +100,7 @@ class STK_MissingProps_Object(bpy.types.Operator):
 
         return {'FINISHED'}
 
+
 class STK_MissingProps_Scene(bpy.types.Operator):
     bl_idname = ("screen.stk_missing_props_" + str(CONTEXT_SCENE))
     bl_label = ("Create missing properties")
@@ -108,6 +112,7 @@ class STK_MissingProps_Scene(bpy.types.Operator):
             properties[curr.id] = curr
         stk_utils.createProperties(scene, properties)
         return {'FINISHED'}
+
 
 class STK_MissingProps_Material(bpy.types.Operator):
     bl_idname = ("screen.stk_missing_props_" + str(CONTEXT_MATERIAL))
@@ -122,6 +127,8 @@ class STK_MissingProps_Material(bpy.types.Operator):
         return {'FINISHED'}
 
 # ==== PANEL BASE ====
+
+
 class PanelBase:
 
     def recursivelyAddProperties(self, properties, layout, obj, contextLevel):
@@ -142,8 +149,9 @@ class PanelBase:
                     else:
                         icon = 'TRIA_RIGHT'
 
-                row.operator(stk_utils.generateOpName("screen.stk_tglbool_", curr.fullid, curr.id), text=curr.name, icon=icon, emboss=False)
-                row.label(text=" ") # force the operator to not maximize
+                row.operator(stk_utils.generateOpName("screen.stk_tglbool_", curr.fullid,
+                                                      curr.id), text=curr.name, icon=icon, emboss=False)
+                row.label(text=" ")  # force the operator to not maximize
                 if state == "true":
                     if len(curr.subproperties) > 0:
                         box = layout.box()
@@ -158,8 +166,9 @@ class PanelBase:
                 if id in obj:
                     state = obj[id]
                     if state == "true":
-                       icon = 'CHECKBOX_HLT'
-                split.operator(stk_utils.generateOpName("screen.stk_tglbool_", curr.fullid, curr.id), text="                ", icon=icon, emboss=False)
+                        icon = 'CHECKBOX_HLT'
+                split.operator(stk_utils.generateOpName("screen.stk_tglbool_", curr.fullid,
+                                                        curr.id), text="                ", icon=icon, emboss=False)
 
                 if state == "true":
                     if len(curr.subproperties) > 0:
@@ -173,7 +182,8 @@ class PanelBase:
                 row.label(text=curr.name)
                 if curr.id in obj:
                     row.prop(obj, '["' + curr.id + '"]', text="")
-                    row.operator(stk_utils.generateOpName("screen.stk_apply_color_", curr.fullid, curr.id), text="", icon='COLOR')
+                    row.operator(stk_utils.generateOpName("screen.stk_apply_color_",
+                                                          curr.fullid, curr.id), text="", icon='COLOR')
                 else:
                     row.operator('screen.stk_missing_props_' + str(contextLevel))
 
@@ -188,7 +198,8 @@ class PanelBase:
                         icon = 'CHECKBOX_DEHLT'
                         if value_id in curr_val:
                             icon = 'CHECKBOX_HLT'
-                        row.operator(stk_utils.generateOpName("screen.stk_set_", curr.fullid, curr.id + "_" + value_id), text=curr.values[value_id].name, icon=icon)
+                        row.operator(stk_utils.generateOpName("screen.stk_set_", curr.fullid, curr.id +
+                                                              "_" + value_id), text=curr.values[value_id].name, icon=icon)
                 else:
                     row.operator('screen.stk_missing_props_' + str(contextLevel))
 
@@ -221,7 +232,8 @@ class PanelBase:
 
                 if curr.id in obj:
                     row.prop(obj, '["' + curr.id + '"]', text="")
-                    row.menu(stk_utils.generateOpName("STK_MT_object_menu_", curr.fullid, curr.id), text="", icon='TRIA_DOWN')
+                    row.menu(stk_utils.generateOpName("STK_MT_object_menu_",
+                                                      curr.fullid, curr.id), text="", icon='TRIA_DOWN')
                 else:
                     row.operator('screen.stk_missing_props_' + str(contextLevel))
 
@@ -238,6 +250,8 @@ class PanelBase:
                     row.operator('screen.stk_missing_props_' + str(contextLevel))
 
 # ==== OBJECT PANEL ====
+
+
 class STK_PT_Object_Panel(bpy.types.Panel, PanelBase):
     bl_label = STK_PER_OBJECT_TRACK_PROPERTIES[0]
     bl_space_type = "PROPERTIES"
@@ -294,6 +308,7 @@ class STK_PT_Scene_Panel(bpy.types.Panel, PanelBase):
                 properties[curr.id] = curr
 
             self.recursivelyAddProperties(properties, layout, obj, CONTEXT_SCENE)
+
 
 """
 # ==== IMAGE PANEL ====
@@ -420,6 +435,8 @@ class STK_PT_Image_Panel(bpy.types.Panel, PanelBase):
 """
 
 # Extension to the 'add' menu
+
+
 class STK_OT_Add_Object(bpy.types.Operator):
     """Create a new SuperTuxKart Object"""
     bl_idname = ("scene.stk_add_object")
@@ -429,17 +446,18 @@ class STK_OT_Add_Object(bpy.types.Operator):
     name: bpy.props.StringProperty()
 
     value: bpy.props.EnumProperty(attr="values", name="values", default='banana',
-                                           items=[('banana', 'Banana', 'Banana'),
-                                                  ('item', 'Item (Gift Box)', 'Item (Gift Box)'),
-                                                  ('light', 'Light', 'Light'),
-                                                  ('nitro_big', 'Nitro (Big)', 'Nitro (big)'),
-                                                  ('nitro_small', 'Nitro (Small)', 'Nitro (Small)'),
-                                                  ('red_flag', 'Red flag', 'Red flag'),
-                                                  ('blue_flag', 'Blue flag', 'Blue flag'),
-                                                  ('particle_emitter', 'Particle Emitter', 'Particle Emitter'),
-                                                  ('sfx_emitter', 'Sound Emitter', 'Sound Emitter'),
-                                                  ('start', 'Start position (for battle mode)', 'Start position (for battle mode)')
-                                                  ])
+                                  items=[('banana', 'Banana', 'Banana'),
+                                         ('item', 'Item (Gift Box)', 'Item (Gift Box)'),
+                                         ('light', 'Light', 'Light'),
+                                         ('nitro_big', 'Nitro (Big)', 'Nitro (big)'),
+                                         ('nitro_small', 'Nitro (Small)', 'Nitro (Small)'),
+                                         ('red_flag', 'Red flag', 'Red flag'),
+                                         ('blue_flag', 'Blue flag', 'Blue flag'),
+                                         ('particle_emitter', 'Particle Emitter', 'Particle Emitter'),
+                                         ('sfx_emitter', 'Sound Emitter', 'Sound Emitter'),
+                                         ('start', 'Start position (for battle mode)',
+                                                   'Start position (for battle mode)')
+                                         ])
 
     def execute(self, context):
         if self.value == 'light':
@@ -460,7 +478,7 @@ class STK_OT_Add_Object(bpy.types.Operator):
 
                     if self.value == 'item':
                         curr.empty_display_type = 'CUBE'
-                    elif self.value == 'nitro_big' or self.value == 'nitro_small' :
+                    elif self.value == 'nitro_big' or self.value == 'nitro_small':
                         curr.empty_display_type = 'CONE'
                     elif self.value == 'sfx_emitter':
                         curr.empty_display_type = 'SPHERE'
@@ -480,18 +498,18 @@ class StkPanelAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = os.path.basename(os.path.dirname(__file__))
 
     stk_assets_path: StringProperty(
-            name="Assets (data) path",
-            #subtype='DIR_PATH',
-            )
+        name="Assets (data) path",
+        # subtype='DIR_PATH',
+    )
 
     stk_delete_old_files_on_export: BoolProperty(
-            name="Delete all old files when exporting a track in a folder (*.spm)",
-            #subtype='DIR_PATH',
-            )
+        name="Delete all old files when exporting a track in a folder (*.spm)",
+        # subtype='DIR_PATH',
+    )
 
     stk_export_images: BoolProperty(
-            name="Copy texture files when exporting a kart, track, or library node"
-            )
+        name="Copy texture files when exporting a kart, track, or library node"
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -500,6 +518,7 @@ class StkPanelAddonPreferences(bpy.types.AddonPreferences):
         layout.operator('screen.stk_pick_assets_path', icon='FILEBROWSER', text="Select...")
         layout.prop(self, "stk_delete_old_files_on_export")
         layout.prop(self, "stk_export_images")
+
 
 class STK_FolderPicker_Operator(bpy.types.Operator):
     bl_idname = "screen.stk_pick_assets_path"
@@ -525,6 +544,8 @@ class STK_FolderPicker_Operator(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 # ==== QUICK EXPORT PANEL ====
+
+
 class STK_PT_Quick_Export_Panel(bpy.types.Panel):
     bl_label = "Quick Exporter"
     bl_space_type = "PROPERTIES"
@@ -538,7 +559,8 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
         # ==== Types group ====
         row = layout.row()
 
-        assets_path = context.preferences.addons[os.path.basename(os.path.dirname(__file__))].preferences.stk_assets_path
+        assets_path = context.preferences.addons[os.path.basename(
+            os.path.dirname(__file__))].preferences.stk_assets_path
 
         if assets_path is not None and len(assets_path) > 0:
             row.label(text='Assets (data) path: ' + assets_path)
@@ -561,6 +583,38 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
             row.operator("screen.stk_track_export", text="Export Library Node", icon='GROUP')
 
         if (assets_path is None or len(assets_path) == 0) \
-            and bpy.context.mode != 'OBJECT':
+                and bpy.context.mode != 'OBJECT':
             row.enabled = False
 
+
+class STK_PT_ObjectProperties(bpy.types.Panel):
+    bl_idname = 'STK_PT_object_properties'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'object'
+    bl_label = "SuperTuxKart Object Properties"
+
+    @classmethod
+    def register(cls):
+        from bpy.utils import register_class
+
+        register_class(stk_props.STKObjectPropertyGroup)
+        print("register")
+
+    @classmethod
+    def unregister(cls):
+        from bpy.utils import unregister_class
+
+        unregister_class(stk_props.STKObjectPropertyGroup)
+        print("unregister")
+
+    def draw(self, context):
+        layout = self.layout
+        p_stk = context.object.supertuxkart
+
+        for prop, info in p_stk.ui_definitions.items():
+            if stk_props.STKObjectPropertyGroup.has_property(prop):
+                layout.prop(data=p_stk, property=prop)
+            else:
+                layout.label(text=info.label)
+        #layout.prop(data=p_stk, property='my_label')

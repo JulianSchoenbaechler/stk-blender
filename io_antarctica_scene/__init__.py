@@ -63,8 +63,13 @@ if "bpy" in locals():
         importlib.reload(stk_shaders)
     else:
         from . import stk_shaders
+
+    if "stk_props" in locals():
+        importlib.reload(stk_props)
+    else:
+        from . import stk_props
 else:
-    from . import stk_panel, stk_material, stk_kart, stk_track, stk_shaders
+    from . import stk_panel, stk_material, stk_kart, stk_track, stk_shaders, stk_props
 
 
 def menu_func_export_stk_material(self, context):
@@ -108,11 +113,14 @@ classes = (
     stk_shaders.AntarcticaTransparentAdditive,
     stk_shaders.AntarcticaUnlit,
     stk_shaders.AntarcticaCustom,
+
+    stk_panel.STK_PT_ObjectProperties,
 )
 
 
 def register():
     from bpy.utils import register_class
+
     for cls in classes:
         register_class(cls)
 
@@ -134,6 +142,8 @@ def register():
 
 
 def unregister():
+    from bpy.utils import unregister_class
+
     bpy.types.VIEW3D_MT_add.remove(menu_func_add_stk_object)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_stk_material)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_stk_kart)
@@ -141,7 +151,6 @@ def unregister():
 
     unregister_node_categories("SH_ANTARCTICA")
 
-    from bpy.utils import unregister_class
     for cls in classes:
         unregister_class(cls)
 

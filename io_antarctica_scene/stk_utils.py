@@ -1,4 +1,4 @@
- #!BPY
+#!BPY
 
 # Copyright (c) 2020 SuperTuxKart author(s)
 #
@@ -20,13 +20,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import bpy, os, base64, getpass, hashlib, xml.dom.minidom
+import bpy
+import os
+import base64
+import getpass
+import hashlib
+import xml.dom.minidom
 from collections import OrderedDict
 from xml.sax.saxutils import escape
 
 CONTEXT_OBJECT = 0
-CONTEXT_SCENE  = 1
-CONTEXT_MATERIAL  = 2
+CONTEXT_SCENE = 1
+CONTEXT_MATERIAL = 2
+
 
 def getObject(context, contextLevel):
     if contextLevel == CONTEXT_OBJECT:
@@ -35,7 +41,7 @@ def getObject(context, contextLevel):
         return context.scene
     if contextLevel == CONTEXT_MATERIAL:
         return context.object.active_material
-        #if 'selected_image' in context.scene:
+        # if 'selected_image' in context.scene:
         #    selected_image = context.scene['selected_image']
         #    if selected_image in bpy.data.images:
         #        return bpy.data.images[selected_image]
@@ -46,6 +52,8 @@ def getObject(context, contextLevel):
 # Gets a custom property of a scene, returning the default if the id property
 # is not set. If set_value_if_undefined is set and the property is not
 # defined, this function will also set the property to this default value.
+
+
 def getSceneProperty(scene, name, default="", set_value_if_undefined=1):
     import traceback
     try:
@@ -57,12 +65,14 @@ def getSceneProperty(scene, name, default="", set_value_if_undefined=1):
         else:
             return prop
     except:
-        if default!=None and set_value_if_undefined:
+        if default != None and set_value_if_undefined:
             scene[name] = default
     return default
 
 # ------------------------------------------------------------------------------
 # Gets a custom property of an object
+
+
 def getObjectProperty(obj, name, default=""):
     if obj.proxy is not None:
         try:
@@ -79,61 +89,88 @@ def getObjectProperty(obj, name, default=""):
 # Gets an id property of an object, returning the default if the id property
 # is not set. If set_value_if_undefined is set and the property is not
 # defined, this function will also set the property to this default value.
+
+
 def getIdProperty(obj, name, default="", set_value_if_undefined=1):
     import traceback
     try:
         prop = obj[name]
         if isinstance(prop, str):
-            return obj[name].replace('&', '&amp;') # this is XML
+            return obj[name].replace('&', '&amp;')  # this is XML
         else:
             return prop
     except:
-        if default!=None and set_value_if_undefined:
+        if default != None and set_value_if_undefined:
             obj[name] = default
     return default
 
 # --------------------------------------------------------------------------
 # Write several ways of writing true/false as Y/N
+
+
 def convertTextToYN(sText):
     sTemp = sText.strip().upper()
-    if sTemp=="0" or sTemp[0]=="N" or sTemp=="FALSE":
+    if sTemp == "0" or sTemp[0] == "N" or sTemp == "FALSE":
         return "N"
     else:
         return "Y"
+
 
 def merge_materials(x, y):
     z = x.copy()
     z.update(y)
     return z
 
+
 def getXYZString(obj):
     loc = obj.location
     s = "xyz=\"%.2f %.2f %.2f\"" % (loc[0], loc[2], loc[1])
     return s
+
+
+def str_to_bool(val: str):
+    return val.lower() not in ['false', '0', 'f', 'n', 'no']
+
+
+def str_to_color(val: str):
+    s = val.split()
+
+    for _ in range(len(s), 3):
+        s.append(0.5)
+
+    return (float(s[0]), float(s[1]), float(s[2]))
+
+
+def str_to_enum(val: str):
+    return val.split()
 
 # ------------------------------------------------------------------------------
 # FIXME: should use xyz="..." format
 # Returns a string 'x="1" y="2" z="3" h="4"', where 1, 2, ...are the actual
 # location and rotation of the given object. The location has a swapped
 # y and z axis (so that the same coordinate system as in-game is used).
+
+
 def getXYZHString(obj):
-    loc     = obj.location
-    hpr     = obj.rotation_euler
-    rad2deg = 180.0/3.1415926535;
-    s="x=\"%.2f\" y=\"%.2f\" z=\"%.2f\" h=\"%.2f\"" %\
-       (loc[0], loc[2], loc[1], -hpr[2]*rad2deg)
+    loc = obj.location
+    hpr = obj.rotation_euler
+    rad2deg = 180.0/3.1415926535
+    s = "x=\"%.2f\" y=\"%.2f\" z=\"%.2f\" h=\"%.2f\"" %\
+        (loc[0], loc[2], loc[1], -hpr[2]*rad2deg)
     return s
 
 # ------------------------------------------------------------------------------
 # Returns a string 'xyz="1 2 3" h="4"', where 1, 2, ...are the actual
 # location and rotation of the given object. The location has a swapped
 # y and z axis (so that the same coordinate system as in-game is used).
+
+
 def getNewXYZHString(obj):
-    loc     = obj.location
-    hpr     = obj.rotation_euler
-    rad2deg = 180.0/3.1415926535;
-    s="xyz=\"%.2f %.2f %.2f\" h=\"%.2f\"" %\
-       (loc[0], loc[2], loc[1], hpr[2]*rad2deg)
+    loc = obj.location
+    hpr = obj.rotation_euler
+    rad2deg = 180.0/3.1415926535
+    s = "xyz=\"%.2f %.2f %.2f\" h=\"%.2f\"" %\
+        (loc[0], loc[2], loc[1], hpr[2]*rad2deg)
     return s
 
 # ------------------------------------------------------------------------------
@@ -142,22 +179,26 @@ def getNewXYZHString(obj):
 # y and z axis (so that the same coordinate system as in-game is used), and
 # rotations are multiplied by 10 (since bullet stores the values in units
 # of 10 degrees.)
+
+
 def getXYZHPRString(obj):
-    loc     = obj.location
+    loc = obj.location
     # irrlicht uses XZY
-    hpr     = obj.rotation_euler.to_quaternion().to_euler('XZY')
-    si      = obj.scale
-    rad2deg = 180.0/3.1415926535;
-    s="xyz=\"%.2f %.2f %.2f\" hpr=\"%.1f %.1f %.1f\" scale=\"%.2f %.2f %.2f\"" %\
-       (loc[0], loc[2], loc[1], -hpr[0]*rad2deg, -hpr[2]*rad2deg,
-        -hpr[1]*rad2deg, si[0], si[2], si[1])
+    hpr = obj.rotation_euler.to_quaternion().to_euler('XZY')
+    si = obj.scale
+    rad2deg = 180.0/3.1415926535
+    s = "xyz=\"%.2f %.2f %.2f\" hpr=\"%.1f %.1f %.1f\" scale=\"%.2f %.2f %.2f\"" %\
+        (loc[0], loc[2], loc[1], -hpr[0]*rad2deg, -hpr[2]*rad2deg,
+         -hpr[1]*rad2deg, si[0], si[2], si[1])
     return s
+
 
 def selectObjectsInList(obj_list):
     bpy.ops.object.select_all(action='DESELECT')
     for obj in obj_list:
         if not obj.select_get():
             obj.select_set(True)
+
 
 def searchNodeTreeForImage(node_tree, uv_num):
     # Check if there is a node tree
@@ -194,6 +235,8 @@ def searchNodeTreeForImage(node_tree, uv_num):
 #!
 #! object   the object to create properties in
 #! props    a list of properties to create
+
+
 def createProperties(object, props):
 
     if not "_RNA_UI" in object:
@@ -221,7 +264,7 @@ def createProperties(object, props):
                     createProperties(object, props[p].subproperties)
 
         # check the property has the right type
-        elif isinstance(props[p], StkFloatProperty) :
+        elif isinstance(props[p], StkFloatProperty):
 
             if not isinstance(object[p], float):
                 try:
@@ -242,7 +285,6 @@ def createProperties(object, props):
                 object[p] = str(object[p])
             except:
                 object[p] = props[p].default
-
 
         rna_ui_dict = {}
         try:
@@ -279,6 +321,7 @@ def simpleHash(x):
     m.update(x.encode('ascii'))
     return base64.b64encode(m.digest()).decode('ascii').replace('=', '').replace('/', '_').replace('+', '_').lower()[0:15]
 
+
 def generateOpName(prefix, fullid, id):
     if len(prefix + fullid + '_' + id) > 60:
         return prefix + simpleHash(fullid) + '_' + id
@@ -288,6 +331,8 @@ def generateOpName(prefix, fullid, id):
 # ------------------------------------------------------------------------------
 #! The base class for all properties.
 #! If you use this property directly (and not a subclass), you get a simple text box
+
+
 class StkProperty:
     def __init__(self, id, name, default, fullid, doc="(No documentation was defined for this item)"):
         self.name = name
@@ -328,6 +373,7 @@ class StkObjectReferenceProperty(StkProperty):
             raise Exception("Filter may not be None")
 
         select_op_name = generateOpName("screen.stk_select_object_", fullid, id)
+
         class SelectObjectOperator(bpy.types.Operator):
             bl_idname = select_op_name
             bl_label = "Select Object Operator"
@@ -347,6 +393,7 @@ class StkObjectReferenceProperty(StkProperty):
         bpy.utils.register_class(SelectObjectOperator)
 
         op_name = generateOpName("STK_MT_object_menu_", fullid, id)
+
         class ObjectPickerMenu(bpy.types.Menu):
             m_filter = filter
             m_obj_identifier = obj_identifier
@@ -354,7 +401,7 @@ class StkObjectReferenceProperty(StkProperty):
             m_static_objects = static_objects
             m_fullid = fullid
             bl_idname = op_name
-            bl_label  = ("SuperTuxKart Object Picker Menu (" + id + ")")
+            bl_label = ("SuperTuxKart Object Picker Menu (" + id + ")")
             m_property_id = id
 
             def draw(self, context):
@@ -373,8 +420,7 @@ class StkObjectReferenceProperty(StkProperty):
                             seen_objs[object_id] = True
 
                 for curr in self.m_static_objects:
-                    layout.operator("scene.stk_select_object_"+self.m_property_id, text=curr[1]).name=curr[0]
-
+                    layout.operator("scene.stk_select_object_"+self.m_property_id, text=curr[1]).name = curr[0]
 
         bpy.utils.register_class(ObjectPickerMenu)
 
@@ -427,14 +473,14 @@ class StkEnumProperty(StkProperty):
         for curr_val in values.keys():
             if len(curr_val) > 0:
                 curr_obj = values[curr_val]
-                values_for_blender_unsorted.append( (curr_val, curr_obj.name, curr_obj.name + " : " + curr_obj.doc) )
+                values_for_blender_unsorted.append((curr_val, curr_obj.name, curr_obj.name + " : " + curr_obj.doc))
 
         #values_for_blender = sorted(values_for_blender_unsorted, key=lambda k: k[1])
         values_for_blender = values_for_blender_unsorted
 
         class STK_CustomMenu(bpy.types.Menu):
             bl_idname = generateOpName("STK_MT_menu_set_", fullid, id)
-            bl_label  = ("SuperTuxKart set " + id)
+            bl_label = ("SuperTuxKart set " + id)
             __doc__ = doc
 
             def draw(self, context):
@@ -446,21 +492,21 @@ class StkEnumProperty(StkProperty):
 
                 for curr in values_for_blender_unsorted:
                     if curr[0].startswith('__category__'):
-                        col.label(text = curr[1])
+                        col.label(text=curr[1])
                     elif curr[0].startswith('__column_break__'):
                         col = row.column()
                     else:
-                        col.operator(generateOpName("screen.stk_set_", fullid, id), text=curr[1]).value=curr[0]
+                        col.operator(generateOpName("screen.stk_set_", fullid, id), text=curr[1]).value = curr[0]
         bpy.utils.register_class(STK_CustomMenu)
 
         # Create operator for this combo
         class STK_SetComboValue(bpy.types.Operator):
 
             value: bpy.props.EnumProperty(attr="values", name="values", default=default_value + "",
-                                           items=values_for_blender)
+                                          items=values_for_blender)
 
             bl_idname = generateOpName("screen.stk_set_", fullid, id)
-            bl_label  = ("SuperTuxKart set " + id)
+            bl_label = ("SuperTuxKart set " + id)
             __doc__ = doc
 
             m_property_id = id
@@ -496,6 +542,8 @@ class StkEnumProperty(StkProperty):
 #! values           the choices offered by this enum, as a list of 'StkEnumChoice' objects
 #! contextLevel     object, scene, material level?
 #! default          default value for this property
+
+
 class StkCombinableEnumProperty(StkProperty):
 
     #! @param name   User-visible name for this property
@@ -510,14 +558,14 @@ class StkCombinableEnumProperty(StkProperty):
         values_for_blender = []
         for curr_val in values.keys():
             curr_obj = values[curr_val]
-            values_for_blender.append( curr_val )
+            values_for_blender.append(curr_val)
 
         for curr in values_for_blender:
             # Create operator for this combo
             class STK_SetEnumComboValue(bpy.types.Operator):
 
                 bl_idname = generateOpName("screen.stk_set_", fullid, id + "_" + curr)
-                bl_label  = ("SuperTuxKart set " + id + " = " + curr)
+                bl_label = ("SuperTuxKart set " + id + " = " + curr)
 
                 if values[curr].doc is not None:
                     __doc__ = values[curr].doc + ""
@@ -541,7 +589,7 @@ class StkCombinableEnumProperty(StkProperty):
                     if self.m_curr in object[self.m_property_id]:
                         # Remove selected value
                         l = object[self.m_property_id].split()
-                        l.remove( self.m_curr )
+                        l.remove(self.m_curr)
                         object[self.m_property_id] = " ".join(l)
                     else:
                         # Add selected value
@@ -556,7 +604,7 @@ class StkCombinableEnumProperty(StkProperty):
 #! A pseudo-property that only displays some text
 class StkLabelPseudoProperty(StkProperty):
 
-    def __init__(self, id, name, default=0.0, doc="(No documentation defined for this element)", fullid="", min = None, max = None):
+    def __init__(self, id, name, default=0.0, doc="(No documentation defined for this element)", fullid="", min=None, max=None):
         super(StkLabelPseudoProperty, self).__init__(id=id, name=name, default=default, fullid=fullid)
         self.default
         self.doc = doc
@@ -574,7 +622,7 @@ class StkLabelPseudoProperty(StkProperty):
 class StkFloatProperty(StkProperty):
 
     #! @param name   User-visible name for this property
-    def __init__(self, id, name, default=0.0, doc="(No documentation defined for this element)", fullid="", min = None, max = None):
+    def __init__(self, id, name, default=0.0, doc="(No documentation defined for this element)", fullid="", min=None, max=None):
         super(StkFloatProperty, self).__init__(id=id, name=name, default=default, fullid=fullid)
         self.default
         self.doc = doc
@@ -601,6 +649,8 @@ class StkIntProperty(StkProperty):
         self.max = max
 
 # ------------------------------------------------------------------------------
+
+
 class StkPropertyGroup(StkProperty):
 
     #! A floating-point property
@@ -620,7 +670,7 @@ class StkPropertyGroup(StkProperty):
         class STK_TogglePropGroupValue(bpy.types.Operator):
 
             bl_idname = generateOpName("screen.stk_tglbool_", fullid, id)
-            bl_label  = ("SuperTuxKart toggle " + id)
+            bl_label = ("SuperTuxKart toggle " + id)
             __doc__ = doc
 
             m_context_level = contextLevel
@@ -641,7 +691,7 @@ class StkPropertyGroup(StkProperty):
 
                 new_val = not curr_val
 
-                if curr_val :
+                if curr_val:
                     object[self.m_property_id] = "false"
                 else:
                     object[self.m_property_id] = "true"
@@ -670,13 +720,15 @@ class StkPropertyGroup(StkProperty):
 #! box                  if True, the properties from 'subproperties' are
 #!                      displayed in a box
 #! doc                  documentation shown to the user in a tooltip
+
+
 class StkBoolProperty(StkProperty):
 
     # (self, id, name, values, default):
     box = True
 
     #! A floating-point property
-    def __init__(self, id, name, contextLevel, default="false", subproperties=[], box = True, fullid="", doc="(No documentation defined for this element)"):
+    def __init__(self, id, name, contextLevel, default="false", subproperties=[], box=True, fullid="", doc="(No documentation defined for this element)"):
         super(StkBoolProperty, self).__init__(id=id, name=name, default=default, fullid=fullid)
 
         self.box = box
@@ -693,7 +745,7 @@ class StkBoolProperty(StkProperty):
         class STK_ToggleBoolValue(bpy.types.Operator):
 
             bl_idname = generateOpName("screen.stk_tglbool_", fullid, id)
-            bl_label  = ("SuperTuxKart toggle " + id)
+            bl_label = ("SuperTuxKart toggle " + id)
             __doc__ = doc
 
             m_context_level = contextLevel
@@ -714,11 +766,10 @@ class StkBoolProperty(StkProperty):
 
                 new_val = not curr_val
 
-                if curr_val :
+                if curr_val:
                     object[self.m_property_id] = "false"
                 else:
                     object[self.m_property_id] = "true"
-
 
                 # If sub-properties are needed, create them
                 if object[self.m_property_id] == "true":
@@ -756,14 +807,14 @@ class StkColorProperty(StkProperty):
             m_context_level = contextLevel
 
             temp_color: bpy.props.FloatVectorProperty(
-               name= "temp_color",
-               description= "Temp Color.",
-               subtype= 'COLOR',
-               min= 0.0,
-               max= 1.0,
-               soft_min= 0.0,
-               soft_max= 1.0,
-               default= (1.0,1.0,1.0)
+                name="temp_color",
+                description="Temp Color.",
+                subtype='COLOR',
+                min=0.0,
+                max=1.0,
+                soft_min=0.0,
+                soft_max=1.0,
+                default=(1.0, 1.0, 1.0)
             )
 
             def invoke(self, context, event):
@@ -787,7 +838,6 @@ class StkColorProperty(StkProperty):
                 context.window_manager.invoke_props_dialog(self)
                 return {'RUNNING_MODAL'}
 
-
             def draw(self, context):
 
                 layout = self.layout
@@ -799,7 +849,7 @@ class StkColorProperty(StkProperty):
                     row.template_color_picker(self, "temp_color", value_slider=True, cubic=False)
                 except Exception as ex:
                     import sys
-                    print("Except :(", type(ex), ex, "{",ex.args,"}")
+                    print("Except :(", type(ex), ex, "{", ex.args, "}")
                     pass
 
                 row = layout.row()
@@ -811,7 +861,8 @@ class StkColorProperty(StkProperty):
                 if object is None:
                     return
 
-                object[self.property_id] = "%i %i %i" % (self.temp_color[0]*255, self.temp_color[1]*255, self.temp_color[2]*255)
+                object[self.property_id] = "%i %i %i" % (
+                    self.temp_color[0]*255, self.temp_color[1]*255, self.temp_color[2]*255)
                 return {'FINISHED'}
 
         bpy.utils.register_class(Apply_Color_Operator)
@@ -844,6 +895,7 @@ def readEnumValues(valueNodes, contextLevel, idprefix):
 
     return out
 
+
 def parseProperties(node, contextLevel, idprefix):
 
     props = []
@@ -873,7 +925,7 @@ def parseProperties(node, contextLevel, idprefix):
             args["name"] = e.getAttribute("name")
             args["default"] = e.getAttribute("default")
 
-            #if e.hasAttribute("unique_prefix"):
+            # if e.hasAttribute("unique_prefix"):
             #    args["unique_prefix"] = e.getAttribute("unique_prefix")
 
             if e.hasAttribute("doc"):
@@ -892,7 +944,7 @@ def parseProperties(node, contextLevel, idprefix):
             args["name"] = e.getAttribute("name")
             args["default"] = e.getAttribute("default")
 
-            #if e.hasAttribute("unique_prefix"):
+            # if e.hasAttribute("unique_prefix"):
             #    args["unique_prefix"] = e.getAttribute("unique_prefix")
 
             args["values"] = readEnumValues(e.childNodes, contextLevel, args["fullid"])
@@ -902,11 +954,11 @@ def parseProperties(node, contextLevel, idprefix):
 
         elif e.localName == "IntProp":
             if e.hasAttribute("doc"):
-                props.append(StkIntProperty(id=e.getAttribute("id"), fullid = idprefix + '_' + e.getAttribute("id"),
+                props.append(StkIntProperty(id=e.getAttribute("id"), fullid=idprefix + '_' + e.getAttribute("id"),
                                             name=e.getAttribute("name"), default=int(e.getAttribute("default")),
                                             doc=e.getAttribute("doc")))
             else:
-                props.append(StkIntProperty(id=e.getAttribute("id"), fullid = idprefix + '_' + e.getAttribute("id"),
+                props.append(StkIntProperty(id=e.getAttribute("id"), fullid=idprefix + '_' + e.getAttribute("id"),
                                             name=e.getAttribute("name"), default=int(e.getAttribute("default"))))
 
         elif e.localName == "FloatProp":
@@ -996,7 +1048,7 @@ def parseProperties(node, contextLevel, idprefix):
             if e.hasAttribute("doc"):
                 args["doc"] = e.getAttribute("doc")
 
-            #if e.hasAttribute("unique_id_suffix"):
+            # if e.hasAttribute("unique_id_suffix"):
             #    args["unique_id_suffix"] = e.getAttribute("unique_id_suffix")
 
             if e.hasAttribute("obj_identifier"):
@@ -1011,6 +1063,7 @@ def parseProperties(node, contextLevel, idprefix):
 
     return props
 
+
 def getPropertiesFromXML(filename, contextLevel):
     import os
     idprefix = os.path.splitext(os.path.basename(filename))[0]
@@ -1019,6 +1072,7 @@ def getPropertiesFromXML(filename, contextLevel):
         if curr.localName == "Properties":
             return [curr.getAttribute("bl-label"), parseProperties(curr, contextLevel, idprefix)]
     raise RuntimeError("No <Properties> node in " + filename)
+
 
 def getDataPath(start):
     return os.path.join(start, "stkdata")
