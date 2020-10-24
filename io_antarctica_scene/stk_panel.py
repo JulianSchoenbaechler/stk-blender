@@ -613,7 +613,10 @@ class STK_PT_ObjectProperties(bpy.types.Panel):
         p_stk = context.object.supertuxkart
 
         for prop, info in p_stk.ui_definitions.items():
-            if stk_props.STKObjectPropertyGroup.has_property(prop):
+            if not p_stk.condition_poll(info):
+                continue
+
+            if p_stk.has_property(prop):
                 layout.prop(data=p_stk, property=prop)
             else:
                 layout.label(text=info.label)

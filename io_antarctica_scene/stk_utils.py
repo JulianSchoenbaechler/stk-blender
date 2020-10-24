@@ -129,11 +129,14 @@ def getXYZString(obj):
 
 
 def str_to_bool(val: str):
-    return val.lower() not in ['false', '0', 'f', 'n', 'no']
+    if val:
+        return val.lower() not in ['false', '0', 'f', 'n', 'no']
+
+    return False
 
 
 def str_to_color(val: str):
-    s = val.split()
+    s = val.split() if val else []
 
     for _ in range(len(s), 3):
         s.append(0.5)
