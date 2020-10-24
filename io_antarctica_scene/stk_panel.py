@@ -587,7 +587,108 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
             row.enabled = False
 
 
-class STK_PT_ObjectProperties(bpy.types.Panel):
+class STKPanelMixin:
+    @classmethod
+    def init(cls, property_group, path):
+        cls.property_group = property_group
+        cls.path = path
+        cls.subpanels = []
+
+        definitions = property_group.ui_definitions
+
+        for n in path:
+            if n in definitions:
+                definitions = definitions[n].properties
+            else:
+                definitions = OrderedDict()
+                break
+
+        cls.ui_definitions = definitions
+
+    @classmethod
+    def generate_subpanel(cls, id, label):
+        from bpy.utils import register_class
+
+        panel = type(
+            f"{cls.__name__}_{id}",
+            (bpy.types.Panel, STKPanelMixin),
+            {
+                'bl_idname': f"{getattr(cls, 'bl_idname')}_{id}",
+                'bl_space_type': getattr(cls, 'bl_space_type'),
+                'bl_region_type': getattr(cls, 'bl_region_type'),
+                'bl_context': getattr(cls, 'bl_context'),
+                'bl_label': label,
+                'bl_parent_id': getattr(cls, 'bl_idname')
+            }
+        )
+
+        cls.subpanels.append(panel)
+        new_path = cls.path.copy()
+        new_path.append(id)
+        panel.init(cls.property_group, new_path)
+        register_class(panel)
+        print(panel, dir(panel))
+
+    @classmethod
+    def create_subpanels(cls):
+        print(cls.ui_definitions)
+        for prop, info in cls.ui_definitions.items():
+            if isinstance(info, cls.property_group.PanelInfo):
+                cls.generate_subpanel(prop, info.label)
+                # crazy panel generation process
+                print(f"{cls.bl_idname}_{prop}", cls.property_group, [*cls.path, prop])
+                # panel.init(cls.property_group, [*cls.path, prop])
+                # register_class(panel)
+
+    @classmethod
+    def destroy_subpanels(cls):
+        from bpy.utils import unregister_class
+
+        for panel in cls.subpanels:
+            unregister_class(panel)
+
+        cls.subpanels.clear()
+
+    @classmethod
+    def register(cls):
+        print("register subpanel")
+        print(cls)
+        cls.create_subpanels()
+
+    @classmethod
+    def unregister(cls):
+        print("unregister subpanel")
+        print(cls)
+        cls.destroy_subpanels()
+
+    def draw(self, context):
+        cls = type(self)
+        layout = self.layout
+        p_stk = context.object.supertuxkart
+
+        def draw_props(layout, definitions):
+            for prop, info in definitions.items():
+                # Not displaying panel or conditionally excluded properties
+                if isinstance(info, stk_props.STKPropertyGroup.PanelInfo) or not p_stk.condition_poll(info):
+                    continue
+
+                # Draw box containing properties
+                elif isinstance(info, stk_props.STKPropertyGroup.BoxInfo):
+                    draw_props(layout.box(), info.properties)
+
+                # Draw property or label
+                else:
+                    if p_stk.has_property(prop):
+                        layout.use_property_split = True
+                        layout.prop(data=p_stk, property=prop)
+                    else:
+                        layout.label(text=info.label)
+
+        # Recursively drawing properties
+        draw_props(layout, cls.ui_definitions)
+
+
+class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
     bl_idname = 'STK_PT_object_properties'
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -599,25 +700,44 @@ class STK_PT_ObjectProperties(bpy.types.Panel):
         from bpy.utils import register_class
 
         register_class(stk_props.STKObjectPropertyGroup)
+
+        cls.init(stk_props.STKObjectPropertyGroup, [])
+        cls.create_subpanels()
         print("register")
 
     @classmethod
     def unregister(cls):
         from bpy.utils import unregister_class
 
+        cls.destroy_subpanels()
+
         unregister_class(stk_props.STKObjectPropertyGroup)
         print("unregister")
+
+
+class STK_PT_ObjectProperties_gugus(bpy.types.Panel):
+    bl_idname = 'STK_PT_object_properties_gugus'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'object'
+    bl_label = "SuperTuxKart Object Properties"
+    bl_parent_id = 'STK_PT_object_properties'
+
+    def init(self, path):
+        self.path = path
+
+    def get_ui_definitions(self):
+        pass
 
     def draw(self, context):
         layout = self.layout
         p_stk = context.object.supertuxkart
 
-        for prop, info in p_stk.ui_definitions.items():
-            if not p_stk.condition_poll(info):
+        """ for prop, info in p_stk.ui_definitions.items():
+            if isinstance(info, stk_props.STKPropertyGroup.PanelInfo) or not p_stk.condition_poll(info):
                 continue
 
             if p_stk.has_property(prop):
                 layout.prop(data=p_stk, property=prop)
             else:
-                layout.label(text=info.label)
-        #layout.prop(data=p_stk, property='my_label')
+                layout.label(text=info.label) """

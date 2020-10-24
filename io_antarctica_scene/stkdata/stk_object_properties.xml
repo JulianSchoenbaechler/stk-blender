@@ -1,7 +1,9 @@
 ﻿<?xml version="1.0"?>
 <properties>
-    <int id="my_int" label="My Integer" default="15" doc="A crazy integer variable"/>
-    <float id="my_float" label="My Float" default="3.14159" doc="A crazy float variable"/>
+    <box id="my_box">
+        <int id="my_int" label="My Integer" default="15" doc="A crazy integer variable"/>
+        <float id="my_float" label="My Float" default="3.14159" doc="A crazy float variable"/>
+    </box>
     <bool id="my_bool" label="My Boolean" default="false" doc="A crazy boolean variable"/>
     <string id="my_string" label="My String" default="gugus" doc="A crazy string variable"/>
     <color id="my_color" label="My Color" default="1.0 0.5 0.2" doc="A crazy color variable"/>
@@ -14,17 +16,23 @@
     <object id="my_object2" filter="lambda o: True" doc="A crazy object variable">Hello</object>
     <label id="my_label">This is a demo label!</label>
 
-    <int    id="cond_int"
-            label="Conditional Integer"
-            default="15"
-            doc="A conditional integer variable"
-            bind="my_enum"
-            condition="lambda e: e == 'o3'"/>
+    <panel id="stupid_panel" label="Stupid Panel">
+        <int    id="cond_int"
+                label="Conditional Integer"
+                default="15"
+                doc="A conditional integer variable"
+                bind="my_enum"
+                condition="lambda e: e == 'o3'"/>
 
-    <string id="cond_string"
-            label="Conditional String"
-            default="Sven"
-            doc="A conditional string variable"
-            bind="my_string my_int"
-            condition="lambda i1, i2: i1 == 'Joergen' and i2 == 3"/>
+        <string id="cond_string"
+                label="Conditional String"
+                default="Sven"
+                doc="A conditional string variable"
+                bind="my_string my_int"
+                condition="lambda i1, i2: i1 == 'Joergen' and i2 == 3"/>
+
+        <panel id="stupid_subpanel" label="Hehehehehehe">
+            <label id="sub_label">Nested!</label>
+        </panel>
+    </panel>
 </properties>

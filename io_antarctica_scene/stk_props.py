@@ -54,7 +54,7 @@ class STKPropertyGroup:
         cls = type(self)
 
         if prop in cls.__annotations__:
-            return cls.__annotations__[prop].default
+            return cls.__annotations__[prop].default  # if 'default' in cls.__annotations__[prop] else None
 
         return None
 
@@ -111,7 +111,7 @@ class STKPropertyGroup:
 
                 # Property and info data arguments
                 info_args = {'label': n_label}
-                prop_args = {'name': n_label}
+                prop_args = {'name': n_label, 'options': set()}
 
                 # Property conditions
                 if (n_cond.startswith("lambda ")):
@@ -250,14 +250,18 @@ class STKPropertyGroup:
                     else:
                         p[n_id] = cls.PropertyInfo(n_label, "")
 
-                # Sub-panel
-                elif n_type == 'panel':
-                    if node.hasAttribute('doc'):
-                        info_args['doc'] = node.getAttribute('doc')
-
+                # Box
+                elif n_type == 'box':
+                    del info_args['label']
                     info_args['properties'] = generate_props(node)
 
-                    p[n_id] = cls.PanelInfo(**info_args)  # pylint: disable=no-value-for-parameter
+                    p[n_id] = cls.BoxInfo(**info_args)  # pylint: disable=unexpected-keyword-arg
+
+                # Sub-panel
+                elif n_type == 'panel':
+                    info_args['properties'] = generate_props(node)
+
+                    p[n_id] = cls.PanelInfo(**info_args)
 
             return p
 
@@ -285,11 +289,15 @@ class STKPropertyGroup:
 
             self.poll = poll if poll is not None else lambda p_self, p_obj: True
 
+    class BoxInfo:
+        def __init__(self, properties, bind=None, condition=None):
+            self.bind = bind
+            self.condition = condition
+            self.properties = properties
+
     class PanelInfo:
-        def __init__(self, label, properties, doc="(No documentation was defined for this property)", bind=None,
-                     condition=None):
+        def __init__(self, label, properties, bind=None, condition=None):
             self.label = label
-            self.doc = doc
             self.bind = bind
             self.condition = condition
             self.properties = properties
@@ -300,11 +308,6 @@ class STKObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
 
     @ classmethod
     def register(cls):
-        # if '__annotations__' not in cls.__dict__:
-        #     setattr(cls, '__annotations__', {})
-
-        # cls.__annotations__ = cls.initialize()
-
         cls.initialize()
 
         bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
@@ -315,4 +318,5 @@ class STKObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
 
     @ classmethod
     def unregister(cls):
+        cls.ui_definitions.clear()
         del bpy.types.Object.supertuxkart
