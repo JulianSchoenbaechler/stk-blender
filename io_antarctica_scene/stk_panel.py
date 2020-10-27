@@ -606,8 +606,16 @@ class STKPanelMixin:
         cls.ui_definitions = definitions
 
     @classmethod
-    def generate_subpanel(cls, id, label):
+    def generate_subpanel(cls, id, info):
         from bpy.utils import register_class
+
+        panel_options = set()
+
+        if not info.label:
+            panel_options.add('HIDE_HEADER')
+
+        if not info.expanded:
+            panel_options.add('DEFAULT_CLOSED')
 
         panel = type(
             f"{cls.__name__}_{id}",
@@ -617,7 +625,8 @@ class STKPanelMixin:
                 'bl_space_type': getattr(cls, 'bl_space_type'),
                 'bl_region_type': getattr(cls, 'bl_region_type'),
                 'bl_context': getattr(cls, 'bl_context'),
-                'bl_label': label,
+                'bl_label': info.label if info.label else "",
+                'bl_options': panel_options,
                 'bl_parent_id': getattr(cls, 'bl_idname')
             }
         )
@@ -634,11 +643,7 @@ class STKPanelMixin:
         print(cls.ui_definitions)
         for prop, info in cls.ui_definitions.items():
             if isinstance(info, cls.property_group.PanelInfo):
-                cls.generate_subpanel(prop, info.label)
-                # crazy panel generation process
-                print(f"{cls.bl_idname}_{prop}", cls.property_group, [*cls.path, prop])
-                # panel.init(cls.property_group, [*cls.path, prop])
-                # register_class(panel)
+                cls.generate_subpanel(prop, info)
 
     @classmethod
     def destroy_subpanels(cls):
@@ -713,31 +718,3 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
         unregister_class(stk_props.STKObjectPropertyGroup)
         print("unregister")
-
-
-class STK_PT_ObjectProperties_gugus(bpy.types.Panel):
-    bl_idname = 'STK_PT_object_properties_gugus'
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = 'object'
-    bl_label = "SuperTuxKart Object Properties"
-    bl_parent_id = 'STK_PT_object_properties'
-
-    def init(self, path):
-        self.path = path
-
-    def get_ui_definitions(self):
-        pass
-
-    def draw(self, context):
-        layout = self.layout
-        p_stk = context.object.supertuxkart
-
-        """ for prop, info in p_stk.ui_definitions.items():
-            if isinstance(info, stk_props.STKPropertyGroup.PanelInfo) or not p_stk.condition_poll(info):
-                continue
-
-            if p_stk.has_property(prop):
-                layout.prop(data=p_stk, property=prop)
-            else:
-                layout.label(text=info.label) """

@@ -101,17 +101,11 @@ class STKPropertyGroup:
                 # Global node attributes
                 n_type = node.localName.lower()
                 n_id = node.getAttribute('id')
-                n_label = n_id
                 n_cond = node.getAttribute('condition') if node.hasAttribute('condition') else ""
 
-                if node.hasAttribute('label'):
-                    n_label = node.getAttribute('label')
-                elif node.firstChild and node.firstChild.nodeValue:
-                    n_label = node.firstChild.nodeValue
-
                 # Property and info data arguments
-                info_args = {'label': n_label}
-                prop_args = {'name': n_label, 'options': set()}
+                info_args = {}
+                prop_args = {'options': set()}
 
                 # Property conditions
                 if (n_cond.startswith("lambda ")):
@@ -120,6 +114,15 @@ class STKPropertyGroup:
 
                 # Integer property
                 if n_type == 'int':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['default'] = int(node.getAttribute('default')) if node.hasAttribute('default') else 0
 
                     if node.hasAttribute('doc'):
@@ -138,6 +141,15 @@ class STKPropertyGroup:
 
                 # Floating point number property
                 elif n_type == 'float':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['default'] = float(node.getAttribute('default')) if node.hasAttribute('default') else 0.0
 
                     if node.hasAttribute('doc'):
@@ -156,6 +168,15 @@ class STKPropertyGroup:
 
                 # Boolean property
                 elif n_type == 'bool':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['default'] = stk_utils.str_to_bool(node.getAttribute('default'))
 
                     if node.hasAttribute('doc'):
@@ -168,6 +189,15 @@ class STKPropertyGroup:
 
                 # String property
                 elif n_type == 'string':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['default'] = node.getAttribute('default')
 
                     if node.hasAttribute('doc'):
@@ -180,6 +210,15 @@ class STKPropertyGroup:
 
                 # Color property
                 elif n_type == 'color':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['default'] = stk_utils.str_to_color(node.getAttribute('default'))
                     prop_args['subtype'] = 'COLOR'
                     prop_args['min'] = 0.0
@@ -195,6 +234,8 @@ class STKPropertyGroup:
 
                 # Enumerator property
                 elif n_type == 'enum':
+                    info_args['label'] = node.getAttribute('label') if node.hasAttribute('label') else n_id
+                    prop_args['name'] = n_label
                     prop_args['default'] = node.getAttribute('default')
                     n_items = []
 
@@ -224,14 +265,23 @@ class STKPropertyGroup:
 
                 # Object reference property
                 elif n_type == 'object':
-                    n_filter = node.getAttribute('filter') if node.hasAttribute('filter') else ""
+                    n_label = n_id
 
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
                     prop_args['type'] = bpy.types.Object
 
                     if node.hasAttribute('doc'):
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    n_filter = node.getAttribute('filter') if node.hasAttribute('filter') else ""
 
                     if n_filter.startswith("lambda "):
                         info_args['filter'] = cls._eval_condition(n_filter)
@@ -245,20 +295,28 @@ class STKPropertyGroup:
 
                 # Label
                 elif n_type == 'label':
-                    if node.hasAttribute('doc'):
-                        p[n_id] = cls.PropertyInfo(n_label, node.getAttribute('doc'))
-                    else:
-                        p[n_id] = cls.PropertyInfo(n_label, "")
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    info_args['doc'] = node.getAttribute('doc') if node.hasAttribute('doc') else ""
+
+                    p[n_id] = cls.PropertyInfo(**info_args)
 
                 # Box
                 elif n_type == 'box':
-                    del info_args['label']
                     info_args['properties'] = generate_props(node)
 
                     p[n_id] = cls.BoxInfo(**info_args)  # pylint: disable=unexpected-keyword-arg
 
                 # Sub-panel
                 elif n_type == 'panel':
+                    info_args['label'] = node.getAttribute('label') if node.hasAttribute('label') else None
+                    info_args['expanded'] = node.hasAttribute('expanded')
                     info_args['properties'] = generate_props(node)
 
                     p[n_id] = cls.PanelInfo(**info_args)
@@ -296,11 +354,12 @@ class STKPropertyGroup:
             self.properties = properties
 
     class PanelInfo:
-        def __init__(self, label, properties, bind=None, condition=None):
+        def __init__(self, label, properties, bind=None, condition=None, expanded=False):
             self.label = label
+            self.properties = properties
             self.bind = bind
             self.condition = condition
-            self.properties = properties
+            self.expanded = expanded
 
 
 class STKObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
