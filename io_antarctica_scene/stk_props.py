@@ -69,7 +69,6 @@ class STKPropertyGroup:
         for p in info.bind:
             args.append(self.get_property(p))
 
-        print(args)
         return info.condition(*args)
 
     @staticmethod
@@ -234,24 +233,59 @@ class STKPropertyGroup:
 
                 # Enumerator property
                 elif n_type == 'enum':
-                    info_args['label'] = node.getAttribute('label') if node.hasAttribute('label') else n_id
+                    n_label = node.getAttribute('label') if node.hasAttribute('label') else n_id
+                    info_args['label'] = n_label
                     prop_args['name'] = n_label
                     prop_args['default'] = node.getAttribute('default')
                     n_items = []
 
                     # Iterate all enum items
-                    for item in node.childNodes:
-                        if item.localName is None or item.localName.lower() != 'item' or not item.hasAttribute('value'):
+                    for i in node.childNodes:
+                        if i.localName is None:
                             continue
 
-                        n_items.append((
-                            item.getAttribute('value'),
-                            item.getAttribute('label') if item.hasAttribute('label') else item.getAttribute('value'),
-                            item.getAttribute('doc') if item.hasAttribute('doc') else ""
-                        ))
+                        cn_type = i.localName.lower()
+
+                        # Basic enum item
+                        if cn_type == 'item' and i.hasAttribute('value'):
+                            n_items.append((
+                                i.getAttribute('value'),
+                                i.getAttribute('label') if i.hasAttribute('label') else i.getAttribute('value'),
+                                i.getAttribute('doc') if i.hasAttribute('doc') else ""
+                            ))
+
+                        # Enum separator
+                        elif cn_type == 'separator':
+                            n_items.append(None)
+
+                        # Sub-category
+                        elif cn_type == 'category':
+                            n_items.append(('', i.getAttribute('label') if i.hasAttribute('label') else "", ""))
+
+                            # Iterate child nodes of category
+                            for ci in i.childNodes:
+                                if ci.localName is None:
+                                    continue
+
+                                ci_type = ci.localName.lower()
+
+                                # Category enum item
+                                if ci_type == 'item' and ci.hasAttribute('value'):
+                                    n_items.append((
+                                        ci.getAttribute('value'),
+                                        ci.getAttribute('label')
+                                        if ci.hasAttribute('label')
+                                        else ci.getAttribute('value'),
+                                        ci.getAttribute('doc') if ci.hasAttribute('doc') else ""
+                                    ))
+
+                                # Category enum separator
+                                elif ci_type == 'separator':
+                                    n_items.append(None)
 
                     if len(n_items) == 0:
                         n_items.append(('none', "Unassigned", ""))
+                        prop_args['default'] = 'none'
 
                     prop_args['items'] = n_items
 
@@ -287,7 +321,6 @@ class STKPropertyGroup:
                         info_args['filter'] = cls._eval_condition(n_filter)
                         p[n_id] = cls.FilterPropertyInfo(**info_args)
                         prop_args['poll'] = p[n_id].poll
-                        print(p[n_id].poll)
                     else:
                         p[n_id] = cls.FilterPropertyInfo(**info_args)
 
@@ -327,6 +360,7 @@ class STKPropertyGroup:
             if root.localName.lower() == 'properties':
                 cls.ui_definitions = generate_props(root)
 
+        # Assign property annotations
         cls.__annotations__ = props
 
     class PropertyInfo:

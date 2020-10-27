@@ -589,7 +589,7 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
 
 class STKPanelMixin:
     @classmethod
-    def init(cls, property_group, path):
+    def initialize(cls, property_group, path):
         cls.property_group = property_group
         cls.path = path
         cls.subpanels = []
@@ -632,15 +632,14 @@ class STKPanelMixin:
         )
 
         cls.subpanels.append(panel)
-        new_path = cls.path.copy()
-        new_path.append(id)
-        panel.init(cls.property_group, new_path)
+        panel.initialize(cls.property_group, [*cls.path, id])
         register_class(panel)
-        print(panel, dir(panel))
 
     @classmethod
     def create_subpanels(cls):
-        print(cls.ui_definitions)
+        if len(cls.subpanels) > 0:
+            cls.destroy_subpanels()
+
         for prop, info in cls.ui_definitions.items():
             if isinstance(info, cls.property_group.PanelInfo):
                 cls.generate_subpanel(prop, info)
@@ -656,14 +655,10 @@ class STKPanelMixin:
 
     @classmethod
     def register(cls):
-        print("register subpanel")
-        print(cls)
         cls.create_subpanels()
 
     @classmethod
     def unregister(cls):
-        print("unregister subpanel")
-        print(cls)
         cls.destroy_subpanels()
 
     def draw(self, context):
@@ -701,20 +696,29 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
     bl_label = "SuperTuxKart Object Properties"
 
     @classmethod
-    def register(cls):
+    def load_panel(cls, property_group):
         from bpy.utils import register_class
 
-        register_class(stk_props.STKObjectPropertyGroup)
+        register_class(property_group)
 
-        cls.init(stk_props.STKObjectPropertyGroup, [])
+        cls.initialize(property_group, [])
         cls.create_subpanels()
-        print("register")
 
     @classmethod
-    def unregister(cls):
+    def unload_panel(cls):
         from bpy.utils import unregister_class
 
         cls.destroy_subpanels()
 
-        unregister_class(stk_props.STKObjectPropertyGroup)
+        unregister_class(cls.property_group)
+
+    @classmethod
+    def register(cls):
+        # TODO: branch on which object properties to load
+        cls.load_panel(stk_props.STKObjectPropertyGroup)
+        print("register")
+
+    @classmethod
+    def unregister(cls):
+        cls.unload_panel()
         print("unregister")
