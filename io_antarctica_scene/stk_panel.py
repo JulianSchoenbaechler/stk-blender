@@ -595,15 +595,18 @@ class STKPanelMixin:
         cls.subpanels = []
 
         definitions = property_group.ui_definitions
+        info = None
 
         for n in path:
             if n in definitions:
+                info = definitions[n]
                 definitions = definitions[n].properties
             else:
                 definitions = OrderedDict()
                 break
 
         cls.ui_definitions = definitions
+        cls.info = info
 
     @classmethod
     def generate_subpanel(cls, id, info):
@@ -661,8 +664,16 @@ class STKPanelMixin:
     def unregister(cls):
         cls.destroy_subpanels()
 
+    @classmethod
+    def poll(cls, context):
+        if cls.info:
+            p_stk = context.object.supertuxkart
+            return p_stk.condition_poll(cls.info)
+
+        return True
+
     def draw(self, context):
-        cls = type(self)
+        cls = self.__class__
         layout = self.layout
         p_stk = context.object.supertuxkart
 
@@ -678,7 +689,7 @@ class STKPanelMixin:
 
                 # Draw property or label
                 else:
-                    if p_stk.has_property(prop):
+                    if hasattr(p_stk, prop):
                         layout.use_property_split = True
                         layout.prop(data=p_stk, property=prop)
                     else:
@@ -715,10 +726,15 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
     @classmethod
     def register(cls):
         # TODO: branch on which object properties to load
-        cls.load_panel(stk_props.STKObjectPropertyGroup)
+        stk_props.STKTrackObjectPropertyGroup.initialize()      # Important: initialize before any register call!
+        cls.load_panel(stk_props.STKTrackObjectPropertyGroup)
         print("register")
 
     @classmethod
     def unregister(cls):
         cls.unload_panel()
         print("unregister")
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.active_object

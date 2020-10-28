@@ -40,24 +40,6 @@ class STKPropertyGroup:
     DATA_DIR = 'stkdata'
     PROP_SOURCE = 'stk_properties.xml'
 
-    ui_definitions = OrderedDict()
-
-    def has_property(self, prop):
-        cls = type(self)
-        return prop in cls.__annotations__
-
-    def get_property(self, prop):
-        if hasattr(self, prop):
-            return getattr(self, prop)
-
-        # Search default value
-        cls = type(self)
-
-        if prop in cls.__annotations__:
-            return cls.__annotations__[prop].default  # if 'default' in cls.__annotations__[prop] else None
-
-        return None
-
     def condition_poll(self, info):
         # No condition set
         if not info.condition:
@@ -67,14 +49,19 @@ class STKPropertyGroup:
 
         # Gather binded property values and invoke condition
         for p in info.bind:
-            args.append(self.get_property(p))
+            args.append(getattr(self, p, None))
 
         return info.condition(*args)
 
     @staticmethod
     def _eval_condition(cond):
+        ALLOWED_BUILTINS = ('abs', 'all', 'any', 'ascii', 'bin', 'bool', 'chr', 'complex', 'dict', 'dir', 'divmod',
+                            'enumerate', 'filter', 'float', 'format', 'frozenset', 'hash', 'hex', 'id', 'int',
+                            'isinstance', 'issubclass', 'iter', 'len', 'list', 'max', 'memoryview', 'min', 'next',
+                            'object', 'oct', 'open', 'ord', 'pow', 'range', 'repr', 'reversed', 'round', 'set', 'slice',
+                            'sorted', 'str', 'sum', 'tuple', 'type', 'zip')
         if not re.search("(__|eval|exec)", cond):
-            return eval(cond, {'__builtins__': None}, {})
+            return eval(cond, {'__builtins__': {x: __builtins__[x] for x in __builtins__ if x in ALLOWED_BUILTINS}}, {})
 
         return None
 
@@ -87,6 +74,7 @@ class STKPropertyGroup:
 
     @classmethod
     def initialize(cls):
+        cls.ui_definitions = OrderedDict()
         props = {}
         node = cls._load_data()
 
@@ -288,6 +276,7 @@ class STKPropertyGroup:
                         prop_args['default'] = 'none'
 
                     prop_args['items'] = n_items
+                    prop_args['attr'] = n_id
 
                     if node.hasAttribute('doc'):
                         n_doc = node.getAttribute('doc')
@@ -297,8 +286,8 @@ class STKPropertyGroup:
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = EnumProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
-                # Object reference property
-                elif n_type == 'object':
+                # Object or collection reference property
+                elif n_type == 'object' or n_type == 'collection':
                     n_label = n_id
 
                     if node.hasAttribute('label'):
@@ -308,7 +297,7 @@ class STKPropertyGroup:
 
                     info_args['label'] = n_label
                     prop_args['name'] = n_label
-                    prop_args['type'] = bpy.types.Object
+                    prop_args['type'] = bpy.types.Object if n_type == 'object' else bpy.types.Collection
 
                     if node.hasAttribute('doc'):
                         n_doc = node.getAttribute('doc')
@@ -377,6 +366,7 @@ class STKPropertyGroup:
             self.filter = filter
 
             def poll(p_self, p_obj):
+                print(p_self, p_obj)
                 return self.filter(p_obj)
 
             self.poll = poll if poll is not None else lambda p_self, p_obj: True
@@ -396,20 +386,17 @@ class STKPropertyGroup:
             self.expanded = expanded
 
 
-class STKObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
-    PROP_SOURCE = 'stk_object_properties.xml'
+class STKTrackObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_track_object_properties.xml'
 
-    @ classmethod
+    @classmethod
     def register(cls):
-        cls.initialize()
-
         bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
             name="SuperTuxKart Object Properties",
             description="SuperTuxKart object properties",
             type=cls,
         )
 
-    @ classmethod
+    @classmethod
     def unregister(cls):
-        cls.ui_definitions.clear()
         del bpy.types.Object.supertuxkart
