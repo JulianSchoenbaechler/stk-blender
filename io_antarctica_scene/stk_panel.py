@@ -726,8 +726,13 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
     @classmethod
     def register(cls):
         # TODO: branch on which object properties to load
-        stk_props.STKTrackObjectPropertyGroup.initialize()      # Important: initialize before any register call!
-        cls.load_panel(stk_props.STKTrackObjectPropertyGroup)
+
+        # Important: initialize before any register call!
+        stk_props.STKTrackObjectPropertyGroup.initialize()
+        stk_props.STKLibraryObjectPropertyGroup.initialize()
+        stk_props.STKKartObjectPropertyGroup.initialize()
+
+        cls.load_panel(stk_props.STKKartObjectPropertyGroup)
         print("register")
 
     @classmethod

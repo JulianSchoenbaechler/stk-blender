@@ -1,0 +1,60 @@
+﻿<?xml version="1.0"?>
+<properties>
+    <!-- type selection -->
+    <enum id="type" label="Type" default="none" doc="SuperTuxKart object type">
+        <category label="Objects">
+            <item value="none" label="Unassigned"
+                  doc="Standard static scenery object"/>
+            <item value="ignore" label="Ignored"
+                  doc="Ignored on export and will not appear in-game"/>
+            <item value="wheel" label="Wheel"
+                  doc="Object is a kart wheel"/>
+            <item value="speed_weighted" label="Speed Weighted"
+                  doc="Objects animation is weighted by the karts speed"/>
+        </category>
+        <category label="Special Effects">
+            <item value="nitro_emitter" label="Nitro Emitter"
+                  doc="Marks the position where nitro particles are emitted"/>
+            <item value="headlight" label="Headlight"
+                  doc="Headlights (visible only during night)"/>
+            <item value="hat" label="Hat Position"
+                  doc="Defines the position of hat"/>
+        </category>
+    </enum>
+
+    <!-- object properties -->
+    <panel id="type_properties" label="Properties"
+           bind="type" condition="lambda t: t == 'speed_weighted' or t == 'headlight'" expanded="expanded">
+
+        <!-- speed weighted -->
+        <enum id="strength" label="Strength Factor" default="default"
+              bind="type" condition="lambda t: t == 'speed_weighted'"
+              doc="How much the kart speed affects the distance from the animation to the static pose; has no effect on most devices">
+            <item value="default" label="Default" doc="Stength of 0.05"/>
+            <item value="custom" label="Custom"/>
+            <item value="disable" label="Disable"/>
+        </enum>
+        <box id="strength_box" bind="type strength" condition="lambda t, p: t == 'speed_weighted' and t == 'custom'">
+            <float id="strength_factor" label="Factor" default="0.05" min="0.0" max="1.0"
+                   doc="A bigger value leads to the speed of the kart more quickly affecting the strength of the animation (up to a maximum value that corresponds to the original animation)"/>
+        </box>
+        <enum id="speed" label="Speed Factor" default="default"
+              bind="type" condition="lambda t: t == 'speed_weighted'"
+              doc="The factor that controls the speed of the animation (multiplier)">
+            <item value="default" label="Default" doc="Speed of 1.0"/>
+            <item value="custom" label="Custom"/>
+            <item value="disable" label="Disable"/>
+        </enum>
+        <box id="speed_box" bind="type speed" condition="lambda t, p: t == 'speed_weighted'">
+            <float id="speed_factor" label="Factor" default="1.0" min="0.0" max="100.0"
+                   bind="type" condition="lambda t: t == 'custom'"
+                   doc="A bigger value will speed up the animation, while a lower one will slow it down"/>
+            <float id="uv_speed_u" label="Texture Speed X" default="0.0" min="-100.0" max="100.0"/>
+            <float id="uv_speed_v" label="Texture Speed Y" default="0.0" min="-100.0" max="100.0"/>
+        </box>
+
+        <!-- head lights -->
+        <color id="headlight_color" label="Light Color" default="1.0 1.0 1.0"
+               bind="type" condition="lambda t: t == 'headlight'" doc="The color of the headlight"/>
+    </panel>
+</properties>

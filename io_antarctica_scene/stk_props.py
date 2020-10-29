@@ -430,3 +430,19 @@ class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     @classmethod
     def unregister(cls):
         del bpy.types.Object.supertuxkart
+
+
+class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_kart_object_properties.xml'
+
+    @classmethod
+    def register(cls):
+        bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Object Properties",
+            description="SuperTuxKart object properties",
+            type=cls,
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Object.supertuxkart
