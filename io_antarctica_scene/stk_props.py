@@ -287,7 +287,7 @@ class STKPropertyGroup:
                     props[n_id] = EnumProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
                 # Object or collection reference property
-                elif n_type == 'object' or n_type == 'collection':
+                elif n_type == 'object' or n_type == 'collection' or n_type == 'material':
                     n_label = n_id
 
                     if node.hasAttribute('label'):
@@ -297,7 +297,14 @@ class STKPropertyGroup:
 
                     info_args['label'] = n_label
                     prop_args['name'] = n_label
-                    prop_args['type'] = bpy.types.Object if n_type == 'object' else bpy.types.Collection
+
+                    # Specify pointer type
+                    if n_type == 'collection':
+                        prop_args['type'] = bpy.types.Collection
+                    elif n_type == 'material':
+                        prop_args['type'] = bpy.types.Material
+                    else:
+                        prop_args['type'] = bpy.types.Object
 
                     if node.hasAttribute('doc'):
                         n_doc = node.getAttribute('doc')
