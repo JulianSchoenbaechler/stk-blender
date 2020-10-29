@@ -1,10 +1,8 @@
 ﻿<?xml version="1.0"?>
 <properties>
     <!-- type selection -->
-    <enum id="type" label="Type" default="none" doc="SuperTuxKart object type">
+    <enum id="type" label="Type" default="object" doc="SuperTuxKart object type">
         <category label="Objects and LOD">
-            <item value="none" label="Unassigned"
-                  doc="Standard static scenery object"/>
             <item value="ignore" label="Ignored"
                   doc="Ignored on export and will not appear in-game"/>
             <item value="object" label="Object"
@@ -15,22 +13,6 @@
                   doc="A LOD (level-of-detail) model; is not exported as scenery object, but will be used on a corresponding LOD instance"/>
             <item value="lod_standalone" label="LOD Standalone"
                   doc="A LOD (level-of-detail) instance and model in one; is only visible when the camera is close enough and therefore a shortcut for LOD objects that don't have multiple levels"/>
-        </category>
-        <category label="Track Items">
-            <item value="item_gift" label="Item (Gift Box)"
-                  doc="A gift box containing a random collectible"/>
-            <item value="item_banana" label="Banana"
-                  doc="A banana object that needs to be avoided"/>
-            <item value="item_easteregg" label="Easter Egg"
-                  doc="A hidden easter egg for the 'Egg Hunt' mode"/>
-            <item value="item_nitro_small" label="Nitro (Small)"
-                  doc="A small nitro collectible"/>
-            <item value="item_nitro_big" label="Nitro (Big)"
-                  doc="A large nitro collectible"/>
-            <item value="item_flag_red" label="Flag (Red)"
-                  doc="The red flag in the 'Capture the Flag' mode"/>
-            <item value="item_flag_blue" label="Flag (Blue)"
-                  doc="The blue flag in the 'Capture the Flag' mode"/>
         </category>
         <category label="Special Effects">
             <item value="billboard" label="Billboard"
@@ -45,30 +27,12 @@
         <category label="Triggers and AI">
             <item value="action_trigger" label="Action Trigger"
                   doc="A trigger that can call a scripted action"/>
-            <item value="driveline_main" label="Main Driveline"
-                  doc="The main driveline used to mark where karts may drive"/>
-            <item value="driveline_additional" label="Additional Driveline"
-                  doc="An additional driveline used to mark an alternate route"/>
-            <item value="checkline" label="Checkline"
-                  doc="A checkline that the player must cross (used to forbid shortcuts)"/>
-            <item value="lapline" label="Lap Line (Extension)"
-                  doc="A checkline that extends the generated default lap line"/>
-            <item value="navmesh" label="NavMesh"
-                  doc="A navigation mesh defining the area where karts can drive (for non-race game modes)"/>
-            <item value="start_position" label="Start Position"
-                  doc="A start position where karts will be instantiated (for non-race game modes)"/>
-            <item value="cannon_start" label="Cannon Start"
-                  doc="A trigger line (two connected vertices) that marks the start of a cannon"/>
-            <item value="cannon_end" label="Cannon End"
-                  doc="A trigger line (two connected vertices) that marks the end of a cannon"/>
-            <item value="goal" label="Goal"
-                  doc="A trigger line (two connected vertices) that marks a goal in soccer mode"/>
         </category>
     </enum>
 
     <!-- object properties -->
     <panel id="type_properties" label="Properties"
-           bind="type" condition="lambda t: t != 'none' and t != 'ignore'" expanded="expanded">
+           bind="type" condition="lambda t: t != 'ignore'" expanded="expanded">
 
         <!-- object file name -->
         <string id="name" label="Object Name" default="some_model"
@@ -175,27 +139,6 @@
               bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
               doc="Shadows can be disabled on objects to improve performance"/>
 
-        <!-- item/placeables specific -->
-        <!-- TODO: bind some settings (e.g. battle arenas) to scene properties -->
-        <int id="start_index" label="Start Index" default="1" min="1" max="20"
-             bind="type" condition="lambda t: t == 'start_position'"
-             doc="Start position index for battle arena or soccer field"/>
-        <bool id="snap_ground" label="Snap To Ground" default="true"
-              bind="type" condition="lambda t: t.startswith('item')"
-              doc="Item will snap and align to the underneath drivable geometry"/>
-        <bool id="ctf_only" label="Capture The Flag Only" default="false"
-              bind="type" condition="lambda t: t.startswith('item') and not t.startswith('item_flag')"
-              doc="Item will only be placed in 'Capture the Flag' mode"/>
-
-        <!-- easter egg visibility -->
-        <enum id="easteregg_visibility" label="Visible In" default="easy intermediate hard" flags="flags"
-              bind="type" condition="lambda t: t == 'item_easteregg'"
-              doc="Visible in selected difficulties">
-            <item value="easy" label="Easy"/>
-            <item value="intermediate" label="Intermediate"/>
-            <item value="hard" label="Hard"/>
-        </enum>
-
         <!-- billboard specific -->
         <bool id="fadeout" label="Fade Out When Close" default="false"
               bind="type" condition="lambda t: t == 'billboard'"
@@ -249,62 +192,15 @@
         <float id="action_timeout" label="Re-Enable Timeout" default="1.0"  min="0.0" max="1000000.0"
                bind="type" condition="lambda t: t == 'action_trigger'"
                doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
+        <object id="action_object" label="Triggered Object"
+                filter="lambda o: o.supertuxkart.type == 'object' or o.supertuxkart.type == 'lod_instance' or o.supertuxkart.type == 'lod_standalone'"
+                bind="type" condition="lambda t: t == 'action_trigger'"
+                doc="Name of the object for being triggered"/>
         <enum id="action_trigger" label="Trigger Type" default="point"
               bind="type" condition="lambda t: t == 'action_trigger'"
               doc="The trigger type (shape)">
             <item value="point" label="Point"/>
             <item value="cylinder" label="Cylinder"/>
-        </enum>
-
-        <!-- drivelines -->
-        <float id="driveline_lower" label="Min Height Testing" default="-1.0" min="-50.0" max="0.0"
-               bind="type" condition="lambda t: t == 'driveline_main' or t == 'navmesh'"
-               doc="Vertical height smaller than this value will not be considered on-quad"/>
-        <float id="driveline_upper" label="Max Height Testing" default="5.0" min="1.0" max="50.0"
-               bind="type" condition="lambda t: t == 'driveline_main' or t == 'navmesh'"
-               doc="Vertical height greater than this value will not be considered on-quad"/>
-        <bool id="driveline_invisible" label="Invisible" default="false"
-              bind="type" condition="lambda t: t == 'driveline_additional'"
-              doc="If checked, this path will not appear on the minimap"/>
-        <bool id="driveline_ignore" label="Ignored By AI" default="false"
-              bind="type" condition="lambda t: t == 'driveline_additional'"
-              doc="If checked, AIs will not drive on this path"/>
-        <enum id="driveline_direction" label="Direction" default="forward reverse" flags="flags"
-              bind="type" condition="lambda t: t == 'driveline_additional'"
-              doc="In which direction(s) this part of the track is drivable; used with the 'Driven in Reverse' feature">
-            <item value="forward" label="Forward"/>
-            <item value="reverse" label="Reverse"/>
-        </enum>
-
-        <!-- checklines -->
-        <int id="checkline_index" label="Index" default="1" min="0" max="100"
-             bind="type" condition="lambda t: t == 'checkline'"
-             doc="The index of this checkline; used to reference and activate this trigger"/>
-        <int id="checkline_activate" label="Activate" default="1" min="0" max="100"
-             bind="type" condition="lambda t: t == 'checkline' or t == 'driveline_main'"
-             doc="The index of the next checkline(s) to activate; use 0 for activating the lap line"/>
-        <label id="label_lap_line" label="Has the activation index 0."
-               bind="type" condition="lambda t: t == 'lapline'"/>
-
-        <!-- cannons -->
-        <object id="cannon_end_trigger" label="Cannon End" filter="lambda o: o.supertuxkart.type == 'cannon_end'"
-                bind="type" condition="lambda t: t == 'cannon_start'"
-                doc="Object reference to the end of the cannon"/>
-        <object id="cannon_path" label="Cannon Path" filter="lambda o: o.type == 'CURVE'"
-                bind="type" condition="lambda t: t == 'cannon_start'"
-                doc="Object reference to the cannons path (curve)"/>
-        <float id="cannon_speed" label="Cannon Speed" default="50.0" min="0.0" max="250.0"
-               bind="type" condition="lambda t: t == 'cannon_start'"
-               doc="Speed at which the kart traverses the cannon"/>
-        <label id="label_cannon_end" label="Make adjustments on the start of the cannon."
-               bind="type" condition="lambda t: t == 'cannon_end'"/>
-
-        <!-- soccer specific -->
-        <enum id="goal_team" label="Team" default="ally"
-              bind="type" condition="lambda t: t == 'goal'"
-              doc="Select the team for which this goal scores">
-            <item value="ally" label="Ally"/>
-            <item value="enemy" label="Enemy"/>
         </enum>
 
         <!-- scripting callbacks -->
