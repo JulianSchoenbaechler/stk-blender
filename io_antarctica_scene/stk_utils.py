@@ -48,6 +48,19 @@ def getObject(context, contextLevel):
 
     return None
 
+
+def get_stk_context(context):
+    if PANEL_CONTEXT == 'object':
+        return context.object.supertuxkart
+    elif PANEL_CONTEXT == 'material':
+        return context.material.supertuxkart
+    elif PANEL_CONTEXT == 'light':
+        return context.light.supertuxkart
+    elif PANEL_CONTEXT == 'camera':
+        return context.camera.supertuxkart
+    else:
+        return context.scene.supertuxkart
+
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property
 # is not set. If set_value_if_undefined is set and the property is not

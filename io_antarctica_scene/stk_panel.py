@@ -588,15 +588,37 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
 
 
 class STKPanelMixin:
+    """A class mixin used for (dynamically) setting up panels, including sub-panels in Blender.
+
+    The class contains the basic helper methods for initializing and drawing a panel, already hooked up to the
+    registration logic.
+    """
+    PANEL_CONTEXT = 'scene'
+
     @classmethod
     def initialize(cls, property_group, path):
+        """Initializes this panel object.
+        Panels must be initialized before they get registered in Blender.
+
+        Parameters
+        ----------
+        property_group : stk_props.STKPropertyGroup
+            The property group that holds the data for this panel
+        path : list of str
+            A list describing the nested path of this panel
+            Example:
+            ['my_panel'] indicates that this panel is a sub-panel with the identifier 'my_panel'
+            ['my_panel', 'my_nested_panel'] indicates that this panel (with the identifier 'my_nested_panel') is a
+            sub-panel of the sub-panel 'my_panel'
+        """
         cls.property_group = property_group
         cls.path = path
-        cls.subpanels = []
+        cls.subpanels = []  # Hold the reference to sub-panels (for proper release)
 
         definitions = property_group.ui_definitions
         info = None
 
+        # Search the property infos for the properties of this panels by traversing the path
         for n in path:
             if n in definitions:
                 info = definitions[n]
@@ -610,13 +632,24 @@ class STKPanelMixin:
 
     @classmethod
     def generate_subpanel(cls, id, info):
+        """Dynamically create panel class that should be nested (sub-panel) and register it.
+
+        Parameters
+        ----------
+        id : str
+            Panel identifier
+        info : stk_props.STKPropertyGroup.PanelInfo
+            Panel data container
+        """
         from bpy.utils import register_class
 
         panel_options = set()
 
+        # Has no label, so hide the header
         if not info.label:
             panel_options.add('HIDE_HEADER')
 
+        # Is not expanded, collapse on init
         if not info.expanded:
             panel_options.add('DEFAULT_CLOSED')
 
@@ -634,12 +667,16 @@ class STKPanelMixin:
             }
         )
 
+        # Initialize and register generated panel, extending the path
         cls.subpanels.append(panel)
         panel.initialize(cls.property_group, [*cls.path, id])
         register_class(panel)
 
     @classmethod
     def create_subpanels(cls):
+        """Create all sub-panels of this panel.
+        Will destroy and clean up sub-panels that already exists and handles registration.
+        """
         if len(cls.subpanels) > 0:
             cls.destroy_subpanels()
 
@@ -649,6 +686,8 @@ class STKPanelMixin:
 
     @classmethod
     def destroy_subpanels(cls):
+        """Destroy and clean up all sub-panels of this panel and unregisters them.
+        """
         from bpy.utils import unregister_class
 
         for panel in cls.subpanels:
@@ -658,25 +697,53 @@ class STKPanelMixin:
 
     @classmethod
     def register(cls):
+        """Will forward the call to start create all necessary sub-panels.
+        Override this class method for the initial (main) panel for more control.
+        """
         cls.create_subpanels()
 
     @classmethod
     def unregister(cls):
+        """Will forward the call to destroy and clean up all necessary sub-panels.
+        Override this class method for the initial (main) panel for more control.
+        """
         cls.destroy_subpanels()
 
     @classmethod
     def poll(cls, context):
+        """Default panel poll method.
+        Will evaluate the assigned conditions of its panel info (data).
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        bool
+            Value indicating if this panel should be rendered or not
+        """
         if cls.info:
-            p_stk = context.object.supertuxkart
+            p_stk = stk_utils.get_stk_context(context)
             return p_stk.condition_poll(cls.info)
 
         return True
 
     def draw(self, context):
+        """Default panel draw method.
+        Will iterate through its assigned properties and draw them from the provided property group.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+        """
         cls = self.__class__
         layout = self.layout
-        p_stk = context.object.supertuxkart
+        p_stk = stk_utils.get_stk_context(context)
 
+        # Nested function for easier recursion
         def draw_props(layout, definitions):
             for prop, info in definitions.items():
                 # Not displaying panel or conditionally excluded properties
@@ -700,6 +767,8 @@ class STKPanelMixin:
 
 
 class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
+    """SuperTuxKart object properties panel.
+    """
     bl_idname = 'STK_PT_object_properties'
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -708,23 +777,37 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
     @classmethod
     def load_panel(cls, property_group):
+        """Cleanly load this panel by providing a corresponding property group reference.
+
+        Parameters
+        ----------
+        property_group : stk.props.STKPropertyGroup
+            The corresponding property group (must be fully initialized, but not yet registered)
+        """
         from bpy.utils import register_class
 
         register_class(property_group)
 
+        # Use the object context for this panel
+        # Initialize and build sub-panels
+        cls.PANEL_CONTEXT = 'object'
         cls.initialize(property_group, [])
         cls.create_subpanels()
 
     @classmethod
     def unload_panel(cls):
+        """Cleanly unload this panel and its resources.
+        """
         from bpy.utils import unregister_class
 
+        # Clean up and unregister
         cls.destroy_subpanels()
-
         unregister_class(cls.property_group)
 
     @classmethod
     def register(cls):
+        """Blender register callback.
+        """
         # TODO: branch on which object properties to load
 
         # Important: initialize before any register call!
@@ -733,14 +816,27 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
         stk_props.STKKartObjectPropertyGroup.initialize()
 
         cls.load_panel(stk_props.STKKartObjectPropertyGroup)
-        print("register")
 
     @classmethod
     def unregister(cls):
+        """Blender unregister callback.
+        """
         cls.unload_panel()
-        print("unregister")
 
     @classmethod
     def poll(cls, context):
+        """Panel poll method.
+        Only display this panel if the active object is of type 'MESH' or 'EMPTY'.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        bool
+            Value indicating if this panel should be rendered or not
+        """
         obj = bpy.context.active_object
         return obj and (obj.type == 'MESH' or obj.type == 'EMPTY')
