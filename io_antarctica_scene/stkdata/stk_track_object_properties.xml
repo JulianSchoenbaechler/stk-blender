@@ -1,0 +1,307 @@
+﻿<?xml version="1.0"?>
+<properties>
+    <!-- type selection -->
+    <enum id="type" label="Type" default="none" doc="SuperTuxKart object type">
+        <category label="Objects and LOD">
+            <item value="none" label="Unassigned"
+                  doc="Standard static scenery object"/>
+            <item value="ignore" label="Ignored"
+                  doc="Ignored on export and will not appear in-game"/>
+            <item value="object" label="Object"
+                  doc="An independent (animatable) object with specific properties; gets exported as a seperate model file"/>
+            <item value="lod_instance" label="LOD Instance"
+                  doc="A LOD (level-of-detail) instance; will display either of the LOD models of its group on this position"/>
+            <item value="lod_model" label="LOD Model"
+                  doc="A LOD (level-of-detail) model; is not exported as scenery object, but will be used on a corresponding LOD instance"/>
+            <item value="lod_standalone" label="LOD Standalone"
+                  doc="A LOD (level-of-detail) instance and model in one; is only visible when the camera is close enough and therefore a shortcut for LOD objects that don't have multiple levels"/>
+        </category>
+        <category label="Track Items">
+            <item value="item_gift" label="Item (Gift Box)" doc="A gift box containing a random collectible"/>
+            <item value="item_banana" label="Banana" doc="A banana object that needs to be avoided"/>
+            <item value="item_easteregg" label="Easter Egg" doc="A hidden easter egg for the 'Egg Hunt' mode"/>
+            <item value="item_nitro_small" label="Nitro (Small)" doc="A small nitro collectible"/>
+            <item value="item_nitro_big" label="Nitro (Big)" doc="A large nitro collectible"/>
+            <item value="item_flag_red" label="Flag (Red)" doc="The red flag in the 'Capture the Flag' mode"/>
+            <item value="item_flag_blue" label="Flag (Blue)" doc="The blue flag in the 'Capture the Flag' mode"/>
+        </category>
+        <category label="Special Effects">
+            <item value="billboard" label="Billboard" doc="A flat quad that will always face the camera"/>
+            <item value="particle_emitter" label="Particle Emitter" doc="Particles can be emitted at this position"/>
+            <item value="sfx_emitter" label="Sound Emitter" doc="A sound can be triggered at this position"/>
+        </category>
+        <category label="Triggers and AI">
+            <item value="action_trigger" label="Action Trigger"
+                  doc="A trigger that can call a scripted action"/>
+            <item value="driveline_main" label="Main Driveline"
+                  doc="The main driveline used to mark where karts may drive"/>
+            <item value="driveline_additional" label="Additional Driveline"
+                  doc="An additional driveline used to mark an alternate route"/>
+            <item value="checkline" label="Checkline"
+                  doc="A checkline that the player must cross (used to forbid shortcuts)"/>
+            <item value="lapline" label="Lap Line (Extension)"
+                  doc="A checkline that extends the generated default lap line"/>
+            <item value="navmesh" label="NavMesh"
+                  doc="A navigation mesh defining the area where karts can drive (for non-race game modes)"/>
+            <item value="start_position" label="Start Position"
+                  doc="A start position where karts will be instantiated (for non-race game modes)"/>
+            <item value="cannon_start" label="Cannon Start"
+                  doc="A trigger line (two connected vertices) that marks the start of a cannon"/>
+            <item value="cannon_end" label="Cannon End"
+                  doc="A trigger line (two connected vertices) that marks the end of a cannon"/>
+            <item value="goal" label="Goal"
+                  doc="A trigger line (two connected vertices) that marks a goal in soccer mode"/>
+        </category>
+    </enum>
+
+    <!-- object properties -->
+    <panel id="type_properties" label="Properties"
+           bind="type" condition="lambda t: t != 'none' and t != 'ignore'" expanded="expanded">
+
+        <!-- object file name -->
+        <string id="name" label="Object Name" default="some_model"
+                bind="type" condition="lambda t: t == 'object' or t == 'lod_model' or t == 'lod_standalone'"
+                doc="Name of this object (file name); objects with the same name are exported as a single file"/>
+
+        <!-- level of detail -->
+        <float id="lod_distance" label="LOD Distance" default="100.0" min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'lod_model' or t == 'lod_standalone'"
+               doc="Distance from the camera at which this level of detail starts being used"/>
+        <collection id="lod_collection" label="LOD Collection"
+                    filter="lambda c: len([o for o in c.objects if o.supertuxkart.type == 'lod_model']) > 0"
+                    doc="The collection from which the LOD models get loaded"
+                    bind="type" condition="lambda t: t == 'lod_instance'"/>
+        <bool id="lod_modifiers" label="Use Object Modifiers Model" default="false"
+              bind="type" condition="lambda t: t == 'lod_standalone'"
+              doc="Export an additional model of the object without modifiers as an extra LOD level"/>
+        <box id="lod_modifiers_box" bind="type lod_modifiers" condition="lambda t, p: p and t == 'lod_standalone'">
+            <float id="lod_modifiers_distance" label="Modifiers Enabled Distance" default="50.0" min="0.0" max="5000.0"
+                   doc="Distance from the camera at which the model with modifiers enabled starts being used"/>
+        </box>
+
+        <!-- animated uv -->
+        <bool id="uv_animated" label="Animate UV Coordinates (Texture Animation)" default="false"
+              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              doc="Make a texture on this object move"/>
+        <box id="uv_box" bind="type uv_animated"
+             condition="lambda t, p: p and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone')">
+            <material id="uv_material" label="Material"
+                      filter="lambda m: m in [s.material for s in bpy.context.active_object.material_slots]"
+                      doc="The material which the animation affects"/>
+            <float id="uv_speed_u" label="Animation Speed X" default="0.0" min="-20.0" max="20.0"/>
+            <float id="uv_speed_v" label="Animation Speed Y" default="0.0" min="-20.0" max="20.0"/>
+            <bool id="uv_step" label="Animate By Step" default="false"
+                  doc="Animate step by step (sprite-sheet/flip-book effect)"/>
+            <float id="uv_speed_dt" label="Frame Delta Time" default="1.0" min="0.0" max="10.0"
+                   bind="uv_step" condition="lambda p: p"/>
+        </box>
+
+        <!-- geometry level visibility -->
+        <bool id="visibility" label="Object Visibility Details" default="false"
+              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              doc="Allows the engine to know if an object can be hidden for performance reasons"/>
+        <box id="visibility_box" bind="type visibility"
+             condition="lambda t, p: p and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone')">
+            <enum id="visibility_detail" label="Visibility" default="always"
+                  doc="Specifies the level of detail at which the object will be visible">
+                <item value="high" label="High Quality"/>
+                <item value="medium" label="Medium Quality Or Above"/>
+                <item value="always" label="Always Visible"/>
+            </enum>
+        </box>
+
+        <!-- object interaction -->
+        <enum id="interaction" label="Interaction" default="static"
+              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              doc="How this object should interact with other objects in the physics engine">
+            <item value="static" label="Static"
+                  doc="Object will stay in place; static geometry"/>
+            <item value="movable" label="Dynamic/Movable"
+                  doc="Object is dynamic, can be moved and generally reacts to physical conditions"/>
+            <item value="ghost" label="Ghost"
+                  doc="Object will be non-physical (player can drive through it)"/>
+            <item value="physics" label="Physics Only"
+                  doc="Object will not render but be present in the physics engine as static geometry"/>
+            <item value="reset" label="Reset Player"
+                  doc="The player will be resetted when touching this object; it remains otherwise static"/>
+            <item value="knock" label="Knock Player"
+                  doc="The player will be hit when touching this object; it remains otherwise static"/>
+            <item value="flatten" label="Flatten Player"
+                  doc="The player will be flattened and drive slowly for a few seconds when touching this object; it remains otherwise static"/>
+        </enum>
+
+        <enum id="shape" label="Physics Shape" default="box"
+              bind="type interaction"
+              condition="lambda t, p: (t == 'object' or t == 'lod_instance' or t == 'lod_standalone') and p != 'physics' and p != 'ghost'"
+              doc="Shape to use in the physics engine to represent this object">
+            <item value="box" label="Box"/>
+            <item value="sphere" label="Sphere"/>
+            <item value="cylinder_x" label="Cylinder (X)"/>
+            <item value="cylinder_y" label="Cylinder (Y)"/>
+            <item value="cylinder_z" label="Cylinder (Z)"/>
+            <item value="cone_x" label="Cone (X)"/>
+            <item value="cone_y" label="Cone (Y)"/>
+            <item value="cone_z" label="Cone (Z)"/>
+            <item value="exact" label="Exact"/>
+        </enum>
+
+        <!-- object specific -->
+        <bool id="driveable" label="Driveable" default="false"
+              bind="type interaction" condition="lambda t, p: t == 'object' and p == 'static'"
+              doc="Karts can drive on this object"/>
+        <bool id="soccer_ball" label="Is Soccer Ball" default="false"
+              bind="type interaction" condition="lambda t, p: t == 'object' and p == 'movable'"
+              doc="Exported object is the soccer ball"/>
+        <bool id="glow" label="Glow" default="false"
+              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              doc="Enable an outlining glow effect on this particular object"/>
+        <box id="glow_box" bind="type glow"
+             condition="lambda t, p: p and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone')">
+            <color id="glow_color" label="Glow Color" default="1.0 1.0 1.0" doc="The color of the glow effect"/>
+        </box>
+        <bool id="shadows" label="Cast Shadows" default="true"
+              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              doc="Shadows can be disabled on objects to improve performance"/>
+
+        <!-- item/placeables specific -->
+        <!-- TODO: bind some settings (e.g. battle arenas) to scene properties -->
+        <int id="start_index" label="Start Index" default="1" min="1" max="20"
+             bind="type" condition="lambda t: t == 'start_position'"
+             doc="Start position index for battle arena or soccer field"/>
+        <bool id="snap_ground" label="Snap To Ground" default="true"
+              bind="type" condition="lambda t: t.startswith('item')"
+              doc="Item will snap and align to the underneath drivable geometry"/>
+        <bool id="ctf_only" label="Capture The Flag Only" default="false"
+              bind="type" condition="lambda t: t.startswith('item') and not t.startswith('item_flag')"
+              doc="Item will only be placed in 'Capture the Flag' mode"/>
+
+        <!-- easter egg visibility -->
+        <enum id="easteregg_visibility" label="Visible In" default="easy intermediate hard" flags="flags"
+              bind="type" condition="lambda t: t == 'item_easteregg'"
+              doc="Visible in selected difficulties">
+            <item value="easy" label="Easy"/>
+            <item value="intermediate" label="Intermediate"/>
+            <item value="hard" label="Hard"/>
+        </enum>
+
+        <!-- billboard specific -->
+        <bool id="fadeout" label="Fade Out When Close" default="false"
+              bind="type" condition="lambda t: t == 'billboard'"
+              doc="Make this billboard fade out when approaching it"/>
+        <box id="fadeout_box"
+             bind="type fadeout" condition="lambda t, p: p and t == 'billboard'">
+            <float id="fadeout_start" label="Faded Out At" default="1.0" min="0.0" max="200.0" doc="Distance from the camera at which the billboard is no more visible"/>
+            <float id="fadeout_end" label="Faded In At" default="15.0" min="0.0" max="200.0" doc="Distance from the camera at which the billboard is fully visible"/>
+        </box>
+
+        <!-- particle emitter -->
+        <string id="particles" label="Particles Definition" default="smoke.xml"
+                bind="type" condition="lambda t: t == 'particle_emitter'"
+                doc="The particles emitter definition file (XML) to use"/>
+        <float id="particles_distance" label="Clip Distance" default="200.0" min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'particle_emitter'"
+               doc="The camera distance at which particles are hidden (for performance reasons); 0.0 is no restriction"/>
+        <bool id="particles_emit" label="Emit On Start" default="true"
+              bind="type" condition="lambda t:  t == 'particle_emitter'"
+              doc="Whether the particles will automatically start emitting; can be started through scripting if disabled"/>
+
+        <!-- audio/sfx emitter -->
+        <string id="sfx" label="Sound File" default="some_file.ogg"
+                bind="type" condition="lambda t: t == 'sfx_emitter'"
+                doc="File name of the sound to play"/>
+        <float id="sfx_volume" label="Volume" default="1.0"  min="0.0" max="1.0"
+               bind="type" condition="lambda t: t == 'sfx_emitter'"
+               doc="The volume of the sound playback"/>
+        <float id="sfx_rolloff" label="Roll-Off Rate" default="0.1" min="0.0" max="2.5"
+               bind="type" condition="lambda t: t == 'sfx_emitter'"
+               doc="How fast this sound decays when going farther from the emission point"/>
+        <float id="sfx_distance" label="Maximum Distance" default="500.0" min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'sfx_emitter'"
+               doc="The distance from the source at which to cut the sound (stop hearing it)"/>
+
+        <!-- action trigger -->
+        <string id="action" label="Action" default=""
+                bind="type" condition="lambda t: t == 'action_trigger'"
+                doc="Name of the action to trigger"/>
+        <float id="action_distance" label="Trigger Distance" default="5.0"  min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'action_trigger'"
+               doc="Distance at which this action is triggered"/>
+        <float id="action_timeout" label="Re-Enable Timeout" default="1.0"  min="0.0" max="1000000.0"
+               bind="type" condition="lambda t: t == 'action_trigger'"
+               doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
+        <!--
+        <object id="action_object" label="Triggered Object"
+                filter="lambda o: o.supertuxkart.type == 'object' or o.supertuxkart.type == 'lod_instance' or o.supertuxkart.type == 'lod_standalone'"
+                bind="type" condition="lambda t: t == 'action_trigger'"
+                doc="Name of the object for being triggered"/>
+        -->
+        <enum id="action_trigger" label="Trigger Type" default="point"
+              bind="type" condition="lambda t: t == 'action_trigger'"
+              doc="The trigger type (shape)">
+            <item value="point" label="Point"/>
+            <item value="cylinder" label="Cylinder"/>
+        </enum>
+
+        <!-- drivelines -->
+        <float id="driveline_lower" label="Min Height Testing" default="-1.0" min="-50.0" max="0.0"
+               bind="type" condition="lambda t: t == 'driveline_main' or t == 'navmesh'"
+               doc="Vertical height smaller than this value will not be considered on-quad"/>
+        <float id="driveline_upper" label="Max Height Testing" default="5.0" min="1.0" max="50.0"
+               bind="type" condition="lambda t: t == 'driveline_main' or t == 'navmesh'"
+               doc="Vertical height greater than this value will not be considered on-quad"/>
+        <bool id="driveline_invisible" label="Invisible" default="false"
+              bind="type" condition="lambda t: t == 'driveline_additional'"
+              doc="If checked, this path will not appear on the minimap"/>
+        <bool id="driveline_ignore" label="Ignored By AI" default="false"
+              bind="type" condition="lambda t: t == 'driveline_additional'"
+              doc="If checked, AIs will not drive on this path"/>
+        <enum id="driveline_direction" label="Direction" default="forward reverse" flags="flags"
+              bind="type" condition="lambda t: t == 'driveline_additional'"
+              doc="In which direction(s) this part of the track is drivable; used with the 'Driven in Reverse' feature">
+            <item value="forward" label="Forward"/>
+            <item value="reverse" label="Reverse"/>
+        </enum>
+
+        <!-- checklines -->
+        <int id="checkline_index" label="Index" default="1" min="0" max="100"
+             bind="type" condition="lambda t: t == 'checkline'"
+             doc="The index of this checkline; used to reference and activate this trigger"/>
+        <int id="checkline_activate" label="Activate" default="1" min="0" max="100"
+             bind="type" condition="lambda t: t == 'checkline' or t == 'driveline_main'"
+             doc="The index of the next checkline(s) to activate; use 0 for activating the lap line"/>
+        <label id="label_lap_line" label="Has the activation index 0."
+               bind="type" condition="lambda t: t == 'lapline'"/>
+
+        <!-- cannons -->
+        <object id="cannon_end_trigger" label="Cannon End" filter="lambda o: o.supertuxkart.type == 'cannon_end'"
+                bind="type" condition="lambda t: t == 'cannon_start'"
+                doc="Object reference to the end of the cannon"/>
+        <object id="cannon_path" label="Cannon Path" filter="lambda o: o.type == 'CURVE'"
+                bind="type" condition="lambda t: t == 'cannon_start'"
+                doc="Object reference to the cannons path (curve)"/>
+        <float id="cannon_speed" label="Cannon Speed" default="50.0" min="0.0" max="250.0"
+               bind="type" condition="lambda t: t == 'cannon_start'"
+               doc="Speed at which the kart traverses the cannon"/>
+        <label id="label_cannon_end" label="Make adjustments on the start of the cannon."
+               bind="type" condition="lambda t: t == 'cannon_end'"/>
+
+        <!-- soccer specific -->
+        <enum id="goal_team" label="Team" default="ally"
+              bind="type" condition="lambda t: t == 'goal'"
+              doc="Select the team for which this goal scores">
+            <item value="ally" label="Ally"/>
+            <item value="enemy" label="Enemy"/>
+        </enum>
+
+        <!-- scripting callbacks -->
+        <string id="visible_if" label="Visible If"
+                bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+                doc="Scripting function to poll boolean that determines if this object should be visible"/>
+        <string id="on_kart_collision" label="Kart Collision Action"
+                bind="type interaction" condition="lambda t, p: (t == 'object' or t == 'lod_instance' or t == 'lod_standalone') and p != 'ghost'"
+                doc="Scripting function to call when a kart hits this object"/>
+        <string id="custom_xml" label="Custom XML (Advanced)"
+                bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+                doc="Mostly for internal use; allow adding custom raw attributes to the XML output"/>
+    </panel>
+</properties>
