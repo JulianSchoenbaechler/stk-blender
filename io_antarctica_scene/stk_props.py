@@ -61,7 +61,9 @@ class STKPropertyGroup:
                             'object', 'oct', 'open', 'ord', 'pow', 'range', 'repr', 'reversed', 'round', 'set', 'slice',
                             'sorted', 'str', 'sum', 'tuple', 'type', 'zip')
         if not re.search("(__|eval|exec)", cond):
-            return eval(cond, {'__builtins__': {x: __builtins__[x] for x in __builtins__ if x in ALLOWED_BUILTINS}}, {})
+            context = {x: __builtins__[x] for x in __builtins__ if x in ALLOWED_BUILTINS}
+            context['bpy'] = bpy
+            return eval(cond, {'__builtins__': context}, {})
 
         return None
 
@@ -231,8 +233,7 @@ class STKPropertyGroup:
                         prop_args['options'].add('ENUM_FLAG')
                         prop_args['default'] = set(node.getAttribute('default').split())
                     else:
-                    prop_args['default'] = node.getAttribute('default')
-                    n_items = []
+                        prop_args['default'] = node.getAttribute('default')
 
                     # Iterate all enum items
                     for i in node.childNodes:
