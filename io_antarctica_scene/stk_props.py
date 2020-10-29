@@ -224,6 +224,13 @@ class STKPropertyGroup:
                     n_label = node.getAttribute('label') if node.hasAttribute('label') else n_id
                     info_args['label'] = n_label
                     prop_args['name'] = n_label
+                    n_items = []
+
+                    # Flags enum
+                    if node.hasAttribute('flags'):
+                        prop_args['options'].add('ENUM_FLAG')
+                        prop_args['default'] = set(node.getAttribute('default').split())
+                    else:
                     prop_args['default'] = node.getAttribute('default')
                     n_items = []
 
