@@ -17,18 +17,30 @@
                   doc="A LOD (level-of-detail) instance and model in one; is only visible when the camera is close enough and therefore a shortcut for LOD objects that don't have multiple levels"/>
         </category>
         <category label="Track Items">
-            <item value="item_gift" label="Item (Gift Box)" doc="A gift box containing a random collectible"/>
-            <item value="item_banana" label="Banana" doc="A banana object that needs to be avoided"/>
-            <item value="item_easteregg" label="Easter Egg" doc="A hidden easter egg for the 'Egg Hunt' mode"/>
-            <item value="item_nitro_small" label="Nitro (Small)" doc="A small nitro collectible"/>
-            <item value="item_nitro_big" label="Nitro (Big)" doc="A large nitro collectible"/>
-            <item value="item_flag_red" label="Flag (Red)" doc="The red flag in the 'Capture the Flag' mode"/>
-            <item value="item_flag_blue" label="Flag (Blue)" doc="The blue flag in the 'Capture the Flag' mode"/>
+            <item value="item_gift" label="Item (Gift Box)"
+                  doc="A gift box containing a random collectible"/>
+            <item value="item_banana" label="Banana"
+                  doc="A banana object that needs to be avoided"/>
+            <item value="item_easteregg" label="Easter Egg"
+                  doc="A hidden easter egg for the 'Egg Hunt' mode"/>
+            <item value="item_nitro_small" label="Nitro (Small)"
+                  doc="A small nitro collectible"/>
+            <item value="item_nitro_big" label="Nitro (Big)"
+                  doc="A large nitro collectible"/>
+            <item value="item_flag_red" label="Flag (Red)"
+                  doc="The red flag in the 'Capture the Flag' mode"/>
+            <item value="item_flag_blue" label="Flag (Blue)"
+                  doc="The blue flag in the 'Capture the Flag' mode"/>
         </category>
         <category label="Special Effects">
-            <item value="billboard" label="Billboard" doc="A flat quad that will always face the camera"/>
-            <item value="particle_emitter" label="Particle Emitter" doc="Particles can be emitted at this position"/>
-            <item value="sfx_emitter" label="Sound Emitter" doc="A sound can be triggered at this position"/>
+            <item value="billboard" label="Billboard"
+                  doc="A flat quad that will always face the camera"/>
+            <item value="particle_emitter" label="Particle Emitter"
+                  doc="Particles can be emitted at this position"/>
+            <item value="lightshaft_emitter" label="God Rays (Light Shaft)"
+                  doc="God rays will be emitted at this position"/>
+            <item value="sfx_emitter" label="Sound Emitter"
+                  doc="A sound can be triggered at this position"/>
         </category>
         <category label="Triggers and AI">
             <item value="action_trigger" label="Action Trigger"
@@ -204,6 +216,14 @@
         <bool id="particles_emit" label="Emit On Start" default="true"
               bind="type" condition="lambda t:  t == 'particle_emitter'"
               doc="Whether the particles will automatically start emitting; can be started through scripting if disabled"/>
+
+        <!-- god rays (light shaft) emitter -->
+        <float id="lightshaft_opacity" label="Strength (Opacity)" default="0.7" min="0.0" max="1.0"
+               bind="type" condition="lambda t: t == 'lightshaft_emitter'"
+               doc="The opacity of the emitted god rays"/>
+        <color id="lightshaft_color" label="Color" default="1.0 1.0 1.0"
+               bind="type" condition="lambda t: t == 'lightshaft_emitter'"
+               doc="The color of the god rays"/>
 
         <!-- audio/sfx emitter -->
         <string id="sfx" label="Sound File" default="some_file.ogg"
