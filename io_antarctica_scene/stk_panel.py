@@ -737,4 +737,5 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
     @classmethod
     def poll(cls, context):
-        return bpy.context.active_object
+        obj = bpy.context.active_object
+        return obj and (obj.type == 'MESH' or obj.type == 'EMPTY')
