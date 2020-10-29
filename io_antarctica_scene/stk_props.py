@@ -118,10 +118,10 @@ class STKPropertyGroup:
                         prop_args['description'] = n_doc
 
                     if node.hasAttribute('min'):
-                        prop_args['min'] = node.getAttribute('min')
+                        prop_args['min'] = int(node.getAttribute('min'))
 
                     if node.hasAttribute('max'):
-                        prop_args['max'] = node.getAttribute('max')
+                        prop_args['max'] = int(node.getAttribute('max'))
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = IntProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -145,10 +145,10 @@ class STKPropertyGroup:
                         prop_args['description'] = n_doc
 
                     if node.hasAttribute('min'):
-                        prop_args['min'] = node.getAttribute('min')
+                        prop_args['min'] = float(node.getAttribute('min'))
 
                     if node.hasAttribute('max'):
-                        prop_args['max'] = node.getAttribute('max')
+                        prop_args['max'] = float(node.getAttribute('max'))
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = FloatProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -366,7 +366,6 @@ class STKPropertyGroup:
             self.filter = filter
 
             def poll(p_self, p_obj):
-                print(p_self, p_obj)
                 return self.filter(p_obj)
 
             self.poll = poll if poll is not None else lambda p_self, p_obj: True
