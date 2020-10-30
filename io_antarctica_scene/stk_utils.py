@@ -49,17 +49,24 @@ def getObject(context, contextLevel):
     return None
 
 
-def get_stk_context(context):
-    if PANEL_CONTEXT == 'object':
-        return context.object.supertuxkart
-    elif PANEL_CONTEXT == 'material':
-        return context.material.supertuxkart
-    elif PANEL_CONTEXT == 'light':
-        return context.light.supertuxkart
-    elif PANEL_CONTEXT == 'camera':
-        return context.camera.supertuxkart
+def get_stk_scene_type(context):
+    if hasattr(context.scene, 'stk'):
+        return context.scene.stk.type
+
+    return 'none'
+
+
+def get_stk_context(context, context_level):
+    if context_level == 'object':
+        return getattr(context.object, f'stk_{get_stk_scene_type(context)}', None)
+    elif context_level == 'material':
+        return getattr(context.material, 'stk')
+    elif context_level == 'light':
+        return getattr(context.light, 'stk')
+    elif context_level == 'camera':
+        return getattr(context.camera, 'stk')
     else:
-        return context.scene.supertuxkart
+        return getattr(context.scene, 'stk')
 
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property

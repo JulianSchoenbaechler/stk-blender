@@ -1,0 +1,10 @@
+﻿<?xml version="1.0"?>
+<properties>
+    <!-- type selection -->
+    <enum id="type" label="Scene Type" default="none" doc="SuperTuxKart scene type">
+        <item value="none" label="None"/>
+        <item value="kart" label="Kart"/>
+        <item value="track" label="Track"/>
+        <item value="library" label="Library Node"/>
+    </enum>
+</properties>

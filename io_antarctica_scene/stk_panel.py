@@ -669,6 +669,7 @@ class STKPanelMixin:
 
         # Initialize and register generated panel, extending the path
         cls.subpanels.append(panel)
+        panel.PANEL_CONTEXT = cls.PANEL_CONTEXT
         panel.initialize(cls.property_group, [*cls.path, id])
         register_class(panel)
 
@@ -725,8 +726,8 @@ class STKPanelMixin:
             Value indicating if this panel should be rendered or not
         """
         if cls.info:
-            p_stk = stk_utils.get_stk_context(context)
-            return p_stk.condition_poll(cls.info)
+            p_stk = stk_utils.get_stk_context(context, cls.PANEL_CONTEXT)
+            return p_stk.condition_poll(cls.info) if p_stk else False
 
         return True
 
@@ -741,7 +742,7 @@ class STKPanelMixin:
         """
         cls = self.__class__
         layout = self.layout
-        p_stk = stk_utils.get_stk_context(context)
+        p_stk = stk_utils.get_stk_context(context, cls.PANEL_CONTEXT)
 
         # Nested function for easier recursion
         def draw_props(layout, definitions):
@@ -764,6 +765,77 @@ class STKPanelMixin:
 
         # Recursively drawing properties
         draw_props(layout, cls.ui_definitions)
+
+
+class STK_PT_SceneProperties(bpy.types.Panel, STKPanelMixin):
+    """SuperTuxKart scene properties panel.
+    """
+    bl_idname = 'STK_PT_scene_properties'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'scene'
+    bl_label = "SuperTuxKart Scene Properties"
+
+    @classmethod
+    def load_panel(cls, property_group):
+        """Cleanly load this panel by providing a corresponding property group reference.
+
+        Parameters
+        ----------
+        property_group : stk.props.STKPropertyGroup
+            The corresponding property group (must be fully initialized, but not yet registered)
+        """
+        from bpy.utils import register_class
+
+        register_class(property_group)
+
+        # Use the scene context for this panel
+        # Initialize and build sub-panels
+        cls.initialize(property_group, [])
+        cls.create_subpanels()
+
+    @classmethod
+    def unload_panel(cls):
+        """Cleanly unload this panel and its resources.
+        """
+        from bpy.utils import unregister_class
+
+        # Clean up and unregister
+        cls.destroy_subpanels()
+        unregister_class(cls.property_group)
+
+    @classmethod
+    def register(cls):
+        """Blender register callback.
+        """
+        cls.PANEL_CONTEXT = 'scene'
+
+        # Important: initialize before any register call!
+        stk_props.STKScenePropertyGroup.initialize()
+        cls.load_panel(stk_props.STKScenePropertyGroup)
+
+    @classmethod
+    def unregister(cls):
+        """Blender unregister callback.
+        """
+        cls.unload_panel()
+
+    @classmethod
+    def poll(cls, context):
+        """Panel poll method.
+        Only display this panel if the active object is of type 'MESH' or 'EMPTY'.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        return context.scene
 
 
 class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
@@ -790,7 +862,6 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
         # Use the object context for this panel
         # Initialize and build sub-panels
-        cls.PANEL_CONTEXT = 'object'
         cls.initialize(property_group, [])
         cls.create_subpanels()
 
@@ -808,20 +879,25 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
     def register(cls):
         """Blender register callback.
         """
-        # TODO: branch on which object properties to load
+        from bpy.utils import register_class
+
+        cls.PANEL_CONTEXT = 'object'
 
         # Important: initialize before any register call!
+        stk_props.STKKartObjectPropertyGroup.initialize()
         stk_props.STKTrackObjectPropertyGroup.initialize()
         stk_props.STKLibraryObjectPropertyGroup.initialize()
-        stk_props.STKKartObjectPropertyGroup.initialize()
 
-        cls.load_panel(stk_props.STKKartObjectPropertyGroup)
+        register_class(cls.STK_OT_ReloadObjectProperties)
 
     @classmethod
     def unregister(cls):
         """Blender unregister callback.
         """
+        from bpy.utils import unregister_class
+
         cls.unload_panel()
+        unregister_class(cls.STK_OT_ReloadObjectProperties)
 
     @classmethod
     def poll(cls, context):
@@ -838,5 +914,50 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
         bool
             Value indicating if this panel should be rendered or not
         """
-        obj = bpy.context.active_object
+        if stk_utils.get_stk_scene_type(context) == 'none':
+            return False
+
+        obj = context.active_object
         return obj and (obj.type == 'MESH' or obj.type == 'EMPTY')
+
+    def draw(self, context):
+        layout = self.layout
+        p_stk = stk_utils.get_stk_context(context, self.PANEL_CONTEXT)
+
+        if not p_stk:
+            stk_scene = stk_utils.get_stk_scene_type(context)
+            layout.operator('stk.reload_object_properties', text=f"Setup {stk_scene.title()} Properties")
+        else:
+            super().draw(context)
+
+    class STK_OT_ReloadObjectProperties(bpy.types.Operator):
+        bl_idname = 'stk.reload_object_properties'
+        bl_label = "Reload STK Object Properties"
+        bl_description = "Reload and setup the object properties panel. This needs to be done every time the scene " \
+                         "type changes. No worries, the values of the properties will still be saved for every " \
+                         "object. This is for setting up the UI layout for this panel."
+
+        def execute(self, context):
+            stk_scene = stk_utils.get_stk_scene_type(context)
+            property_group = None
+
+            if stk_scene == 'kart':
+                property_group = stk_props.STKKartObjectPropertyGroup
+            elif stk_scene == 'track':
+                property_group = stk_props.STKTrackObjectPropertyGroup
+            elif stk_scene == 'library':
+                property_group = stk_props.STKLibraryObjectPropertyGroup
+            else:
+                return {'CANCELLED'}
+
+            panel = STK_PT_ObjectProperties
+
+            # Need to reload?
+            if hasattr(panel, 'property_group'):
+                if panel.property_group is not property_group:
+                    panel.unload_panel()
+                    panel.load_panel(property_group)
+            else:
+                panel.load_panel(property_group)
+
+            return {'FINISHED'}

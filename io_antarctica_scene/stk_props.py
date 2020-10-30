@@ -400,36 +400,20 @@ class STKPropertyGroup:
             self.expanded = expanded
 
 
-class STKTrackObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
-    PROP_SOURCE = 'stk_track_object_properties.xml'
+class STKScenePropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_scene_properties.xml'
 
     @classmethod
     def register(cls):
-        bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
-            name="SuperTuxKart Object Properties",
-            description="SuperTuxKart object properties",
-            type=cls,
+        bpy.types.Scene.stk = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Scene Properties",
+            description="SuperTuxKart scene properties",
+            type=cls
         )
 
     @classmethod
     def unregister(cls):
-        del bpy.types.Object.supertuxkart
-
-
-class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
-    PROP_SOURCE = 'stk_library_object_properties.xml'
-
-    @classmethod
-    def register(cls):
-        bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
-            name="SuperTuxKart Object Properties",
-            description="SuperTuxKart object properties",
-            type=cls,
-        )
-
-    @classmethod
-    def unregister(cls):
-        del bpy.types.Object.supertuxkart
+        del bpy.types.Scene.stk
 
 
 class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
@@ -437,12 +421,50 @@ class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
 
     @classmethod
     def register(cls):
-        bpy.types.Object.supertuxkart = PointerProperty(  # pylint: disable=assignment-from-no-return
+        # Create an RNA property specifically for karts (not just a general object property) to prevent false-sharing
+        # between properties of different scene types. Every property group has its own data access.
+        bpy.types.Object.stk_kart = PointerProperty(  # pylint: disable=assignment-from-no-return
             name="SuperTuxKart Object Properties",
             description="SuperTuxKart object properties",
-            type=cls,
+            type=cls
         )
 
     @classmethod
     def unregister(cls):
-        del bpy.types.Object.supertuxkart
+        del bpy.types.Object.stk_kart
+
+
+class STKTrackObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_track_object_properties.xml'
+
+    @classmethod
+    def register(cls):
+        # Create an RNA property specifically for tracks (not just a general object property) to prevent false-sharing
+        # between properties of different scene types. Every property group has its own data access.
+        bpy.types.Object.stk_track = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Object Properties",
+            description="SuperTuxKart object properties",
+            type=cls
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Object.stk_track
+
+
+class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_library_object_properties.xml'
+
+    @classmethod
+    def register(cls):
+        # Create an RNA property specifically for library nodes (not just a general object property) to prevent
+        # false-sharing between properties of different scene types. Every property group has its own data access.
+        bpy.types.Object.stk_library = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Object Properties",
+            description="SuperTuxKart object properties",
+            type=cls
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Object.stk_library
