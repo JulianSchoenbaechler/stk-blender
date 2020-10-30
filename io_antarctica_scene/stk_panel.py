@@ -921,6 +921,15 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
         return obj and (obj.type == 'MESH' or obj.type == 'EMPTY')
 
     def draw(self, context):
+        """Panel draw method.
+        Check if the object panel properties and definitions have been initialized. Display the operator to do so if
+        not; otherwise continue by calling the default draw method.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+        """
         layout = self.layout
         p_stk = stk_utils.get_stk_context(context, self.PANEL_CONTEXT)
 
@@ -931,6 +940,9 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
             super().draw(context)
 
     class STK_OT_ReloadObjectProperties(bpy.types.Operator):
+        """Operator that will conditionally reload this panel.
+        Loads the panel with the correct property group assigned, specified by the STK scene type.
+        """
         bl_idname = 'stk.reload_object_properties'
         bl_label = "Reload STK Object Properties"
         bl_description = "Reload and setup the object properties panel. This needs to be done every time the scene " \
@@ -938,6 +950,18 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
                          "object. This is for setting up the UI layout for this panel."
 
         def execute(self, context):
+            """Executes this operator.
+
+            Parameters
+            ----------
+            context : bpy.context
+                Blender context object
+
+            Returns
+            -------
+            set of str
+                The result of the operator
+            """
             stk_scene = stk_utils.get_stk_scene_type(context)
             property_group = None
 
