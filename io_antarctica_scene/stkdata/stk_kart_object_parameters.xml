@@ -1,15 +1,15 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <Properties
     bl-label="-"
 >
 
     <!-- ******** STK Object Type ******** -->
     <EnumProp id="type" name="Type" default="none" doc="SuperTuxKart Object Type">
-    
+
         <!-- None -->
         <EnumChoice id="" label="None" doc="Nothing special about this object" />
         <EnumChoice id="none" label="None" doc="Nothing special about this object" />
-        
+
         <EnumChoice id="ignore" label="Ignore" doc="Do not export this object" />
         <EnumChoice id="wheel" label="Wheel" doc="This object is a kart wheel" />
         <EnumChoice id="nitro-emitter" label="Nitro Emitter" doc="This object is where nitro particles are emitted" />

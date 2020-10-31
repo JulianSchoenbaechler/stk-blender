@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <properties>
     <!-- type selection -->
     <enum id="type" label="Scene Type" default="none" doc="SuperTuxKart scene type">
@@ -7,4 +7,8 @@
         <item value="track" label="Track"/>
         <item value="library" label="Library Node"/>
     </enum>
+
+    <string id="identifier" label="Identifier (Folder Name)" default="my_project"
+            doc="An internal identifier (lower case, no spaces); will also be the name of the folder"/>
+
 </properties>

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <Properties
     bl-label="SuperTuxKart Scene Properties"
 >
@@ -11,7 +11,7 @@
 </BoolProp>
 
 <!-- ************ TRACK ************ -->
-<BoolProp id="is_stk_track" name="Is a SuperTuxKart track" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart track">                         
+<BoolProp id="is_stk_track" name="Is a SuperTuxKart track" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart track">
     <StringProp id="name" name="Name" default="My New Track" doc="Name of the track"/>
     <StringProp id="code" name="Code (folder name)" default="myNewTrack" doc="The code is an internal identifier, will also be the name of the folder"/>
     <BoolProp id="is_wip_track" name="Is work-in-progress track" doc="If checked, the track will be categorized as a work-in-progress (beta) track"/>
@@ -51,25 +51,25 @@
     <BoolProp id="arena" name="Is a battle Arena" default="false" doc="Whether this scene is a battle arena"/>
     <BoolProp id="soccer" name="Is a soccer field" default="false" doc="Whether this scene is a soccer field"/>
     <BoolProp id="ctf" name="Is a CTF map" default="false" doc="Whether this scene is a map for capture the flag"/>
-    <BoolProp id="cutscene" name="Is a cutscene" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart cutscene"/> 
-    
+    <BoolProp id="cutscene" name="Is a cutscene" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart cutscene"/>
+
     <FloatProp id="camera_far" name="Camera Far Clip" default="1000.0" min="0.0" max="5000.0"
                    doc="Distance from camera at which objects are clipped (no more visible)"/>
-    
+
     <BoolProp id="smooth_normals" name="Smooth Normals" default="false" doc="Whether to interpolate the normals (gives smoother driving but requires that floors and walls be split)"/>
-    
+
     <PropGroup id="propgroup_driving" name="Driving/laps">
         <BoolProp id="reverse" name="Can be driven in reverse" default="false" doc="Whether this track can be driven in reverse mode"/>
         <IntProp id="default_num_laps" name="Number of laps" default="3"/>
     </PropGroup>
-    
+
     <PropGroup id="propgroup_kartstart" name="Start line positions">
         <IntProp id="start_karts_per_row" name="Karts per row on start" default="3" doc="How many karts are being placed in one row. The more karts, the wider the track must be (since each kart in a row will have a distance of start-sidewards-distance)."/>
         <FloatProp id="start_forwards_distance" name="Start Forwards Distance" default="1.5" doc="How far a kart is in front of the next kart at start."/>
         <FloatProp id="start_sidewards_distance" name="Start Sidewards Distance" default="1.8" doc="How much distance to the right/left of each kart in one row"/>
         <FloatProp id="start_upwards_distance" name="Start upwards distance" default="1.1" doc="Sometimes drivelines are too low and will be under the actual mesh. This is a simple vertical offset added to each start positions to make sure that karts start on top of the track (and not under it). Generally the drivelines should be fixed, but this allows a quick solution for existing tracks."/>
     </PropGroup>
-    
+
     <PropGroup id="weather" name="Weather">
         <EnumProp id="weather_type" name="Weather type" default="none" doc="The weather effect to use in this track">
             <EnumChoice id="none" label="None" doc="The weather effect to use in this track"/>
@@ -131,7 +131,7 @@
 </BoolProp>
 
 <!-- ************ KART ************ -->
-<BoolProp id="is_stk_kart" name="Is a SuperTuxKart kart" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart kart">  
+<BoolProp id="is_stk_kart" name="Is a SuperTuxKart kart" default="false" box="false" doc="Check this if this blender file is a SuperTuxKart kart">
     <StringProp id="name" name="Name" default="My New Kart" doc="Name of the kart"/>
     <StringProp id="group" name="Group" default="standard" doc="Tabs in kart selection screen this kart appears under"/>
     <StringProp id="icon" name="Icon" default="icon.png"
@@ -143,14 +143,14 @@
     <EnumProp id="engine_sfx" name="Engine sound" default="large">
         <EnumChoice id="large" label="Large"/>
         <EnumChoice id="small" label="Small"/>
-    </EnumProp>  
+    </EnumProp>
 
     <EnumProp id="karttype" name="Type" default="medium" doc="SuperTuxKart Kart Type">
         <EnumChoice id="light" label="Light" />
         <EnumChoice id="medium" label="Medium" />
         <EnumChoice id="heavy" label="Heavy" />
     </EnumProp>
-    
+
     <StringProp id="kartLean" name="Lean max (advanced)" default="" doc="Customize lean, for instance *0-10"/>
     <StringProp id="exhaust_xml" name="Exhaust particle file" default="kart_exhaust.xml" doc="Determine the emitting exhaust particle, empty to disable"/>
 </BoolProp>

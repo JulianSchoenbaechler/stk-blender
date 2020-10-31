@@ -1,4 +1,4 @@
-﻿<?xml version="1.0"?>
+<?xml version="1.0"?>
 <properties>
     <!-- type selection -->
     <enum id="type" label="Type" default="object" doc="SuperTuxKart object type">
