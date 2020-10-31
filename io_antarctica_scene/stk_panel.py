@@ -691,6 +691,9 @@ class STKPanelMixin:
         """
         from bpy.utils import unregister_class
 
+        if not hasattr(cls, 'subpanels'):
+            return
+
         for panel in cls.subpanels:
             unregister_class(panel)
 
@@ -873,7 +876,9 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
         # Clean up and unregister
         cls.destroy_subpanels()
-        unregister_class(cls.property_group)
+
+        if hasattr(cls, 'property_group'):
+            unregister_class(cls.property_group)
 
     @classmethod
     def register(cls):
