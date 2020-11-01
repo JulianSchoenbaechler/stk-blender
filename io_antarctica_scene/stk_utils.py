@@ -155,11 +155,11 @@ def str_to_bool(val: str):
     return False
 
 
-def str_to_color(val: str):
+def str_to_vector(val: str):
     s = val.split() if val else []
 
     for _ in range(len(s), 3):
-        s.append(0.5)
+        s.append(0.0)
 
     return (float(s[0]), float(s[1]), float(s[2]))
 

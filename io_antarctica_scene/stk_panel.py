@@ -758,10 +758,27 @@ class STKPanelMixin:
                 elif isinstance(info, stk_props.STKPropertyGroup.BoxInfo):
                     draw_props(layout.box(), info.properties)
 
+                # Draw separator
+                elif isinstance(info, stk_props.STKPropertyGroup.SeparatorInfo):
+                    layout.separator(factor=info.factor)
+
+                # Draw property with an id property template
+                elif isinstance(info, stk_props.STKPropertyGroup.IDPropertyInfo):
+                    col = layout.column()
+                    col.label(text=info.label)
+                    col.template_ID(
+                        data=p_stk,
+                        property=prop,
+                        new=info.operator_new,
+                        open=info.operator_open,
+                        unlink=info.operator_unlink
+                    )
+
                 # Draw property or label
                 else:
                     if hasattr(p_stk, prop):
                         layout.use_property_split = True
+                        layout.use_property_decorate = False
                         layout.prop(data=p_stk, property=prop)
                     else:
                         layout.label(text=info.label)

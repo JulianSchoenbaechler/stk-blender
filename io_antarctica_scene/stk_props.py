@@ -208,7 +208,7 @@ class STKPropertyGroup:
 
                     info_args['label'] = n_label
                     prop_args['name'] = n_label
-                    prop_args['default'] = stk_utils.str_to_color(node.getAttribute('default'))
+                    prop_args['default'] = stk_utils.str_to_vector(node.getAttribute('default'))
                     prop_args['subtype'] = 'COLOR'
                     prop_args['min'] = 0.0
                     prop_args['max'] = 1.0
@@ -217,6 +217,34 @@ class STKPropertyGroup:
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    p[n_id] = cls.PropertyInfo(**info_args)
+                    props[n_id] = FloatVectorProperty(**prop_args)  # pylint: disable=assignment-from-no-return
+
+                # Coordinates (float vector) property
+                elif n_type == 'coordinates':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    prop_args['name'] = n_label
+                    prop_args['default'] = stk_utils.str_to_vector(node.getAttribute('default'))
+                    prop_args['subtype'] = 'XYZ'
+
+                    if node.hasAttribute('doc'):
+                        n_doc = node.getAttribute('doc')
+                        info_args['doc'] = n_doc
+                        prop_args['description'] = n_doc
+
+                    if node.hasAttribute('min'):
+                        prop_args['min'] = float(node.getAttribute('min'))
+
+                    if node.hasAttribute('max'):
+                        prop_args['max'] = float(node.getAttribute('max'))
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = FloatVectorProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -330,6 +358,29 @@ class STKPropertyGroup:
 
                     props[n_id] = PointerProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
+                # Image
+                elif n_type == 'image':
+                    n_label = n_id
+
+                    if node.hasAttribute('label'):
+                        n_label = node.getAttribute('label')
+                    elif node.firstChild and node.firstChild.nodeValue:
+                        n_label = node.firstChild.nodeValue
+
+                    info_args['label'] = n_label
+                    info_args['operator_new'] = 'image.new'
+                    info_args['operator_open'] = 'image.open'
+                    prop_args['name'] = n_label
+                    prop_args['type'] = bpy.types.Image
+
+                    if node.hasAttribute('doc'):
+                        n_doc = node.getAttribute('doc')
+                        info_args['doc'] = n_doc
+                        prop_args['description'] = n_doc
+
+                    p[n_id] = cls.IDPropertyInfo(**info_args)
+                    props[n_id] = PointerProperty(**prop_args)  # pylint: disable=assignment-from-no-return
+
                 # Label
                 elif n_type == 'label':
                     n_label = n_id
@@ -358,6 +409,13 @@ class STKPropertyGroup:
 
                     p[n_id] = cls.PanelInfo(**info_args)
 
+                # Separator
+                elif n_type == 'separator':
+                    if node.hasAttribute('factor'):
+                        info_args['factor'] = node.getAttribute('factor')
+
+                    p[n_id] = cls.SeparatorInfo(**info_args)
+
             return p
 
         for root in node.childNodes:
@@ -385,6 +443,14 @@ class STKPropertyGroup:
 
             self.poll = poll if poll is not None else lambda p_self, p_obj: True
 
+    class IDPropertyInfo(PropertyInfo):
+        def __init__(self, label, operator_new='', operator_open='', operator_unlink='',
+                     doc="(No documentation was defined for this property)", bind=None, condition=None):
+            super().__init__(label, doc, bind, condition)
+            self.operator_new = operator_new
+            self.operator_open = operator_open
+            self.operator_unlink = operator_unlink
+
     class BoxInfo:
         def __init__(self, properties, bind=None, condition=None):
             self.bind = bind
@@ -398,6 +464,12 @@ class STKPropertyGroup:
             self.bind = bind
             self.condition = condition
             self.expanded = expanded
+
+    class SeparatorInfo:
+        def __init__(self, factor=1.0, bind=None, condition=None):
+            self.factor = factor
+            self.bind = bind
+            self.condition = condition
 
 
 class STKScenePropertyGroup(PropertyGroup, STKPropertyGroup):
