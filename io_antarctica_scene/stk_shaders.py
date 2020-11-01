@@ -296,17 +296,17 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
         # Data (gloss) map texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Data Map")
         prop_layout.template_ID(self.node_tree.nodes['Data Map'], 'image', new='image.new', open='image.open')
 
         # Normal map texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Normal Map")
         prop_layout.template_ID(self.node_tree.nodes['Normal Map'], 'image', new='image.new', open='image.open')
 
@@ -316,7 +316,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
         layout.prop(self, 'prop_colorizable')
 
         if self.prop_colorizable:
-            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Colorization Mask")
             prop_layout.template_ID(
                 self.node_tree.nodes['Colorization Mask'],
@@ -327,7 +327,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
 
             layout.prop(self, 'prop_colorizationFactor')
             layout.prop(self, 'prop_hue')
-            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Hue Selection")
             prop_layout.prop(self, 'prop_hueSelect', text='')
 
@@ -509,12 +509,12 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
         # Data (gloss) map texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Data Map")
         prop_layout.template_ID(self.node_tree.nodes['Data Map'], 'image', new='image.new', open='image.open')
 
@@ -526,7 +526,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
         if self.prop_colorizable:
             layout.prop(self, 'prop_colorizationFactor')
             layout.prop(self, 'prop_hue')
-            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Hue Selection")
             prop_layout.prop(self, 'prop_hueSelect', text='')
 
@@ -675,7 +675,7 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -685,7 +685,7 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
         layout.prop(self, 'prop_mask')
 
         if self.prop_mask:
-            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Alpha Mask")
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
@@ -803,7 +803,7 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -813,7 +813,7 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
         layout.prop(self, 'prop_mask')
 
         if self.prop_mask:
-            prop_layout = layout.row(align=True).split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Alpha Mask")
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
@@ -874,7 +874,7 @@ class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup):
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.3)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -1022,23 +1022,23 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
 
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
-        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Shader")
         prop_layout.prop(self, 'prop_shader', text='')
 
         # Main texture
-        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
         # Secondary UV texture
-        prop_layout = layout.row(align=True).split(factor=0.4)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Secondary UV Texture")
         prop_layout.template_ID(self, 'prop_secondary', new='image.new', open='image.open')
 
         layout.separator()
 
-        prop_layout = layout.row(align=True)
+        prop_layout = layout.row()
         prop_layout.alignment = 'LEFT'
 
         prop_layout.prop(
@@ -1049,23 +1049,23 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
         )
 
         if self.prop_texture_foldout:
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Texture Layer 2")
             prop_layout.template_ID(self, 'prop_texture2', new='image.new', open='image.open')
 
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Texture Layer 3")
             prop_layout.template_ID(self, 'prop_texture3', new='image.new', open='image.open')
 
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Texture Layer 4")
             prop_layout.template_ID(self, 'prop_texture4', new='image.new', open='image.open')
 
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Texture Layer 5")
             prop_layout.template_ID(self, 'prop_texture5', new='image.new', open='image.open')
 
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Mask")
             prop_layout.template_ID(self, 'prop_mask', new='image.new', open='image.open')
 
@@ -1075,7 +1075,7 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
         layout.prop(self, 'prop_colorizable')
 
         if self.prop_colorizable:
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Colorization Mask")
             prop_layout.template_ID(
                 self.node_tree.nodes['Colorization Mask'],
@@ -1086,6 +1086,6 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
 
             layout.prop(self, 'prop_colorizationFactor')
             layout.prop(self, 'prop_hue')
-            prop_layout = layout.row(align=True).split(factor=0.4)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text='Hue Selection')
             prop_layout.prop(self, 'prop_hueSelect', text='')
