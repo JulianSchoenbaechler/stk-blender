@@ -8,7 +8,165 @@
         <item value="library" label="Library Node"/>
     </enum>
 
+    <!-- general settings -->
+    <string id="name" label="Name" default="Some Name"
+            bind="type" condition="lambda t: t == 'kart' or t == 'track'"
+            doc="The name of the track or kart, like it would appear in-game"/>
     <string id="identifier" label="Identifier (Folder Name)" default="my_project"
+            bind="type" condition="lambda t: t != 'none'"
             doc="An internal identifier (lower case, no spaces); will also be the name of the folder"/>
+    <enum id="category" label="Category" default="standard"
+          bind="type" condition="lambda t: t == 'kart' or t == 'track'"
+          doc="The category this track or kart belongs to">
+        <item value="standard" label="Standard"/>
+        <item value="add-ons" label="Add-Ons"/>
+        <item value="wip" label="Work In Progress"/>
+    </enum>
+    <string id="designer" label="Designer" default="Your Name"
+            bind="type" condition="lambda t: t == 'kart' or t == 'track'"
+            doc="Name of the designer of this creation"/>
 
+    <!-- properties panel -->
+    <panel id="type_properties" label="Properties"
+           bind="type" condition="lambda t: t != 'none' and t != 'library'" expanded="expanded">
+
+        <!-- kart specific -->
+        <image id="icon" label="Kart Icon"
+               bind="type" condition="lambda t: t == 'kart'"
+               doc="An icon to display in the kart selection screen"/>
+        <color id="highlight_color" label="Highlight Color" default="1.0 1.0 1.0"
+               bind="type" condition="lambda t: t == 'kart'"
+               doc="Color used to highlight the kart's icon in the interface"/>
+        <image id="icon_minimap" label="Minimap Icon"
+               bind="type" condition="lambda t: t == 'kart'"
+               doc="An icon to display for this kart on the minimap"/>
+        <image id="shadow" label="Drop Shadow"
+               bind="type" condition="lambda t: t == 'kart'"
+               doc="A drop shadow (silhouette) used for this kart"/>
+        <separator id="__separator1"/>
+
+        <!-- kart type -->
+        <enum id="kart_type" label="Kart Type" default="medium" bind="type" condition="lambda t: t == 'kart'"
+              doc="The karts specifications">
+            <item value="light" label="Light"/>
+            <item value="medium" label="Medium"/>
+            <item value="heavy" label="Heavy"/>
+        </enum>
+
+        <!-- kart sfx -->
+        <enum id="sfx_engine" label="Engine Sound" default="large" bind="type" condition="lambda t: t == 'kart'"
+              doc="The karts engine sound to use">
+            <item value="large" label="Large"/>
+            <item value="small" label="Small"/>
+        </enum>
+
+        <!-- kart gravity shift -->
+        <coordinates id="gravity_shift" label="Gravity Center Shift  " default="0.0 0.0 0.0" min="-1.0" max="1.0"
+                     bind="type" condition="lambda t: t == 'kart'"
+                     doc="Can be used to offset the gravity center of the kart if it topples over too easily"/>
+
+        <!-- kart exhaust -->
+        <bool id="exhaust" label="Custom Exhaust Effect" default="false"
+              bind="type" condition="lambda t: t == 'kart'"
+              doc="Whether this kart should use a custom exhaust particle effect"/>
+        <box id="exhaust_box" bind="type exhaust" condition="lambda t, p: p and t == 'kart'">
+            <string id="exhaust_particles" label="Particle Effect" default="nitro-smoke.xml"
+                    doc="The particles definition file (XML) to use"/>
+        </box>
+
+        <!-- track specific -->
+        <image id="screenshot" label="In-Game Screenshot" bind="type" condition="lambda t: t == 'track'"
+               doc="A screenshot of this track that will be displayed in the selection screen"/>
+        <separator id="__separator2" bind="type" condition="lambda t: t == 'track'"/>
+
+        <!-- track type -->
+        <enum id="track_type" label="Track Type" default="race" bind="type" condition="lambda t: t == 'track'"
+              doc="The type of the track">
+            <item value="race" label="Race Track" doc="A normal race track"/>
+            <item value="arena" label="Battle Arena"
+                  doc="A battle arena; '3-Strikes Battle' as well as 'Capture The Flag'"/>
+            <item value="soccer" label="Soccer Field" doc="Play soccer on this track"/>
+            <item value="cutscene" label="Cutscene" doc="An in-game cutscene"/>
+        </enum>
+        <bool id="ctf_active" label="Is 'Capture The Flag' Arena" default="false"
+              bind="type track_type" condition="lambda t, p: p == 'arena' and t == 'track'"
+              doc="Checked if possible to play 'Capture The Flag' in this arena"/>
+
+        <bool id="smooth_normals" label="Normals Smoothing" default="false"
+              bind="type" condition="lambda t: t == 'track'"
+              doc="Whether to interpolate the normals; results in smoother driving but requires that floors and walls need to be separate objects or split"/>
+
+        <!-- race settings -->
+        <bool id="reverse" label="Can Be Driven In Reverse" default="false"
+              bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+              doc="Whether this race can be driven in reverse"/>
+        <int id="lap_count" label="Default Number Of Laps" default="3" min="1" max="20"
+             bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+             doc="The default number of laps for this track"/>
+        <int id="start_rows" label="Karts Per Row On Start" default="3" min="1" max="20"
+             bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+             doc="How many karts are being placed in one row; the more karts, the wider the track must be (since each kart in a row will have a distance of start-sidewards-distance)"/>
+        <float id="start_forward" label="Forward Distance Between Karts On Start" default="1.5" min="0.0" max="50.0"
+               bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+               doc="How big the distance between a kart to the one in front of it is at start"/>
+        <float id="start_side" label="Side Distance Between Karts On Start" default="1.8" min="0.0" max="50.0"
+               bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+               doc="How big the distance to the right/left of each kart in one row is at start"/>
+        <float id="start_up" label="Karts Upper Limit On Start" default="1.1" min="0.0" max="50.0"
+               bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
+               doc="Sometimes drivelines are too low and will be under the actual mesh. This is a simple vertical offset added to each start positions to make sure that karts start on top of the track (and not under it). Generally the drivelines should be fixed, but this allows a quick solution for existing tracks"/>
+
+        <!-- track lighting -->
+        <panel id="track_lighting" label="Lighting" bind="type" condition="lambda t: t == 'track'">
+            <bool id="shadows" label="Dynamic Shadows" default="true" doc="Whether to enable dynamic shadows on this track"/>
+            <enum id="daytime" label="Daytime" default="day"
+                  doc="Set the time of the track; used for enabling or disabling some lighting effects">
+                <item value="day" label="Day"/>
+                <item value="night" label="Night"/>
+            </enum>
+
+            <!-- sky settings -->
+            <enum id="sky_type" label="Sky Type" default="box" doc="Define how the sky gets rendered">
+                <item value="box" label="Sky Box" doc="Use a classic cubic sky box; set a texture for each side of the sky"/>
+                <item value="color" label="Plain Color" doc="Use a plain color for the sky"/>
+                <item value="none" label="No Sky" doc="No sky; useful for indoor scenes"/>
+            </enum>
+            <box id="sky_box" bind="sky_type" condition="lambda t: t != 'none'">
+                <image id="sky_texture2" label="Sky Texture Top" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <image id="sky_texture3" label="Sky Texture Bottom" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <image id="sky_texture4" label="Sky Texture East" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <image id="sky_texture5" label="Sky Texture West" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <image id="sky_texture1" label="Sky Texture North" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <image id="sky_texture6" label="Sky Texture South" bind="sky_type" condition="lambda t: t == 'box'"/>
+                <color id="sky_color" label="Color" default="0.3 0.4 1.0"
+                       bind="sky_type" condition="lambda t: t == 'color'"
+                       doc="The color of the sky"/>
+            </box>
+
+            <!-- ambient lighting -->
+            <bool id="ambient" label="Use Ambient Map" default="false"
+                  doc="Use textures (classic cube map) for better controlling the ambient lighting of the scene"/>
+            <box id="ambient_box" bind="ambient" condition="lambda a: a">
+                <image id="ambient_texture2" label="Ambient Map Top"/>
+                <image id="ambient_texture3" label="Ambient Map Bottom"/>
+                <image id="ambient_texture4" label="Ambient Map East"/>
+                <image id="ambient_texture5" label="Ambient Map West"/>
+                <image id="ambient_texture1" label="Ambient Map North"/>
+                <image id="ambient_texture6" label="Ambient Map South"/>
+            </box>
+
+            <!-- track fog -->
+            <bool id="fog" label="Fog" default="false"
+                  doc="Enable fog on this track; simulates particles in the air and naturally leads to light halos (bloom)"/>
+            <box id="fog_box" bind="fog" condition="lambda f: f">
+                <color id="fog_color" label="Color" default="0.5 0.5 0.5" doc="The color of the fog"/>
+                <float id="fog_max" label="Maximum Density" default="0.8" min="0.0" max="1.0"
+                       doc="The maximum density of the fog; a value of 1.0 completely covers scenery in fog at the furthest distance"/>
+                <float id="fog_from" label="From Distance" default="50.0" min="0.0" max="5000.0"
+                       doc="The distance from the camera the fog starts; it will gain in density linearly"/>
+                <float id="fog_to" label="To Distance" default="1000.0" min="0.0" max="5000.0"
+                       doc="The distance from the camera the fog will have reached its maximum density"/>
+            </box>
+        </panel>
+    </panel>
 </properties>
