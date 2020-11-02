@@ -70,7 +70,7 @@
               bind="type" condition="lambda t: t == 'kart'"
               doc="Whether this kart should use a custom exhaust particle effect"/>
         <box id="exhaust_box" bind="type exhaust" condition="lambda t, p: p and t == 'kart'">
-            <string id="exhaust_particles" label="Particle Effect" default="nitro-smoke.xml"
+            <string id="exhaust_particles" label="Particle Effect" default="kart_exhaust.xml"
                     doc="The particles definition file (XML) to use"/>
         </box>
 

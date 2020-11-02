@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<properties>
+    <!-- mirror texture -->
+    <enum id="mirror" label="Mirror Texture In Reverse" default="none"
+          doc="Mirror texture if the racetrack is driven in reverse">
+        <item value="none" label="Off" doc="No mirroring"/>
+        <item value="u" label="Horizontally (U)" doc="Mirror over the horizontal axis (u axis)"/>
+        <item value="v" label="Vertically (V)" doc="Mirror over the vertical axis (u axis)"/>
+    </enum>
+    <bool id="ignore" label="No Collision (Ignore)" default="false"
+          doc="If checked, this material will have no colliders in the physics engine; karts can drive through"/>
+
+    <!-- interaction panel -->
+    <panel id="interaction_properties" label="Interaction"
+           bind="ignore" condition="lambda i: not i" expanded="expanded">
+
+        <!-- slowdown -->
+        <bool id="slowdown" label="Kart Slowdown" default="false"
+              doc="Slow down the karts driving on this material"/>
+        <box id="slowdown_box" bind="slowdown" condition="lambda p: p">
+            <float id="slowdown_fraction" label="Maximum Speed (Fraction)" default="0.5" min="0.0" max="1.0"
+                   doc="The fraction of the karts maximum speed to which it should slow down"/>
+            <float id="slowdown_time" label="Slowdown Time" default="1.0" min="0.0" max="10.0"
+                   doc="The time it takes until the kart slowed down to the specified fraction"/>
+        </box>
+
+        <!-- zipper/boost -->
+        <bool id="zipper" label="Zipper" default="false"
+              doc="Speed boost the karts driving on this material"/>
+        <box id="zipper_box" bind="zipper" condition="lambda p: p">
+            <float id="zipper_fraction" label="Speed Gain (Fraction)" default="1.0" min="-1.0" max="10.0"
+                   doc="The fraction added to the karts maximum speed to speed it up; if negative, the kart's default will be used"/>
+            <float id="zipper_speed_min" label="Minimum Speed (Fraction)" default="-1.0" min="-1.0" max="10.0"
+                   doc="The minimum speed fraction the kart must have in order to activate the zipper; if negative, no minimum speed is set"/>
+            <float id="zipper_speed_max" label="Maximum Speed (Fraction)" default="5.0" min="-1.0" max="20.0"
+                   doc="The maximum speed fraction added to the kart to better control the speed gain and prevent karts from overshooting; if negative, the kart's default will be used"/>
+            <float id="zipper_duration" label="Duration" default="1.0" min="-1.0" max="10.0"
+                   doc="The time the zippers top speed lasts; if negative, the kart's default will be used"/>
+            <float id="zipper_fade" label="Fade Out Time" default="2.0" min="-1.0" max="10.0"
+                   doc="How long it takes for the zipper to fade out (reaching the initial top speed of the kart); if negative, the kart's default will be used"/>
+        </box>
+
+        <!-- affect gravity -->
+        <bool id="gravity" label="Affect Gravity (Magnetic)" default="false"
+              doc="Gravity will be affected by the faces normal of the mesh and drag karts towards its surface as if it would be the ground (magnetic effect)"/>
+
+        <!-- high tires adhesion -->
+        <bool id="high_tires" label="High Tires Adhesion" default="false"
+              doc="Karts will have good grip on this surface and slip less, even at angles"/>
+
+        <!-- resque karts -->
+        <bool id="reset" label="Reset On Drive" default="false" doc="Karts that drive on this surface will be rescued"/>
+
+        <!-- water surface -->
+        <bool id="surface" label="Water Surface" default="false"
+              doc="Marks the surface of water where karts can drive through; if a particle and/or sound effect is set to this material, they will emit when a kart is falling into water (splash effect)"/>
+
+        <!-- below water surface -->
+        <bool id="below_surface" label="Water Bottom" default="false"
+              doc="Marks the bottom underneath of a (shallow) water surface where karts can drive on; as long a kart drives on this material, it will search and trigger the particle and/or sound effects of the water surface above (by raycasting upwards)"/>
+
+        <!-- particle effect -->
+        <bool id="particles" label="Particle Effect" default="false"
+              doc="Emits particles from the position of the kart's wheels that drives on it; if combined with a water surface, burst emits the particles to create a splash"/>
+        <box id="particles_box" bind="particles" condition="lambda p: p">
+            <string id="particles_definition" label="File" default="splash.xml"
+                    doc="The particles definition file (XML) to use"/>
+            <enum id="particles_condition" label="Emit On" default="skid" flags="flags"
+                  bind="surface" condition="lambda p: not p"
+                  doc="Under which conditions should the particles be emitted">
+                <item value="drive" label="Drive" doc="On driving on this material"/>
+                <item value="skid" label="Skid" doc="On skidding on this material"/>
+            </enum>
+        </box>
+
+        <!-- sound effect -->
+        <bool id="sfx" label="Sound Effect" default="false"
+              doc="Emits and loops a sound effect as long as a kart drives on it; if combined with a water surface, burst emits the sound as splash effect"/>
+        <box id="sfx_box" bind="sfx" condition="lambda p: p">
+            <string id="sfx_file" label="File" default="some_file.ogg"
+                    doc="File name of the sound to play"/>
+            <float id="sfx_speed_min" label="Minimum Speed" default="5.0" min="0.0" max="50.0"
+                   doc="The minimum speed (in m/s) the kart must have in order to emit this sound effect"/>
+            <float id="sfx_speed_max" label="Maximum Speed" default="30.0" min="0.0" max="50.0"
+                   doc="The maximum speed (in m/s) of the kart that is used for the highest pitch of the sound effect"/>
+            <float id="sfx_pitch_min" label="Minimum Pitch (Multiplier)" default="0.8" min="0.0" max="5.0"
+                   doc="Multiplier for pitching the sound for the minimum kart speed; will linearly interpolate"/>
+            <float id="sfx_pitch_max" label="Maximum Pitch (Multiplier)" default="1.2" min="0.0" max="5.0"
+                   doc="Multiplier for pitching the sound for the maximum kart speed; will linearly interpolate"/>
+            <float id="sfx_rolloff" label="Roll-Off Rate" default="0.1" min="0.0" max="2.5"
+                   doc="How fast this sound decays when going farther from the emission point"/>
+        </box>
+
+        <!-- falling effect -->
+        <bool id="falling" label="Falling Effect" default="false"
+              doc="Creates a falling effect (camera stopping but keep facing the kart) as soon the kart is above this material; resques the player on touch"/>
+
+        <!-- collision action -->
+        <enum id="collision" label="Collision Action" default="none"
+              doc="An action that should be triggered on collision">
+            <item value="none" label="None" doc="No collision action"/>
+            <item value="reset" label="Reset Kart"
+                  doc="Rescue the kart if it collides with this material; any collision counts not just driving on it"/>
+            <item value="push_back" label="Push Back Kart"
+                  doc="Push back the kart with some force when it collides with this material"/>
+            <item value="push_soccer" label="Push Soccer Ball"
+                  doc="Push back the soccer ball with some force when it collides with this material (only useful for soccer mode)"/>
+        </enum>
+        <box id="collision_box" bind="collision" condition="lambda p: p != 'none'">
+            <string id="collsision_particles" label="Collision Particles" default=""
+                    doc="The particles definition file (XML) to use"/>
+        </box>
+    </panel>
+</properties>

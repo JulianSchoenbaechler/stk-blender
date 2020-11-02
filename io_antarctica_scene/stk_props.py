@@ -540,3 +540,19 @@ class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     @classmethod
     def unregister(cls):
         del bpy.types.Object.stk_library
+
+
+class STKMaterialPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_material_properties.xml'
+
+    @classmethod
+    def register(cls):
+        bpy.types.Material.stk = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Material Properties",
+            description="SuperTuxKart material properties",
+            type=cls
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Material.stk

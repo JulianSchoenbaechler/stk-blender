@@ -809,7 +809,6 @@ class STK_PT_SceneProperties(bpy.types.Panel, STKPanelMixin):
 
         register_class(property_group)
 
-        # Use the scene context for this panel
         # Initialize and build sub-panels
         cls.initialize(property_group, [])
         cls.create_subpanels()
@@ -843,7 +842,7 @@ class STK_PT_SceneProperties(bpy.types.Panel, STKPanelMixin):
     @classmethod
     def poll(cls, context):
         """Panel poll method.
-        Only display this panel if the active object is of type 'MESH' or 'EMPTY'.
+        Only display this panel if a scene is loaded.
 
         Parameters
         ----------
@@ -880,7 +879,6 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
 
         register_class(property_group)
 
-        # Use the object context for this panel
         # Initialize and build sub-panels
         cls.initialize(property_group, [])
         cls.create_subpanels()
@@ -1007,3 +1005,76 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
                 panel.load_panel(property_group)
 
             return {'FINISHED'}
+
+
+class STK_PT_MaterialProperties(bpy.types.Panel, STKPanelMixin):
+    """SuperTuxKart material properties panel.
+    """
+    bl_idname = 'STK_PT_material_properties'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'material'
+    bl_label = "SuperTuxKart Material Properties"
+
+    @classmethod
+    def load_panel(cls, property_group):
+        """Cleanly load this panel by providing a corresponding property group reference.
+
+        Parameters
+        ----------
+        property_group : stk.props.STKPropertyGroup
+            The corresponding property group (must be fully initialized, but not yet registered)
+        """
+        from bpy.utils import register_class
+
+        register_class(property_group)
+
+        # Initialize and build sub-panels
+        cls.initialize(property_group, [])
+        cls.create_subpanels()
+
+    @classmethod
+    def unload_panel(cls):
+        """Cleanly unload this panel and its resources.
+        """
+        from bpy.utils import unregister_class
+
+        # Clean up and unregister
+        cls.destroy_subpanels()
+        unregister_class(cls.property_group)
+
+    @classmethod
+    def register(cls):
+        """Blender register callback.
+        """
+        cls.PANEL_CONTEXT = 'material'
+
+        # Important: initialize before any register call!
+        stk_props.STKMaterialPropertyGroup.initialize()
+        cls.load_panel(stk_props.STKMaterialPropertyGroup)
+
+    @classmethod
+    def unregister(cls):
+        """Blender unregister callback.
+        """
+        cls.unload_panel()
+
+    @classmethod
+    def poll(cls, context):
+        """Panel poll method.
+        Only display this panel if the active material uses one of the Antarctica shaders.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        if not context.material:
+            return False
+
+        return True
