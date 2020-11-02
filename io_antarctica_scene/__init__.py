@@ -91,6 +91,7 @@ classes = (
 
     stk_panel.STK_PT_SceneProperties,
     stk_panel.STK_PT_ObjectProperties,
+    stk_panel.STK_PT_MaterialProperties,
 )
 
 

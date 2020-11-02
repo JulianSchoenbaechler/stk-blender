@@ -53,10 +53,12 @@
 
         <!-- water surface -->
         <bool id="surface" label="Water Surface" default="false"
+              bind="below_surface" condition="lambda p: not p"
               doc="Marks the surface of water where karts can drive through; if a particle and/or sound effect is set to this material, they will emit when a kart is falling into water (splash effect)"/>
 
         <!-- below water surface -->
         <bool id="below_surface" label="Water Bottom" default="false"
+              bind="surface" condition="lambda p: not p"
               doc="Marks the bottom underneath of a (shallow) water surface where karts can drive on; as long a kart drives on this material, it will search and trigger the particle and/or sound effects of the water surface above (by raycasting upwards)"/>
 
         <!-- particle effect -->
