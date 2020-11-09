@@ -1206,7 +1206,6 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
 
     def __set_ambient(self, value):
         """Setter of the ambient color value."""
-        print(self.node_tree.nodes['Ambient'].inputs['Color1'].default_value)
         self.node_tree.nodes['Ambient'].inputs['Color1'].default_value = (value[0], value[1], value[2], 1.0)
 
     def __get_use_ambient(self):
