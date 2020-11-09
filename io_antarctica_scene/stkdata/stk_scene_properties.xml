@@ -125,35 +125,8 @@
                 <item value="night" label="Night"/>
             </enum>
 
-            <!-- sky settings -->
-            <enum id="sky_type" label="Sky Type" default="box" doc="Define how the sky gets rendered">
-                <item value="box" label="Sky Box" doc="Use a classic cubic sky box; set a texture for each side of the sky"/>
-                <item value="color" label="Plain Color" doc="Use a plain color for the sky"/>
-                <item value="none" label="No Sky" doc="No sky; useful for indoor scenes"/>
-            </enum>
-            <box id="sky_box" bind="sky_type" condition="lambda t: t != 'none'">
-                <image id="sky_texture2" label="Sky Texture Top" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <image id="sky_texture3" label="Sky Texture Bottom" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <image id="sky_texture4" label="Sky Texture East" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <image id="sky_texture5" label="Sky Texture West" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <image id="sky_texture1" label="Sky Texture North" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <image id="sky_texture6" label="Sky Texture South" bind="sky_type" condition="lambda t: t == 'box'"/>
-                <color id="sky_color" label="Color" default="0.3 0.4 1.0"
-                       bind="sky_type" condition="lambda t: t == 'color'"
-                       doc="The color of the sky"/>
-            </box>
-
-            <!-- ambient lighting -->
-            <bool id="ambient" label="Use Ambient Map" default="false"
-                  doc="Use textures (classic cube map) for better controlling the ambient lighting of the scene"/>
-            <box id="ambient_box" bind="ambient" condition="lambda a: a">
-                <image id="ambient_texture2" label="Ambient Map Top"/>
-                <image id="ambient_texture3" label="Ambient Map Bottom"/>
-                <image id="ambient_texture4" label="Ambient Map East"/>
-                <image id="ambient_texture5" label="Ambient Map West"/>
-                <image id="ambient_texture1" label="Ambient Map North"/>
-                <image id="ambient_texture6" label="Ambient Map South"/>
-            </box>
+            <!-- sky info -->
+            <label id="sky_info">Use world shaders for skybox and environment lighting.</label>
 
             <!-- track fog -->
             <bool id="fog" label="Fog" default="false"

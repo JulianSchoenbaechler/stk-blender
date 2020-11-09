@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<properties>
+    <!-- sun properties -->
+    <label id="sun_info" label="Set the sun's main light color in the 'Light' panel."
+           bind="light.type" condition="lambda t: t == 'SUN'"/>
+    <color id="sun_specular" label="Specular Color" default="1.0 1.0 1.0"
+           bind="light.type" condition="lambda t: t == 'SUN'"
+           doc="The specular color of the light; this is the specular lighting that emit on reflections of smooth surfaces"/>
+
+    <!-- point light properties -->
+    <label id="point_info" label="Set the light's color in the 'Light' panel."
+           bind="light.type" condition="lambda t: t == 'POINT'"/>
+    <float id="point_distance" label="Distance" min="0.0" max="1000.0"
+           bind="light.type" condition="lambda t: t == 'POINT'"
+           doc="The maximum distance of the light (radius of the light); the distance and size properties in the 'Light' panel are render engine specific to Blender's Eevee and Cycles, use this setting for SuperTuxKart"/>
+
+    <string id="visible_if" label="Visible If"
+            bind="light.type" condition="lambda t: t == 'POINT'"
+            doc="Scripting function to poll boolean that determines if this light should be visible"/>
+</properties>

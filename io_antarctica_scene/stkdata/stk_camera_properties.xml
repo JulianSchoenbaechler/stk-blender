@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<properties>
+    <!-- type selection -->
+    <label id="my_label">Some properties...</label>
+</properties>

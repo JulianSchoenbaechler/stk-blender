@@ -40,16 +40,30 @@ class STKPropertyGroup:
     DATA_DIR = 'stkdata'
     PROP_SOURCE = 'stk_properties.xml'
 
-    def condition_poll(self, info):
+    def condition_poll(self, info, context):
         # No condition set
         if not info.condition:
             return True
 
         args = []
 
-        # Gather binded property values and invoke condition
+        # Gather bound property values and invoke condition
         for p in info.bind:
-            args.append(getattr(self, p, None))
+            path = p.split('.')
+
+            if len(path) > 1:
+                obj = context
+
+                # Search for attribute from context
+                for attr in path:
+                    obj = getattr(obj, attr, None)
+
+                    if obj is None:
+                        return False
+
+                args.append(obj)
+            else:
+                args.append(getattr(self, p, None))
 
         return info.condition(*args)
 
@@ -540,6 +554,38 @@ class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     @classmethod
     def unregister(cls):
         del bpy.types.Object.stk_library
+
+
+class STKLightPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_light_properties.xml'
+
+    @classmethod
+    def register(cls):
+        bpy.types.Light.stk = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Light Properties",
+            description="SuperTuxKart light properties",
+            type=cls
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Light.stk
+
+
+class STKCameraPropertyGroup(PropertyGroup, STKPropertyGroup):
+    PROP_SOURCE = 'stk_camera_properties.xml'
+
+    @classmethod
+    def register(cls):
+        bpy.types.Camera.stk = PointerProperty(  # pylint: disable=assignment-from-no-return
+            name="SuperTuxKart Camera Properties",
+            description="SuperTuxKart camera properties",
+            type=cls
+        )
+
+    @classmethod
+    def unregister(cls):
+        del bpy.types.Camera.stk
 
 
 class STKMaterialPropertyGroup(PropertyGroup, STKPropertyGroup):

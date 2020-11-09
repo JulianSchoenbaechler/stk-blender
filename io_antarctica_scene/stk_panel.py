@@ -730,7 +730,7 @@ class STKPanelMixin:
         """
         if cls.info:
             p_stk = stk_utils.get_stk_context(context, cls.PANEL_CONTEXT)
-            return p_stk.condition_poll(cls.info) if p_stk else False
+            return p_stk.condition_poll(cls.info, context) if p_stk else False
 
         return True
 
@@ -751,7 +751,7 @@ class STKPanelMixin:
         def draw_props(layout, definitions):
             for prop, info in definitions.items():
                 # Not displaying panel or conditionally excluded properties
-                if isinstance(info, stk_props.STKPropertyGroup.PanelInfo) or not p_stk.condition_poll(info):
+                if isinstance(info, stk_props.STKPropertyGroup.PanelInfo) or not p_stk.condition_poll(info, context):
                     continue
 
                 # Draw box containing properties
@@ -1007,6 +1007,170 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
             return {'FINISHED'}
 
 
+class STK_PT_LightProperties(bpy.types.Panel, STKPanelMixin):
+    """SuperTuxKart light properties panel.
+    """
+    bl_idname = 'STK_PT_light_properties'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'data'
+    bl_label = "SuperTuxKart Light Properties"
+
+    @classmethod
+    def load_panel(cls, property_group):
+        """Cleanly load this panel by providing a corresponding property group reference.
+
+        Parameters
+        ----------
+        property_group : stk.props.STKPropertyGroup
+            The corresponding property group (must be fully initialized, but not yet registered)
+        """
+        from bpy.utils import register_class
+
+        register_class(property_group)
+
+        # Initialize and build sub-panels
+        cls.initialize(property_group, [])
+        cls.create_subpanels()
+
+    @classmethod
+    def unload_panel(cls):
+        """Cleanly unload this panel and its resources.
+        """
+        from bpy.utils import unregister_class
+
+        # Clean up and unregister
+        cls.destroy_subpanels()
+        unregister_class(cls.property_group)
+
+    @classmethod
+    def register(cls):
+        """Blender register callback.
+        """
+        cls.PANEL_CONTEXT = 'light'
+
+        # Important: initialize before any register call!
+        stk_props.STKLightPropertyGroup.initialize()
+        stk_props.STKLightPropertyGroup.__annotations__['type'] = PointerProperty(
+            type=bpy.types.Light,
+            name="Light Type",
+            description="The light type",
+            options=set()
+        )
+        print(stk_props.STKLightPropertyGroup.__annotations__)
+        cls.load_panel(stk_props.STKLightPropertyGroup)
+
+    @classmethod
+    def unregister(cls):
+        """Blender unregister callback.
+        """
+        cls.unload_panel()
+
+    @classmethod
+    def poll(cls, context):
+        """Panel poll method.
+        Only display this panel if a light is currently selected.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        return context.light and stk_utils.get_stk_scene_type(context) != 'none'
+
+    def draw(self, context):
+        """Panel draw method.
+        Check if the type of light can be exported as STK light.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+        """
+        #print(getattr(context, 'light')['type'])
+        if context.light.type != 'POINT' and context.light.type != 'SUN':
+            self.layout.label(text="SuperTuxKart does not support this type of light.")
+        else:
+            # self.layout.label(text=context.light.stk.type)
+            #context.light.stk.type = context.light.type.lower()
+            super().draw(context)
+
+
+class STK_PT_CameraProperties(bpy.types.Panel, STKPanelMixin):
+    """SuperTuxKart camera properties panel.
+    """
+    bl_idname = 'STK_PT_camera_properties'
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = 'data'
+    bl_label = "SuperTuxKart Camera Properties"
+
+    @classmethod
+    def load_panel(cls, property_group):
+        """Cleanly load this panel by providing a corresponding property group reference.
+
+        Parameters
+        ----------
+        property_group : stk.props.STKPropertyGroup
+            The corresponding property group (must be fully initialized, but not yet registered)
+        """
+        from bpy.utils import register_class
+
+        register_class(property_group)
+
+        # Initialize and build sub-panels
+        cls.initialize(property_group, [])
+        cls.create_subpanels()
+
+    @classmethod
+    def unload_panel(cls):
+        """Cleanly unload this panel and its resources.
+        """
+        from bpy.utils import unregister_class
+
+        # Clean up and unregister
+        cls.destroy_subpanels()
+        unregister_class(cls.property_group)
+
+    @classmethod
+    def register(cls):
+        """Blender register callback.
+        """
+        cls.PANEL_CONTEXT = 'camera'
+
+        # Important: initialize before any register call!
+        stk_props.STKCameraPropertyGroup.initialize()
+        cls.load_panel(stk_props.STKCameraPropertyGroup)
+
+    @classmethod
+    def unregister(cls):
+        """Blender unregister callback.
+        """
+        cls.unload_panel()
+
+    @classmethod
+    def poll(cls, context):
+        """Panel poll method.
+        Only display this panel if a camera is currently selected.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        return context.camera and stk_utils.get_stk_scene_type(context) != 'none'
+
+
 class STK_PT_MaterialProperties(bpy.types.Panel, STKPanelMixin):
     """SuperTuxKart material properties panel.
     """
@@ -1074,7 +1238,7 @@ class STK_PT_MaterialProperties(bpy.types.Panel, STKPanelMixin):
         AnyType
             Value indicating if this panel should be rendered or not
         """
-        if not context.material:
+        if not context.material or not context.material.use_nodes or stk_utils.get_stk_scene_type(context) == 'none':
             return False
 
-        return True
+        return stk_utils.is_stk_material(context.material.node_tree)
