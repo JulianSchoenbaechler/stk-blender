@@ -49,14 +49,14 @@ def getObject(context, contextLevel):
     return None
 
 
-def get_stk_scene_type(context):
+def get_stk_scene_type(context: bpy.context):
     if hasattr(context.scene, 'stk'):
         return context.scene.stk.type
 
     return 'none'
 
 
-def get_stk_context(context, context_level):
+def get_stk_context(context: bpy.context, context_level: str):
     if context_level == 'object':
         return getattr(context.object, f'stk_{get_stk_scene_type(context)}', None)
     elif context_level == 'material':
@@ -67,6 +67,21 @@ def get_stk_context(context, context_level):
         return getattr(context.camera, 'stk')
     else:
         return getattr(context.scene, 'stk')
+
+
+def is_stk_material(node_tree: bpy.types.NodeTree):
+    for node in node_tree.nodes:
+        if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+            socket = node.inputs['Surface']
+
+            if socket.is_linked:
+                shader_node = socket.links[0].from_node
+
+                # Use simple string comparison to make it work for future shaders
+                if shader_node.__class__.__name__.startswith('Antarctica'):
+                    return True
+
+    return False
 
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property

@@ -23,7 +23,7 @@
 from . import stk_panel, stk_material, stk_kart, stk_track, stk_shaders, stk_props
 import bpy
 from bpy.app.handlers import persistent
-from nodeitems_builtins import ShaderNodeCategory
+from nodeitems_builtins import ShaderNodeCategory, world_shader_nodes_poll, object_eevee_cycles_shader_nodes_poll
 from nodeitems_utils import NodeItem, register_node_categories, unregister_node_categories
 
 bl_info = {
@@ -88,9 +88,13 @@ classes = (
     stk_shaders.AntarcticaTransparentAdditive,
     stk_shaders.AntarcticaUnlit,
     stk_shaders.AntarcticaCustom,
+    stk_shaders.AntarcticaBackground,
+    stk_shaders.AntarcticaSkybox,
 
     stk_panel.STK_PT_SceneProperties,
     stk_panel.STK_PT_ObjectProperties,
+    stk_panel.STK_PT_LightProperties,
+    stk_panel.STK_PT_CameraProperties,
     stk_panel.STK_PT_MaterialProperties,
 )
 
@@ -103,12 +107,14 @@ def register():
         register_class(cls)
 
     shcat = [ShaderNodeCategory("SH_ANTARCTICA", "SuperTuxKart", items=[
-        NodeItem("AntarcticaSolidPBR"),
-        NodeItem("AntarcticaCutoutPBR"),
-        NodeItem("AntarcticaTransparent"),
-        NodeItem("AntarcticaTransparentAdditive"),
-        NodeItem("AntarcticaUnlit"),
-        NodeItem("AntarcticaCustom"),
+        NodeItem("AntarcticaSolidPBR", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaCutoutPBR", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaTransparent", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaTransparentAdditive", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaUnlit", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaCustom", poll=object_eevee_cycles_shader_nodes_poll),
+        NodeItem("AntarcticaBackground", poll=world_shader_nodes_poll),
+        NodeItem("AntarcticaSkybox", poll=world_shader_nodes_poll),
     ])]
 
     register_node_categories("SH_ANTARCTICA", shcat)

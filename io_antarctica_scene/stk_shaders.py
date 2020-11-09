@@ -191,7 +191,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
 
     @staticmethod
     def setup_normal(nt, nd_normalMap):
-        """Setup a node tree in a given node group object and return  the node socket that represents the materials
+        """Setup a node tree in a given node group object and return the node socket that represents the materials
         normal vector.
         This is the default normals calculation for simulating the Antarctica PBR shader.
 
@@ -227,8 +227,8 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -329,7 +329,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
             layout.prop(self, 'prop_hue')
             prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Hue Selection")
-            prop_layout.prop(self, 'prop_hueSelect', text='')
+            prop_layout.prop(self, 'prop_hueSelect', text="")
 
 
 class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
@@ -453,8 +453,8 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -528,7 +528,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
             layout.prop(self, 'prop_hue')
             prop_layout = layout.row().split(factor=0.3)
             prop_layout.label(text="Hue Selection")
-            prop_layout.prop(self, 'prop_hueSelect', text='')
+            prop_layout.prop(self, 'prop_hueSelect', text="")
 
 
 class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
@@ -627,8 +627,8 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -755,8 +755,8 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -833,8 +833,8 @@ class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -974,8 +974,8 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        ntname = '.' + self.bl_name + '_nodetree'
-        nt = bpy.data.node_groups.new(ntname, 'ShaderNodeTree')
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
@@ -1024,7 +1024,7 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
         """Draw node buttons."""
         prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Shader")
-        prop_layout.prop(self, 'prop_shader', text='')
+        prop_layout.prop(self, 'prop_shader', text="")
 
         # Main texture
         prop_layout = layout.row().split(factor=0.4)
@@ -1044,7 +1044,7 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
         prop_layout.prop(
             self,
             'prop_texture_foldout',
-            icon='TRIA_DOWN' if self.prop_texture_foldout else 'TRIA_RIGHT',
+            icon='DISCLOSURE_TRI_DOWN' if self.prop_texture_foldout else 'DISCLOSURE_TRI_RIGHT',
             emboss=False
         )
 
@@ -1088,4 +1088,510 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
             layout.prop(self, 'prop_hue')
             prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text='Hue Selection')
-            prop_layout.prop(self, 'prop_hueSelect', text='')
+            prop_layout.prop(self, 'prop_hueSelect', text="")
+
+
+class AntarcticaBackground(bpy.types.ShaderNodeCustomGroup):
+    """Represents a shader node for the worlds environment that simulates the plain color background in the 'Antarctica'
+    render pipeline of SuperTuxKart. This class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaBackground'
+    bl_label = "Antarctica Background (Plain)"
+    bl_description = "Accesses the SuperTuxKart plain color background shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def __get_color(self):
+        """Getter of the background color value."""
+        return self.node_tree.nodes['Color'].inputs['Color'].default_value[:3]
+
+    def __set_color(self, value):
+        """Setter of the background color value."""
+        self.node_tree.nodes['Color'].inputs['Color'].default_value = (value[0], value[1], value[2], 1.0)
+
+    def __get_ambient(self):
+        """Getter of the ambient color value."""
+        return self.node_tree.nodes['Ambient'].inputs['Color'].default_value[:3]
+
+    def __set_ambient(self, value):
+        """Setter of the ambient color value."""
+        self.node_tree.nodes['Ambient'].inputs['Color'].default_value = (value[0], value[1], value[2], 1.0)
+
+    # Shader properties
+    prop_color: bpy.props.FloatVectorProperty(
+        name="Color",
+        default=(0.3, 0.4, 1.0),
+        subtype='COLOR',
+        min=0.0,
+        max=1.0,
+        get=__get_color,
+        set=__set_color
+    )
+    prop_ambient: bpy.props.FloatVectorProperty(
+        name="Ambient Color",
+        default=(0.4, 0.4, 0.4),
+        subtype='COLOR',
+        min=0.0,
+        max=1.0,
+        get=__get_ambient,
+        set=__set_ambient
+    )
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+
+        # Mixing background shaders based on camera ray
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_light_path = nt.nodes.new('ShaderNodeLightPath')
+
+        # Background shaders
+        nd_bg_color = nt.nodes.new('ShaderNodeBackground')
+        nd_bg_color.name = 'Color'
+        nd_bg_color.inputs['Color'].default_value = (0.3, 0.4, 1.0, 1.0)
+
+        nd_bg_ambient = nt.nodes.new('ShaderNodeBackground')
+        nd_bg_ambient.name = 'Ambient'
+        nd_bg_ambient.inputs['Color'].default_value = (0.4, 0.4, 0.4, 1.0)
+
+        # Link tree
+        nt.links.new(nd_shader_mix.outputs[0], nd_output.inputs[0])
+        nt.links.new(nd_light_path.outputs['Is Camera Ray'], nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_bg_ambient.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nd_bg_color.outputs[0], nd_shader_mix.inputs[2])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        prop_layout = layout.row().split(factor=0.4)
+        prop_layout.label(text="Color")
+        prop_layout.prop(self, 'prop_color', text="Color")
+
+        prop_layout = layout.row().split(factor=0.4)
+        prop_layout.label(text="Ambient")
+        prop_layout.prop(self, 'prop_ambient', text="")
+
+
+class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
+    """Represents a shader node for the worlds environment that simulates the skybox background in the 'Antarctica'
+    render pipeline of SuperTuxKart. This class also stores shader specific properties for export.
+    """
+
+    bl_name = 'AntarcticaSkybox'
+    bl_label = "Antarctica Sky Box"
+    bl_description = "Accesses the SuperTuxKart skybox background shader"
+    bl_width_default = 280
+    bl_width_min = 200
+
+    def __get_ambient(self):
+        """Getter of the ambient color value."""
+        return self.node_tree.nodes['Ambient'].inputs['Color1'].default_value[:3]
+
+    def __set_ambient(self, value):
+        """Setter of the ambient color value."""
+        print(self.node_tree.nodes['Ambient'].inputs['Color1'].default_value)
+        self.node_tree.nodes['Ambient'].inputs['Color1'].default_value = (value[0], value[1], value[2], 1.0)
+
+    def __get_use_ambient(self):
+        """Getter of the ambient color value."""
+        return self.node_tree.nodes['Ambient'].inputs['Fac'].default_value > 0.001
+
+    def __set_use_ambient(self, value):
+        """Setter of the ambient color value."""
+        self.node_tree.nodes['Ambient'].inputs['Fac'].default_value = 1.0 if value else 0.0
+
+    # Shader properties
+
+    # Skybox texture samplers
+    prop_texture_n: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture North"
+    )
+    prop_texture_e: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture East"
+    )
+    prop_texture_s: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture South"
+    )
+    prop_texture_w: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture West"
+    )
+    prop_texture_t: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture Top"
+    )
+    prop_texture_b: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Texture Bottom"
+    )
+
+    # Use ambient light map (skybox)
+    prop_use_map: bpy.props.BoolProperty(
+        name="Use Ambient Light Map",
+        default=False,
+        get=__get_use_ambient,
+        set=__set_use_ambient
+    )
+
+    # Ambient light color
+    prop_ambient: bpy.props.FloatVectorProperty(
+        name="Ambient Color",
+        default=(0.4, 0.4, 0.4),
+        subtype='COLOR',
+        min=0.0,
+        max=1.0,
+        get=__get_ambient,
+        set=__set_ambient
+    )
+
+    # Ambient light map texture samplers
+    prop_ambient_n: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient North"
+    )
+    prop_ambient_e: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient East"
+    )
+    prop_ambient_s: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient South"
+    )
+    prop_ambient_w: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient West"
+    )
+    prop_ambient_t: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient Top"
+    )
+    prop_ambient_b: bpy.props.PointerProperty(
+        type=bpy.types.Image,
+        name="Ambient Bottom"
+    )
+
+    @staticmethod
+    def setup_skybox(nt, nd_northTex, nd_eastTex, nd_southTex, nd_westTex, nd_topTex, nd_bottomTex):
+        """Setup a node tree in a given node group object and return the node socket that represents the output color of
+        a skybox (cube map). Expects six different texture nodes as skybox input.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nd_northTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (north)
+        nd_eastTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (east)
+        nd_southTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (south)
+        nd_westTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (west)
+        nd_topTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (top)
+        nd_bottomTex : bpy.types.ShaderNodeTexImage
+            The image texture node that provides the cube map texture (bottom)
+
+        Returns
+        -------
+        bpy.types.NodeSocketColor
+            The output node socket for the skybox color
+        """
+
+        nd_texCoord = nt.nodes.new('ShaderNodeTexCoord')
+        nd_separate = nt.nodes.new('ShaderNodeSeparateXYZ')
+
+        nd_c0_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c1_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c2_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c3_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c4_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c5_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_c0_mix.blend_type = 'MULTIPLY'
+        nd_c0_mix.inputs['Color2'].default_value = (0.0, 0.0, 0.0, 0.0)
+        nd_c2_mix.blend_type = 'ADD'
+        nd_c3_mix.blend_type = 'ADD'
+        nd_c4_mix.blend_type = 'ADD'
+        nd_c5_mix.blend_type = 'ADD'
+
+        def create_uv(u, v):
+            nd_combine = nt.nodes.new('ShaderNodeCombineXYZ')
+            nt.links.new(u, nd_combine.inputs['X'])
+            nt.links.new(v, nd_combine.inputs['Y'])
+
+            return nd_combine.outputs[0]
+
+        def math_node(operation, *inputs):
+            nd_math = nt.nodes.new('ShaderNodeMath')
+            nd_math.operation = operation
+
+            for i, value in enumerate(inputs):
+                if isinstance(value, bpy.types.NodeSocket):
+                    nt.links.new(value, nd_math.inputs[i])
+                else:
+                    nd_math.inputs[i].default_value = value
+
+            return nd_math.outputs[0]
+
+        # Setup variables
+        nt.links.new(nd_texCoord.outputs['Normal'], nd_separate.inputs[0])
+        x = nd_separate.outputs['X']
+        y = nd_separate.outputs['Y']
+        z = nd_separate.outputs['Z']
+        gt_x = math_node('GREATER_THAN', x, 0.0)
+        gt_y = math_node('GREATER_THAN', y, 0.0)
+        gt_z = math_node('GREATER_THAN', z, 0.0)
+        lt_x = math_node('LESS_THAN', x, 0.0)
+        lt_y = math_node('LESS_THAN', y, 0.0)
+        lt_z = math_node('LESS_THAN', z, 0.0)
+        abs_x = math_node('ABSOLUTE', x)
+        abs_y = math_node('ABSOLUTE', y)
+        abs_z = math_node('ABSOLUTE', z)
+
+        mask_north_south = math_node(
+            'MULTIPLY',
+            math_node('LESS_THAN', abs_x, abs_y),
+            math_node('LESS_THAN', abs_z, abs_y)
+        )
+
+        mask_east_west = math_node(
+            'MULTIPLY',
+            math_node('LESS_THAN', abs_y, abs_x),
+            math_node('LESS_THAN', abs_z, abs_x)
+        )
+
+        mask_top_bottom = math_node(
+            'MULTIPLY',
+            math_node('LESS_THAN', abs_x, abs_z),
+            math_node('LESS_THAN', abs_y, abs_z)
+        )
+
+        # UVs
+        # North
+        div_horizontal = math_node('DIVIDE', x, y)
+        u_north = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+        div_horizontal = math_node('DIVIDE', z, y)
+        v_north = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+
+        # South
+        u_south = u_north
+        v_south = math_node('SUBTRACT', 1.0, v_north)
+
+        # East
+        div_horizontal = math_node('MULTIPLY', math_node('DIVIDE', y, x), -1.0)
+        u_east = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+        div_horizontal = math_node('DIVIDE', z, x)
+        v_east = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+
+        # West
+        u_west = u_east
+        v_west = math_node('SUBTRACT', 1.0, v_east)
+
+        # Top
+        div_horizontal = math_node('MULTIPLY', math_node('DIVIDE', y, z), -1.0)
+        u_top = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+        div_horizontal = math_node('MULTIPLY', math_node('DIVIDE', x, z), -1.0)
+        v_top = math_node('MULTIPLY_ADD', div_horizontal, 0.5, 0.5)
+
+        # Bottom
+        u_bottom = u_top
+        v_bottom = math_node('SUBTRACT', 1.0, v_top)
+
+        # Link UV coordinates to textures
+        nt.links.new(create_uv(u_north, v_north), nd_northTex.inputs['Vector'])
+        nt.links.new(create_uv(u_east, v_east), nd_eastTex.inputs['Vector'])
+        nt.links.new(create_uv(u_south, v_south), nd_southTex.inputs['Vector'])
+        nt.links.new(create_uv(u_west, v_west), nd_westTex.inputs['Vector'])
+        nt.links.new(create_uv(u_top, v_top), nd_topTex.inputs['Vector'])
+        nt.links.new(create_uv(u_bottom, v_bottom), nd_bottomTex.inputs['Vector'])
+
+        # Plane
+        factor_north = math_node('SUBTRACT', 1.0, math_node('MULTIPLY', mask_north_south, lt_y))
+        factor_south = math_node('MULTIPLY', mask_north_south, gt_y)
+        factor_east = math_node('MULTIPLY', mask_east_west, lt_x)
+        factor_west = math_node('MULTIPLY', mask_east_west, gt_x)
+        factor_top = math_node('MULTIPLY', mask_top_bottom, lt_z)
+        factor_bottom = math_node('MULTIPLY', mask_top_bottom, gt_z)
+
+        # Add all colors together
+        nt.links.new(factor_north, nd_c0_mix.inputs['Fac'])
+        nt.links.new(factor_east, nd_c1_mix.inputs['Fac'])
+        nt.links.new(factor_south, nd_c2_mix.inputs['Fac'])
+        nt.links.new(factor_west, nd_c3_mix.inputs['Fac'])
+        nt.links.new(factor_top, nd_c4_mix.inputs['Fac'])
+        nt.links.new(factor_bottom, nd_c5_mix.inputs['Fac'])
+
+        nt.links.new(nd_northTex.outputs['Color'], nd_c0_mix.inputs['Color1'])
+        nt.links.new(nd_c0_mix.outputs['Color'], nd_c1_mix.inputs['Color1'])
+        nt.links.new(nd_eastTex.outputs['Color'], nd_c1_mix.inputs['Color2'])
+        nt.links.new(nd_c1_mix.outputs['Color'], nd_c2_mix.inputs['Color1'])
+        nt.links.new(nd_southTex.outputs['Color'], nd_c2_mix.inputs['Color2'])
+        nt.links.new(nd_c2_mix.outputs['Color'], nd_c3_mix.inputs['Color1'])
+        nt.links.new(nd_westTex.outputs['Color'], nd_c3_mix.inputs['Color2'])
+        nt.links.new(nd_c3_mix.outputs['Color'], nd_c4_mix.inputs['Color1'])
+        nt.links.new(nd_topTex.outputs['Color'], nd_c4_mix.inputs['Color2'])
+        nt.links.new(nd_c4_mix.outputs['Color'], nd_c5_mix.inputs['Color1'])
+        nt.links.new(nd_bottomTex.outputs['Color'], nd_c5_mix.inputs['Color2'])
+
+        return nd_c5_mix.outputs['Color']
+
+    def init(self, context):
+        """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
+        # Setup node tree
+        nt_name = '.' + self.bl_name + '_nodetree'
+        nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
+        nt.outputs.new('NodeSocketShader', 'Output')
+
+        # Output node
+        nd_output = nt.nodes.new('NodeGroupOutput')
+
+        # Mixing background shaders based on camera ray
+        nd_shader_mix = nt.nodes.new('ShaderNodeMixShader')
+        nd_light_path = nt.nodes.new('ShaderNodeLightPath')
+
+        # Background shaders
+        nd_bg_color = nt.nodes.new('ShaderNodeBackground')
+        nd_bg_color.name = 'Color'
+
+        nd_bg_ambient = nt.nodes.new('ShaderNodeBackground')
+
+        nd_ambient_mix = nt.nodes.new('ShaderNodeMixRGB')
+        nd_ambient_mix.blend_type = 'MIX'
+        nd_ambient_mix.inputs['Fac'].default_value = 0.0
+        nd_ambient_mix.name = 'Ambient'
+
+        # Skybox texture inputs
+        nd_northTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_eastTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_southTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_westTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_topTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_bottomTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_northTex.name = 'Texture North'
+        nd_eastTex.name = 'Texture East'
+        nd_southTex.name = 'Texture South'
+        nd_westTex.name = 'Texture West'
+        nd_topTex.name = 'Texture Top'
+        nd_bottomTex.name = 'Texture Bottom'
+
+        # Skybox mapping
+        nds_color = self.setup_skybox(nt, nd_northTex, nd_eastTex, nd_southTex, nd_westTex, nd_topTex, nd_bottomTex)
+
+        # Ambient texture inputs
+        nd_northTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_eastTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_southTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_westTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_topTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_bottomTex = nt.nodes.new('ShaderNodeTexImage')
+        nd_northTex.name = 'Ambient North'
+        nd_eastTex.name = 'Ambient East'
+        nd_southTex.name = 'Ambient South'
+        nd_westTex.name = 'Ambient West'
+        nd_topTex.name = 'Ambient Top'
+        nd_bottomTex.name = 'Ambient Bottom'
+
+        # Ambient mapping
+        nds_ambient = self.setup_skybox(nt, nd_northTex, nd_eastTex, nd_southTex, nd_westTex, nd_topTex, nd_bottomTex)
+
+        # Shader mixing links
+        nt.links.new(nd_shader_mix.outputs[0], nd_output.inputs[0])
+        nt.links.new(nd_light_path.outputs['Is Camera Ray'], nd_shader_mix.inputs['Fac'])
+        nt.links.new(nd_bg_ambient.outputs[0], nd_shader_mix.inputs[1])
+        nt.links.new(nd_bg_color.outputs[0], nd_shader_mix.inputs[2])
+
+        # Color links
+        nt.links.new(nds_color, nd_bg_color.inputs['Color'])
+        nt.links.new(nds_ambient, nd_ambient_mix.inputs['Color2'])
+        nt.links.new(nd_ambient_mix.outputs[0], nd_bg_ambient.inputs['Color'])
+
+        # Assign generated node tree
+        self.node_tree = nt
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
+
+    def draw_buttons(self, context, layout):
+        """Draw node buttons."""
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="North")
+        prop_layout.template_ID(self.node_tree.nodes['Texture North'], 'image', new='image.new', open='image.open')
+
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="East")
+        prop_layout.template_ID(self.node_tree.nodes['Texture East'], 'image', new='image.new', open='image.open')
+
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="South")
+        prop_layout.template_ID(self.node_tree.nodes['Texture South'], 'image', new='image.new', open='image.open')
+
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="West")
+        prop_layout.template_ID(self.node_tree.nodes['Texture West'], 'image', new='image.new', open='image.open')
+
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="Top")
+        prop_layout.template_ID(self.node_tree.nodes['Texture Top'], 'image', new='image.new', open='image.open')
+
+        prop_layout = layout.row().split(factor=0.3)
+        prop_layout.label(text="Bottom")
+        prop_layout.template_ID(self.node_tree.nodes['Texture Bottom'], 'image', new='image.new', open='image.open')
+
+        box = layout.box()
+        box.label(text="Ambient Lighting")
+        box.prop(self, 'prop_use_map')
+
+        if self.prop_use_map:
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="North")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient North'], 'image', new='image.new', open='image.open')
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="East")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient East'], 'image', new='image.new', open='image.open')
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="South")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient South'], 'image', new='image.new', open='image.open')
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="West")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient West'], 'image', new='image.new', open='image.open')
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="Top")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient Top'], 'image', new='image.new', open='image.open')
+
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="Bottom")
+            prop_layout.template_ID(self.node_tree.nodes['Ambient Bottom'], 'image', new='image.new', open='image.open')
+        else:
+            prop_layout = box.row().split(factor=0.3)
+            prop_layout.label(text="Color")
+            prop_layout.prop(self, 'prop_ambient', text="")
