@@ -20,11 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from . import stk_panel, stk_material, stk_kart, stk_track, stk_shaders, stk_props
-import bpy
-from bpy.app.handlers import persistent
-from nodeitems_builtins import ShaderNodeCategory, world_shader_nodes_poll, object_eevee_cycles_shader_nodes_poll
-from nodeitems_utils import NodeItem, register_node_categories, unregister_node_categories
+# <pep8-120 compliant>
 
 bl_info = {
     'name': "SuperTuxKart Exporter Tools",
@@ -38,6 +34,43 @@ bl_info = {
     'tracker_url': "https://github.com/supertuxkart/stk-blender/issues",
     'category': "Import-Export"
 }
+
+if 'bpy' in locals():
+    import importlib
+    if 'stk_props' in locals():
+        importlib.reload(stk_props)  # pylint: disable=used-before-assignment
+    if 'stk_panel' in locals():
+        importlib.reload(stk_panel)  # pylint: disable=used-before-assignment
+    if 'stk_operators' in locals():
+        importlib.reload(stk_operators)  # pylint: disable=used-before-assignment
+    if 'stk_shaders' in locals():
+        importlib.reload(stk_shaders)  # pylint: disable=used-before-assignment
+    if 'stk_material' in locals():
+        importlib.reload(stk_material)  # pylint: disable=used-before-assignment
+    if 'stk_kart' in locals():
+        importlib.reload(stk_kart)  # pylint: disable=used-before-assignment
+    if 'stk_track' in locals():
+        importlib.reload(stk_track)  # pylint: disable=used-before-assignment
+    if 'stk_track_new' in locals():
+        importlib.reload(stk_track_new)  # pylint: disable=used-before-assignment
+
+import bpy  # noqa(E402,)
+from bpy.app.handlers import persistent  # noqa(E402,)
+from nodeitems_builtins import ShaderNodeCategory, \
+                               world_shader_nodes_poll, \
+                               object_eevee_cycles_shader_nodes_poll  # noqa(E402,)
+from nodeitems_utils import NodeItem, \
+                            register_node_categories, \
+                            unregister_node_categories  # noqa(E402,)
+
+from . import stk_props, \
+              stk_panel, \
+              stk_operators, \
+              stk_shaders, \
+              stk_material, \
+              stk_kart, \
+              stk_track, \
+              stk_track_new  # noqa(E402,)
 
 
 def menu_func_export_stk_material(self, context):
@@ -62,8 +95,8 @@ def menu_func_add_stk_object(self, context):
 
 @persistent
 def load_handler(arg):
-    # Reaload object properties for new scene
-    bpy.ops.stk.reload_object_properties()
+    # Reload object properties for new scene
+    bpy.ops.stk.reload_object_properties()  # pylint: disable=no-member
 
 
 classes = (
@@ -82,6 +115,14 @@ classes = (
     stk_kart.STK_Kart_Export_Operator,
     stk_track.STK_Track_Export_Operator,
 
+    stk_panel.STK_PT_SceneProperties,
+    stk_panel.STK_PT_ObjectProperties,
+    stk_panel.STK_PT_LightProperties,
+    stk_panel.STK_PT_CameraProperties,
+    stk_panel.STK_PT_MaterialProperties,
+
+    stk_operators.STK_OT_TrackExport,
+
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
     stk_shaders.AntarcticaTransparent,
@@ -90,12 +131,6 @@ classes = (
     stk_shaders.AntarcticaCustom,
     stk_shaders.AntarcticaBackground,
     stk_shaders.AntarcticaSkybox,
-
-    stk_panel.STK_PT_SceneProperties,
-    stk_panel.STK_PT_ObjectProperties,
-    stk_panel.STK_PT_LightProperties,
-    stk_panel.STK_PT_CameraProperties,
-    stk_panel.STK_PT_MaterialProperties,
 )
 
 

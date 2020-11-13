@@ -110,10 +110,10 @@
 
         <!-- geometry level visibility -->
         <bool id="visibility" label="Object Visibility Details" default="false"
-              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              bind="type" condition="lambda t: t == 'object'"
               doc="Allows the engine to know if an object can be hidden for performance reasons"/>
         <box id="visibility_box" bind="type visibility"
-             condition="lambda t, p: p and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone')">
+             condition="lambda t, p: p and t == 'object'">
             <enum id="visibility_detail" label="Visibility" default="always"
                   doc="Specifies the level of detail at which the object will be visible">
                 <item value="high" label="High Quality"/>
@@ -144,7 +144,7 @@
 
         <enum id="shape" label="Physics Shape" default="box"
               bind="type interaction"
-              condition="lambda t, p: (t == 'object' or t == 'lod_instance' or t == 'lod_standalone') and p != 'physics' and p != 'ghost'"
+              condition="lambda t, p: (t == 'object' and p != 'physics' and p != 'ghost') or ((t == 'lod_instance' or t == 'lod_standalone') and p == 'movable')"
               doc="Shape to use in the physics engine to represent this object">
             <item value="box" label="Box"/>
             <item value="sphere" label="Sphere"/>
@@ -165,10 +165,10 @@
               bind="type interaction" condition="lambda t, p: t == 'object' and p == 'movable'"
               doc="Exported object is the soccer ball"/>
         <bool id="glow" label="Glow" default="false"
-              bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
+              bind="type" condition="lambda t: t == 'object'"
               doc="Enable an outlining glow effect on this particular object"/>
         <box id="glow_box" bind="type glow"
-             condition="lambda t, p: p and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone')">
+             condition="lambda t, p: p and t == 'object'">
             <color id="glow_color" label="Glow Color" default="1.0 1.0 1.0" doc="The color of the glow effect"/>
         </box>
         <bool id="shadows" label="Cast Shadows" default="true"

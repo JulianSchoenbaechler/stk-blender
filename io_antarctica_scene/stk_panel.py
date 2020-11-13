@@ -1051,13 +1051,13 @@ class STK_PT_LightProperties(bpy.types.Panel, STKPanelMixin):
 
         # Important: initialize before any register call!
         stk_props.STKLightPropertyGroup.initialize()
+        # pylint: disable=assignment-from-no-return
         stk_props.STKLightPropertyGroup.__annotations__['type'] = PointerProperty(
             type=bpy.types.Light,
             name="Light Type",
             description="The light type",
             options=set()
         )
-        print(stk_props.STKLightPropertyGroup.__annotations__)
         cls.load_panel(stk_props.STKLightPropertyGroup)
 
     @classmethod
@@ -1081,7 +1081,8 @@ class STK_PT_LightProperties(bpy.types.Panel, STKPanelMixin):
         AnyType
             Value indicating if this panel should be rendered or not
         """
-        return context.light and stk_utils.get_stk_scene_type(context) != 'none'
+        t = stk_utils.get_stk_scene_type(context)
+        return context.light and t != 'none' and t != 'kart'
 
     def draw(self, context):
         """Panel draw method.
@@ -1092,12 +1093,9 @@ class STK_PT_LightProperties(bpy.types.Panel, STKPanelMixin):
         context : bpy.context
             The Blender context object
         """
-        #print(getattr(context, 'light')['type'])
         if context.light.type != 'POINT' and context.light.type != 'SUN':
             self.layout.label(text="SuperTuxKart does not support this type of light.")
         else:
-            # self.layout.label(text=context.light.stk.type)
-            #context.light.stk.type = context.light.type.lower()
             super().draw(context)
 
 
@@ -1168,7 +1166,7 @@ class STK_PT_CameraProperties(bpy.types.Panel, STKPanelMixin):
         AnyType
             Value indicating if this panel should be rendered or not
         """
-        return context.camera and stk_utils.get_stk_scene_type(context) != 'none'
+        return context.camera and stk_utils.get_stk_scene_type(context) == 'track'
 
 
 class STK_PT_MaterialProperties(bpy.types.Panel, STKPanelMixin):

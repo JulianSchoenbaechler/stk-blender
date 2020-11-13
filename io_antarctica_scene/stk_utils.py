@@ -22,6 +22,7 @@
 
 import bpy
 import os
+import numpy as np
 import base64
 import getpass
 import hashlib
@@ -32,6 +33,12 @@ from xml.sax.saxutils import escape
 CONTEXT_OBJECT = 0
 CONTEXT_SCENE = 1
 CONTEXT_MATERIAL = 2
+
+# Packed data containers
+vec2 = np.dtype([('x', np.float32), ('y', np.float32)])
+vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
+vec4 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('w', np.float32)])
+keyframe = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
 
 
 def getObject(context, contextLevel):
