@@ -1,5 +1,14 @@
 <?xml version="1.0"?>
 <properties>
     <!-- type selection -->
-    <label id="my_label">Some properties...</label>
+    <enum id="type" label="Type" default="end_fixed" doc="The SuperTuxKart camera type">
+        <item value="end_fixed" label="End Camera (Fixed)" doc="An end camera that stays in place"/>
+        <item value="end_kart" label="End Camera (Kart)" doc="An end camera that follows the kart"/>
+        <item value="cutscene" label="Cutscene" doc="A cutscene camera"/>
+        <item value="none" label="None" doc="No SuperTuxKart camera"/>
+    </enum>
+
+    <float id="distance" label="Activate Distance" default="10.0" min="0.0" max="1000.0"
+           bind="type" condition="lambda t: t.startswith('end_')"
+           doc="The distance from the end camera (sphere radius) in which it will be activated"/>
 </properties>
