@@ -37,7 +37,9 @@ class STK_OT_TrackExport(bpy.types.Operator):
     def execute(self, context):
 
         dg = bpy.context.evaluated_depsgraph_get()
-        stk_track_new.write_scene(context)
+        scene = stk_track_new.write_scene(context, self.report)
+        print("static", scene.static_objects)
+        print("dynamic", scene.dynamic_objects)
 
         for obj in context.scene.objects:
             pass

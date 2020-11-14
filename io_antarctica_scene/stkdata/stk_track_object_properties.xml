@@ -72,7 +72,7 @@
 
         <!-- object file name -->
         <string id="name" label="Object Name" default="some_model"
-                bind="type" condition="lambda t: t == 'object' or t == 'lod_model' or t == 'lod_standalone'"
+                bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
                 doc="Name of this object (file name); objects with the same name are exported as a single file"/>
 
         <!-- level of detail -->

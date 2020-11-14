@@ -90,6 +90,10 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
 
     return False
 
+
+def object_is_animated(obj: bpy.types.Object):
+    return obj.animation_data or any(m for m in obj.modifiers if m.type == 'ARMATURE')
+
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property
 # is not set. If set_value_if_undefined is set and the property is not

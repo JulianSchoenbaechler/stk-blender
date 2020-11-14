@@ -22,8 +22,26 @@
 
 import bpy
 import mathutils
+import collections
 import numpy as np
 from . import stk_utils
+
+SceneCollection = collections.namedtuple('SceneCollection', [
+    'lod_groups',
+    'static_objects',
+    'dynamic_objects',
+    'placeables',
+    'billboards',
+    'particles',
+    'godrays',
+    'audio_sources',
+    'action_triggers',
+    'drivelines',
+    'checklines',
+    'goals',
+    'lights',
+    'cameras',
+])
 
 object_geo_detail_level = {
     'off': -1,
@@ -55,10 +73,22 @@ object_physics_shape = {
 }
 
 object_flags = {
-    'driveable': 0x00,
-    'soccer_ball': 0x01,
-    'glow': 0x02,
-    'shadows': 0x04,
+    'none': 0x00,
+    'driveable': 0x01,
+    'soccer_ball': 0x02,
+    'glow': 0x04,
+    'shadows': 0x08,
+}
+
+placeable_type = {
+    'item_gift': 0x00,
+    'item_banana': 0x01,
+    'item_easteregg': 0x02,
+    'item_nitro_small': 0x03,
+    'item_nitro_big': 0x04,
+    'item_flag_red': 0x05,
+    'item_flag_blue': 0x06,
+    'start_position': 0x07,
 }
 
 eggs_visibility = {
@@ -94,15 +124,12 @@ track_object = np.dtype([
     ('custom_xml', 'U127'),         # Additional custom XML
 ])
 
-track_placeables = np.dtype([
+track_placeable = np.dtype([
     ('id', 'U127'),
+    ('type', np.int8),
     ('start_index', np.int32),
-    ('snap_ground', np.int32),
-    ('ctf_only', np.int32),
-])
-
-track_eggs = np.dtype([
-    ('id', 'U127'),
+    ('snap_ground', np.bool_),
+    ('ctf_only', np.bool_),
     ('visibility', np.int8),
 ])
 
@@ -175,11 +202,195 @@ track_camera = np.dtype([
 ])
 
 
-def write_scene(context: bpy.context):
-    lod_groups = None
-    lod_
+def write_scene(context: bpy.context, report):
+    used_identifiers = []
+    lod_groups = set()
+    static_objects = []
+    dynamic_objects = []
+    placeables = []
+    billboards = []
+    particles = []
+    godrays = []
+    audio_sources = []
+    action_triggers = []
+    drivelines = []
+    checklines = []
+    goals = []
+    lights = []
+    cameras = []
+
+    # Gather and categorize all objects that need to get exported
     for obj in context.scene.objects:
-        pass
+        # Ignore disabled
+        if obj.hide_viewport or obj.hide_render:
+            continue
+
+        if (obj.type == 'MESH' or obj.type == 'EMPTY') and hasattr(obj, 'stk_track'):
+            # Categorize objects
+            props = obj.stk_track
+            t = props.type
+
+            # Unassigned model (defaults to static track scenery)
+            if obj.type != 'EMPTY' and t == 'none':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                static_objects.append((
+                    obj.name,                           # ID
+                    None, -1.0, -1.0,                   # LOD: collection, distance, modifiers distance
+                    None, 0.0, 0.0, -1.0,               # Animated UV: material, speed U, speed V, step
+                    object_geo_detail_level['off'],     # Geometry level detail
+                    object_interaction['static'],       # Object interaction
+                    object_physics_shape['box'],        # Physics shape
+                    object_flags['none'],               # Object specific flags
+                    (0.0, 0.0, 0.0),                    # Glow color (if glow enabled)
+                    "",                                 # Scripting: poll function (if)
+                    "",                                 # Scripting: collision callback
+                    "",                                 # Custom XML
+                ))
+                used_identifiers.append(obj.name)
+
+            # Object (including LOD) with specified properties
+            elif obj.type != 'EMPTY' and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone'):
+                # Name identifier
+                staged = [props.name if len(props.name) > 0 else obj.name]
+
+                # Skip if already an object with this identifier
+                if staged[0] in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                is_static = props.interaction == 'static' or props.interaction == 'physics'
+
+                # LOD
+                staged.append(props.lod_collection)
+                staged.append(props.lod_distance if t == 'lod_standalone' else -1.0)
+                staged.append(props.lod_modifiers if t == 'lod_standalone' and props.lod_modifiers_distance else -1.0)
+
+                if props.lod_collection:
+                    lod_groups.add(props.lod_collection)
+
+                # Animated textures
+                staged.append(props.uv_material if props.uv_animated else None)
+                staged.append(props.uv_speed_u)
+                staged.append(props.uv_speed_v)
+                staged.append(props.uv_speed_dt if props.uv_step else -1.0)
+
+                # Object geometry visibility
+                if props.visibility:
+                    staged.append(object_geo_detail_level[props.visibility_detail])
+                    is_static = False
+                else:
+                    staged.append(object_geo_detail_level['off'])
+
+                # Object interaction and physics shape
+                staged.append(object_interaction[props.interaction])
+                staged.append(object_physics_shape[props.shape])
+
+                # Object flags
+                flags = object_flags['none']
+                if props.driveable:
+                    flags |= object_flags['driveable']
+                if props.soccer_ball:
+                    flags |= object_flags['soccer_ball']
+                    is_static = False
+                if props.glow:
+                    flags |= object_flags['glow']
+                    is_static = False
+                if props.shadows:
+                    flags |= object_flags['shadows']
+                else:
+                    is_static = False
+                staged.append(flags)
+                staged.append((props.glow_color.r, props.glow_color.g, props.glow_color.b))
+
+                # Scripting and output related
+                staged.append(props.visible_if)
+                staged.append(props.on_kart_collision)
+                staged.append(props.custom_xml)
+
+                # Non-static if interactive
+                if is_static and (len(props.visible_if) > 0 or len(props.on_kart_collision) > 0):
+                    is_static = False
+
+                # Non-static if animated
+                if is_static and stk_utils.object_is_animated(obj):
+                    is_static = False
+
+                print(staged)
+
+                if is_static:
+                    static_objects.append(tuple(staged))
+                else:
+                    dynamic_objects.append(tuple(staged))
+
+                used_identifiers.append(staged[0])
+
+            # Placeables
+            elif t == 'start_position' or t.startswith('item'):
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                placeables.append((
+                    obj.name,               # ID
+                    placeable_type[t],      # Placeable type
+                    props.start_index,      # Start index for start positions
+                    props.snap_ground,      # Snap to ground
+                    props.ctf_only,         # Enabled in CTF mode only
+                ))
+
+                used_identifiers.append(obj.name)
+
+            # Placeables
+            elif t == 'start_position' or t.startswith('item'):
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                placeables.append((
+                    obj.name,                                       # ID
+                    placeable_type[t],                              # Placeable type
+                    props.start_index,                              # Start index for start positions
+                    props.snap_ground,                              # Snap to ground
+                    props.ctf_only,                                 # Enabled in CTF mode only
+                    eggs_visibility[props.easteregg_visibility],    # Item visibility (only used in easter-egg mode)
+                ))
+
+                used_identifiers.append(obj.name)
+
+        elif obj.type == 'LIGHT' and hasattr(obj.data, 'stk'):
+            pass
+        elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
+            pass
+        else:
+            continue
+
+    # Create and return scene collection
+    return SceneCollection(
+        lod_groups,
+        np.array(static_objects, dtype=track_object),
+        np.array(dynamic_objects, dtype=track_object),
+        np.array(placeables, dtype=track_placeable),
+        np.array(billboards, dtype=track_billboard),
+        np.array(particles, dtype=track_particles),
+        np.array(godrays, dtype=track_godrays),
+        np.array(audio_sources, dtype=track_audio),
+        np.array(action_triggers, dtype=track_action),
+        np.array(drivelines, dtype=track_driveline),
+        np.array(checklines, dtype=track_checkline),
+        np.array(goals, dtype=track_goal),
+        np.array(lights, dtype=track_light),
+        np.array(cameras, dtype=track_camera),
+    )
 
 
 def assign_test():

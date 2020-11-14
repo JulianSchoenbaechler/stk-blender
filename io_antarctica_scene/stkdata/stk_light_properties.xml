@@ -10,7 +10,7 @@
     <!-- point light properties -->
     <label id="point_info" label="Set the light's color in the 'Light' panel."
            bind="light.type" condition="lambda t: t == 'POINT'"/>
-    <float id="point_distance" label="Distance" min="0.0" max="1000.0"
+    <float id="point_distance" label="Distance" default="10" min="0.0" max="1000.0"
            bind="light.type" condition="lambda t: t == 'POINT'"
            doc="The maximum distance of the light (radius of the light); the distance and size properties in the 'Light' panel are render engine specific to Blender's Eevee and Cycles, use this setting for SuperTuxKart"/>
 
