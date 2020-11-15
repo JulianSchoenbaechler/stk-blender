@@ -468,6 +468,25 @@ def write_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
+            # Scripting action emitter
+            elif t == 'action_trigger':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                track_action.append((
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    props.action,                           # Action call
+                    props.action_distance,                  # Trigger distance (radius)
+                    props.action_timeout,                   # Action re-enable timeout
+                    props.action_trigger == 'cylinder',     # Trigger shape (point or cylinder)
+                ))
+
+                used_identifiers.append(obj.name)
+
         elif obj.type == 'LIGHT' and hasattr(obj.data, 'stk'):
             pass
         elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
