@@ -21,8 +21,9 @@
 # SOFTWARE.
 
 import bpy
-import os
+import mathutils
 import numpy as np
+import os
 import base64
 import getpass
 import hashlib
@@ -38,6 +39,7 @@ CONTEXT_MATERIAL = 2
 vec2 = np.dtype([('x', np.float32), ('y', np.float32)])
 vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
 vec4 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('w', np.float32)])
+transform = np.dtype([('xyz', vec3), ('hpr', vec3), ('scale', vec3)])
 keyframe = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
 
 
@@ -93,6 +95,17 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
 
 def object_is_animated(obj: bpy.types.Object):
     return obj.animation_data or any(m for m in obj.modifiers if m.type == 'ARMATURE')
+
+
+def object_get_transform(obj: bpy.types.Object, local=False):
+    matrix = obj.matrix_local if local else obj.matrix_world
+    loc_rot_scale = matrix.decompose()
+    rot_euler = mathutils.Vector(loc_rot_scale[1].to_euler('ZXY')) * 57.2957795131  # rad2deg
+    return (
+        (loc_rot_scale[0].x, loc_rot_scale[0].z, loc_rot_scale[0].y),
+        (rot_euler.x, rot_euler.y, rot_euler.z),
+        (loc_rot_scale[2].x, loc_rot_scale[2].z, loc_rot_scale[2].y)
+    )
 
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property

@@ -106,26 +106,28 @@ camera_type = {
 }
 
 track_object = np.dtype([
-    ('id', 'U127'),                 # ID
-    ('lod', 'O'),                   # LOD collection reference
-    ('lod_distance', np.float32),   # LOD standalone distance (<0 for instances)
-    ('lod_modifiers', np.float32),  # LOD modifiers distance (<0 for instances or disabled)
-    ('uv_animated', 'O'),           # Material reference for UV animation
-    ('uv_speed_u', np.float32),     # UV aniamtion speed U
-    ('uv_speed_v', np.float32),     # UV aniamtion speed V
-    ('uv_speed_dt', np.float32),    # UV step aniamtion speed (<0 if disabled)
-    ('visibility', np.int8),        # Geometry level visibility (object_geo_detail_level)
-    ('interaction', np.int8),       # Interaction type (object_interaction)
-    ('shape', np.int8),             # Physics shape (object_physics_shape)
-    ('flags', np.int8),             # Object flags (object_flags)
-    ('glow', stk_utils.vec3),       # Glow color (if glow flag set)
-    ('visible_if', 'U127'),         # Scripting: only enabled if (poll function)
-    ('on_collision', 'U127'),       # Scripting: on collision scripting callback
-    ('custom_xml', 'U127'),         # Additional custom XML
+    ('id', 'U127'),                         # ID
+    ('transform', stk_utils.transform),     # Transform
+    ('lod', 'O'),                           # LOD collection reference
+    ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
+    ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
+    ('uv_animated', 'O'),                   # Material reference for UV animation
+    ('uv_speed_u', np.float32),             # UV aniamtion speed U
+    ('uv_speed_v', np.float32),             # UV aniamtion speed V
+    ('uv_speed_dt', np.float32),            # UV step aniamtion speed (<0 if disabled)
+    ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
+    ('interaction', np.int8),               # Interaction type (object_interaction)
+    ('shape', np.int8),                     # Physics shape (object_physics_shape)
+    ('flags', np.int8),                     # Object flags (object_flags)
+    ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
+    ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
+    ('on_collision', 'U127'),               # Scripting: on collision scripting callback
+    ('custom_xml', 'U127'),                 # Additional custom XML
 ])
 
 track_placeable = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('type', np.int8),
     ('start_index', np.int32),
     ('snap_ground', np.bool_),
@@ -135,6 +137,9 @@ track_placeable = np.dtype([
 
 track_billboard = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
+    ('texture', 'U127'),
+    ('size', stk_utils.vec2),
     ('fadeout_start', np.float32),
     ('fadeout_end', np.float32),
 ])
@@ -239,17 +244,18 @@ def write_scene(context: bpy.context, report):
                     continue
 
                 static_objects.append((
-                    obj.name,                           # ID
-                    None, -1.0, -1.0,                   # LOD: collection, distance, modifiers distance
-                    None, 0.0, 0.0, -1.0,               # Animated UV: material, speed U, speed V, step
-                    object_geo_detail_level['off'],     # Geometry level detail
-                    object_interaction['static'],       # Object interaction
-                    object_physics_shape['box'],        # Physics shape
-                    object_flags['none'],               # Object specific flags
-                    (0.0, 0.0, 0.0),                    # Glow color (if glow enabled)
-                    "",                                 # Scripting: poll function (if)
-                    "",                                 # Scripting: collision callback
-                    "",                                 # Custom XML
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    None, -1.0, -1.0,                       # LOD: collection, distance, modifiers distance
+                    None, 0.0, 0.0, -1.0,                   # Animated UV: material, speed U, speed V, step
+                    object_geo_detail_level['off'],         # Geometry level detail
+                    object_interaction['static'],           # Object interaction
+                    object_physics_shape['box'],            # Physics shape
+                    object_flags['none'],                   # Object specific flags
+                    (0.0, 0.0, 0.0),                        # Glow color (if glow enabled)
+                    "",                                     # Scripting: poll function (if)
+                    "",                                     # Scripting: collision callback
+                    "",                                     # Custom XML
                 ))
                 used_identifiers.append(obj.name)
 
@@ -265,6 +271,7 @@ def write_scene(context: bpy.context, report):
                     continue
 
                 is_static = props.interaction == 'static' or props.interaction == 'physics'
+                staged.append(stk_utils.object_get_transform(obj))
 
                 # LOD
                 staged.append(props.lod_collection)
@@ -321,8 +328,6 @@ def write_scene(context: bpy.context, report):
                 if is_static and stk_utils.object_is_animated(obj):
                     is_static = False
 
-                print(staged)
-
                 if is_static:
                     static_objects.append(tuple(staged))
                 else:
@@ -339,30 +344,66 @@ def write_scene(context: bpy.context, report):
                     continue
 
                 placeables.append((
-                    obj.name,               # ID
-                    placeable_type[t],      # Placeable type
-                    props.start_index,      # Start index for start positions
-                    props.snap_ground,      # Snap to ground
-                    props.ctf_only,         # Enabled in CTF mode only
+                    obj.name,                                       # ID
+                    stk_utils.object_get_transform(obj),            # Transform
+                    placeable_type[t],                              # Placeable type
+                    props.start_index,                              # Start index for start positions
+                    props.snap_ground,                              # Snap to ground
+                    props.ctf_only,                                 # Enabled in CTF mode only
+                    eggs_visibility[props.easteregg_visibility],    # Item visibility (only used in easter-egg mode)
                 ))
 
                 used_identifiers.append(obj.name)
 
-            # Placeables
-            elif t == 'start_position' or t.startswith('item'):
+            # Billboard
+            elif obj.type != 'EMPTY' and t == 'billboard':
                 # Skip if already an object with this identifier
                 if obj.name in used_identifiers:
                     report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                placeables.append((
-                    obj.name,                                       # ID
-                    placeable_type[t],                              # Placeable type
-                    props.start_index,                              # Start index for start positions
-                    props.snap_ground,                              # Snap to ground
-                    props.ctf_only,                                 # Enabled in CTF mode only
-                    eggs_visibility[props.easteregg_visibility],    # Item visibility (only used in easter-egg mode)
+                # Check billboard shape
+                if len(obj.data.vertices) != 4 or len(obj.data.polygons) == 0 or len(obj.data.polygons) > 1:
+                    report({'WARNING'}, f"The billboard '{obj.name}' has an invalid shape! Make sure it has no more "
+                           "than 4 vertices and consist of only one face.")
+                    continue
+
+                # Check billboard material
+                material = None
+
+                if len(obj.material_slots) == 0:
+                    report({'WARNING'}, f"The billboard '{obj.name}' has no material assigned!")
+                    continue
+                else:
+                    material = obj.material_slots[obj.data.polygons[0].material_index].material
+
+                    if len(material.name) > 127 or not stk_utils.is_stk_material(material.node_tree):
+                        report({'WARNING'}, f"The material of the billboard '{obj.name}' is not supported!")
+                        continue
+
+                normal = mathutils.Vector((0.0, 0.0, 0.0))
+
+                for i in range(0, 4):
+                    normal += obj.data.vertices[i].normal
+
+                size = tuple()
+
+                # Check if billboard faces upwards (angle between normal and up-vector less than 45 degree)
+                if normal.angle((0.0, 0.0, 1.0)) < 0.7853981634:
+                    size = (obj.dimensions[0], obj.dimensions[1])
+                elif normal.angle((0.0, 1.0, 0.0)) < 0.7853981634:
+                    size = (obj.dimensions[0], obj.dimensions[2])
+                else:
+                    size = (obj.dimensions[1], obj.dimensions[2])
+
+                billboards.append((
+                    obj.name,                                           # ID
+                    stk_utils.object_get_transform(obj),                # Transform
+                    material.name,                                      # Material name
+                    size,                                               # Size
+                    props.fadeout_start if props.fadeout else -1.0,     # Fadeout start
+                    props.fadeout_end if props.fadeout else -1.0,       # Fadeout end
                 ))
 
                 used_identifiers.append(obj.name)

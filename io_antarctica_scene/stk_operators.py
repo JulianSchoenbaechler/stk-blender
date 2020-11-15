@@ -40,6 +40,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         scene = stk_track_new.write_scene(context, self.report)
         print("static", scene.static_objects)
         print("dynamic", scene.dynamic_objects)
+        print("billboards", scene.billboards)
 
         for obj in context.scene.objects:
             pass
