@@ -146,6 +146,7 @@ track_billboard = np.dtype([
 
 track_particles = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('file', 'U127'),
     ('distance', np.float32),
     ('emit', np.bool_),
@@ -153,12 +154,14 @@ track_particles = np.dtype([
 
 track_godrays = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('opacity', np.float32),
     ('color', stk_utils.vec3),
 ])
 
 track_audio = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('file', 'U127'),
     ('volume', np.float32),
     ('rolloff', np.float32),
@@ -167,6 +170,7 @@ track_audio = np.dtype([
 
 track_action = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('action', 'U127'),
     ('distance', np.float32),
     ('timeout', np.float32),
@@ -404,6 +408,24 @@ def write_scene(context: bpy.context, report):
                     size,                                               # Size
                     props.fadeout_start if props.fadeout else -1.0,     # Fadeout start
                     props.fadeout_end if props.fadeout else -1.0,       # Fadeout end
+                ))
+
+                used_identifiers.append(obj.name)
+
+            # Particles
+            elif t == 'particle_emitter':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                particles.append((
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    props.particles,                        # Particles file name
+                    props.particles_distance,               # Particles clip distance
+                    props.particles_emit,                   # Particles auto-emit
                 ))
 
                 used_identifiers.append(obj.name)
