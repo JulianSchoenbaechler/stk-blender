@@ -166,6 +166,7 @@ track_audio = np.dtype([
     ('volume', np.float32),
     ('rolloff', np.float32),
     ('distance', np.float32),
+    ('trigger', np.float32),
 ])
 
 track_action = np.dtype([
@@ -426,6 +427,43 @@ def write_scene(context: bpy.context, report):
                     props.particles,                        # Particles file name
                     props.particles_distance,               # Particles clip distance
                     props.particles_emit,                   # Particles auto-emit
+                ))
+
+                used_identifiers.append(obj.name)
+
+            # Godrays / light shaft
+            elif t == 'lightshaft_emitter':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                track_godrays.append((
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    props.lightshaft_opacity,               # Light shaft opacity and color
+                    (props.lightshaft_color.r, props.lightshaft_color.g, props.lightshaft_color.b),
+                ))
+
+                used_identifiers.append(obj.name)
+
+            # SFX emitter
+            elif t == 'sfx_emitter':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                track_audio.append((
+                    obj.name,                                                   # ID
+                    stk_utils.object_get_transform(obj),                        # Transform
+                    props.sfx,                                                  # Sound file
+                    props.sfx_volume,                                           # Sound volume
+                    props.sfx_rolloff,                                          # Sound rolloff
+                    props.sfx_distance,                                         # Sound hearing distance
+                    props.sfx_trigger_distance if props.sfx_trigger else -1.0,  # Sound trigger distance
                 ))
 
                 used_identifiers.append(obj.name)

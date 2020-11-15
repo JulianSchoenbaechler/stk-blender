@@ -181,6 +181,14 @@
         <float id="sfx_distance" label="Maximum Distance" default="500.0" min="0.0" max="5000.0"
                bind="type" condition="lambda t: t == 'sfx_emitter'"
                doc="The distance from the source at which to cut the sound (stop hearing it)"/>
+        <bool id="sfx_trigger" label="Play On Approach" default="false"
+              bind="type" condition="lambda t: t == 'sfx_emitter'"
+              doc="Make this sound play when approaching it"/>
+        <box id="sfx_trigger_box"
+             bind="type sfx_trigger" condition="lambda t, p: p and t == 'sfx_emitter'">
+            <float id="sfx_trigger_distance" label="Distance" default="10.0" min="0.0" max="1000.0"
+                   doc="Distance from the kart at which the sound starts playing"/>
+        </box>
 
         <!-- action trigger -->
         <string id="action" label="Action" default=""
