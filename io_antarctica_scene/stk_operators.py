@@ -42,7 +42,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         print("static", scene.static_objects)
         print("dynamic", scene.dynamic_objects)
         print("billboards", scene.billboards)
-        print("drivelines", scene.drivelines)
+        print("cannons", scene.cannons)
 
         for obj in context.scene.objects:
             pass

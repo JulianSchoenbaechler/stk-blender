@@ -39,6 +39,7 @@ CONTEXT_MATERIAL = 2
 vec2 = np.dtype([('x', np.float32), ('y', np.float32)])
 vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
 vec4 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('w', np.float32)])
+line = np.dtype([('p1', vec3), ('p2', vec3)])
 transform = np.dtype([('xyz', vec3), ('hpr', vec3), ('scale', vec3)])
 keyframe = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
 

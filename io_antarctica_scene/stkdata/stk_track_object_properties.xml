@@ -297,7 +297,7 @@
                bind="type" condition="lambda t: t == 'lapline'"/>
 
         <!-- cannons -->
-        <object id="cannon_end_trigger" label="Cannon End" filter="lambda o: o.supertuxkart.type == 'cannon_end'"
+        <object id="cannon_end_trigger" label="Cannon End" filter="lambda o: o.stk_track.type == 'cannon_end'"
                 bind="type" condition="lambda t: t == 'cannon_start'"
                 doc="Object reference to the end of the cannon"/>
         <object id="cannon_path" label="Cannon Path" filter="lambda o: o.type == 'CURVE'"

@@ -38,6 +38,7 @@ SceneCollection = collections.namedtuple('SceneCollection', [
     'action_triggers',
     'drivelines',
     'checklines',
+    'cannons',
     'goals',
     'lights',
     'cameras',
@@ -198,8 +199,15 @@ track_driveline = np.dtype([
 
 track_checkline = np.dtype([
     ('id', 'U127'),
-    ('end', 'O'),
-    ('path', 'O'),
+    ('index', np.int32),
+    ('active', np.int32),
+])
+
+track_cannon = np.dtype([
+    ('id', 'U127'),
+    ('curve', 'O'),
+    ('start', stk_utils.line),
+    ('end', stk_utils.line),
     ('speed', np.float32),
 ])
 
@@ -234,6 +242,7 @@ def write_scene(context: bpy.context, report):
     action_triggers = []
     drivelines = []
     checklines = []
+    cannons = []
     goals = []
     lights = []
     cameras = []
@@ -518,6 +527,48 @@ def write_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
+            # Cannon
+            elif obj.type != 'EMPTY' and t == 'cannon_start':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                if not props.cannon_end_trigger:
+                    report({'WARNING'}, f"The cannon '{obj.name}' has no end defined and will be ignored!")
+                    continue
+
+                if not props.cannon_path:
+                    report({'WARNING'}, f"The cannon '{obj.name}' has no curve defined and will be ignored!")
+                    continue
+
+                print(obj.data.edges)
+                print(props.cannon_end_trigger.data.edges)
+
+                if len(obj.data.edges) != 1 or len(props.cannon_end_trigger.data.edges) != 1:
+                    report({'WARNING'}, f"The cannon '{obj.name}' has invalid start or end lines and will be ignored!")
+                    continue
+
+                line_start_v1 = obj.matrix_world @ obj.data.vertices[0].co
+                line_start_v2 = obj.matrix_world @ obj.data.vertices[1].co
+                line_end_v1 = props.cannon_end_trigger.matrix_world @ props.cannon_end_trigger.data.vertices[1].co
+                line_end_v2 = props.cannon_end_trigger.matrix_world @ props.cannon_end_trigger.data.vertices[1].co
+                line_start = ((line_start_v1[0], line_start_v1[2], line_start_v1[1]),
+                              (line_start_v2[0], line_start_v2[2], line_start_v2[1]))
+                line_end = ((line_end_v1[0], line_end_v1[2], line_end_v1[1]),
+                            (line_end_v2[0], line_end_v2[2], line_end_v2[1]))
+
+                cannons.append((
+                    obj.name,               # ID
+                    props.cannon_path,      # Cannon path
+                    line_start,             # Cannon start
+                    line_end,               # Cannon end
+                    props.cannon_speed,     # Cannon speed
+                ))
+
+                used_identifiers.append(obj.name)
+
         elif obj.type == 'LIGHT' and hasattr(obj.data, 'stk'):
             pass
         elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
@@ -538,6 +589,7 @@ def write_scene(context: bpy.context, report):
         np.array(action_triggers, dtype=track_action),
         np.array(drivelines, dtype=track_driveline),
         np.array(checklines, dtype=track_checkline),
+        np.array(cannons, dtype=track_cannon),
         np.array(goals, dtype=track_goal),
         np.array(lights, dtype=track_light),
         np.array(cameras, dtype=track_camera),
