@@ -98,6 +98,12 @@ eggs_visibility = {
     'hard': 0x04,
 }
 
+driveline_type = {
+    'driveline_main': 0x00,
+    'driveline_additional': 0x01,
+    'navmesh': 0x02,
+}
+
 camera_type = {
     'none': 0x00,
     'end_fixed': 0x01,
@@ -107,6 +113,7 @@ camera_type = {
 
 track_object = np.dtype([
     ('id', 'U127'),                         # ID
+    ('object', 'O'),                        # Object reference
     ('transform', stk_utils.transform),     # Transform
     ('lod', 'O'),                           # LOD collection reference
     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
@@ -180,6 +187,8 @@ track_action = np.dtype([
 
 track_driveline = np.dtype([
     ('id', 'U127'),
+    ('mesh', 'O'),
+    ('type', np.int8),
     ('lower', np.float32),
     ('higher', np.float32),
     ('invisible', np.bool_),
@@ -249,7 +258,7 @@ def write_scene(context: bpy.context, report):
                     continue
 
                 static_objects.append((
-                    obj.name,                               # ID
+                    obj.name, obj,                          # ID, Object reference
                     stk_utils.object_get_transform(obj),    # Transform
                     None, -1.0, -1.0,                       # LOD: collection, distance, modifiers distance
                     None, 0.0, 0.0, -1.0,                   # Animated UV: material, speed U, speed V, step
@@ -276,6 +285,7 @@ def write_scene(context: bpy.context, report):
                     continue
 
                 is_static = props.interaction == 'static' or props.interaction == 'physics'
+                staged.append(obj)
                 staged.append(stk_utils.object_get_transform(obj))
 
                 # LOD
@@ -439,7 +449,7 @@ def write_scene(context: bpy.context, report):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                track_godrays.append((
+                godrays.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
                     props.lightshaft_opacity,               # Light shaft opacity and color
@@ -456,7 +466,7 @@ def write_scene(context: bpy.context, report):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                track_audio.append((
+                audio_sources.append((
                     obj.name,                                                   # ID
                     stk_utils.object_get_transform(obj),                        # Transform
                     props.sfx,                                                  # Sound file
@@ -476,13 +486,34 @@ def write_scene(context: bpy.context, report):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                track_action.append((
+                action_triggers.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
                     props.action,                           # Action call
                     props.action_distance,                  # Trigger distance (radius)
                     props.action_timeout,                   # Action re-enable timeout
                     props.action_trigger == 'cylinder',     # Trigger shape (point or cylinder)
+                ))
+
+                used_identifiers.append(obj.name)
+
+            # Driveline / navmesh data
+            elif obj.type != 'EMPTY' and (t == 'driveline_main' or t == 'driveline_additional' or t == 'navmesh'):
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                drivelines.append((
+                    obj.name,                                   # ID
+                    obj.data,                                   # Mesh data
+                    driveline_type[t],                          # Driveline type
+                    props.driveline_lower,                      # Lower driveline check
+                    props.driveline_upper,                      # Upper driveline check
+                    props.driveline_invisible,                  # Driveline not visible on
+                    props.driveline_ignore,                     # Driveline AI ignore
+                    props.driveline_direction == 'reverse',     # Driveline direction
                 ))
 
                 used_identifiers.append(obj.name)

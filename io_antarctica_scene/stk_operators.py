@@ -35,12 +35,14 @@ class STK_OT_TrackExport(bpy.types.Operator):
         return self.execute(context)
 
     def execute(self, context):
+        bpy.ops.stk.reload_object_properties()
 
-        dg = bpy.context.evaluated_depsgraph_get()
+        dg = context.evaluated_depsgraph_get()
         scene = stk_track_new.write_scene(context, self.report)
         print("static", scene.static_objects)
         print("dynamic", scene.dynamic_objects)
         print("billboards", scene.billboards)
+        print("drivelines", scene.drivelines)
 
         for obj in context.scene.objects:
             pass
