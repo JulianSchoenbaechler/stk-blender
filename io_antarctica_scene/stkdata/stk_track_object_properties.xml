@@ -287,7 +287,7 @@
         </enum>
 
         <!-- checklines -->
-        <int id="checkline_index" label="Index" default="1" min="0" max="100"
+        <int id="checkline_index" label="Index" default="1" min="1" max="100"
              bind="type" condition="lambda t: t == 'checkline'"
              doc="The index of this checkline; used to reference and activate this trigger"/>
         <int id="checkline_activate" label="Activate" default="1" min="0" max="100"

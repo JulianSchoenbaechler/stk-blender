@@ -199,6 +199,7 @@ track_driveline = np.dtype([
 
 track_checkline = np.dtype([
     ('id', 'U127'),
+    ('line', stk_utils.line),
     ('index', np.int32),
     ('active', np.int32),
 ])
@@ -527,6 +528,34 @@ def write_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
+            # Checkline / lapline data
+            elif obj.type != 'EMPTY' and (t == 'checkline' or t == 'lapline'):
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                # track_checkline = np.dtype([
+                #     ('id', 'U127'),
+                #     ('index', np.int32),
+                #     ('active', np.int32),
+                # ])
+                line_v1 = obj.matrix_world @ obj.data.vertices[0].co
+                line_v2 = obj.matrix_world @ obj.data.vertices[1].co
+
+                line = ((line_v1[0], line_v1[2], line_v1[1]),
+                        (line_v2[0], line_v2[2], line_v2[1]))
+
+                checklines.append((
+                    obj.name,                                   # ID
+                    line,                                       # Line data
+                    props.checkline_index,                      # Checkline index
+                    props.checkline_activate,                   # Activation index
+                ))
+
+                used_identifiers.append(obj.name)
+
             # Cannon
             elif obj.type != 'EMPTY' and t == 'cannon_start':
                 # Skip if already an object with this identifier
@@ -594,46 +623,3 @@ def write_scene(context: bpy.context, report):
         np.array(lights, dtype=track_light),
         np.array(cameras, dtype=track_camera),
     )
-
-
-def assign_test():
-    demo = []
-    demo.append((
-        "Hellooo1",
-        None,
-        -1.0,
-        -1.0,
-        None,
-        0.0,
-        0.0,
-        -1.0,
-        object_geo_detail_level['off'],
-        object_interaction['static'],
-        object_physics_shape['box'],
-        0x04,
-        (0.0, 0.0, 0.0),
-        "",
-        "",
-        "",
-    ))
-    demo.append((
-        "Hellooo2",
-        None,
-        -1.0,
-        -1.0,
-        None,
-        0.0,
-        0.0,
-        -1.0,
-        object_geo_detail_level['off'],
-        object_interaction['static'],
-        object_physics_shape['box'],
-        0x04,
-        (0.0, 0.0, 0.0),
-        "",
-        "",
-        "",
-    ))
-    print(track_object)
-    arr = np.array(demo, dtype=track_object)
-    print(arr)
