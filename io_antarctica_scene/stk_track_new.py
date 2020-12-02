@@ -42,6 +42,7 @@ SceneCollection = collections.namedtuple('SceneCollection', [
     'goals',
     'lights',
     'cameras',
+    'sun',
 ])
 
 object_geo_detail_level = {
@@ -106,10 +107,9 @@ driveline_type = {
 }
 
 camera_type = {
-    'none': 0x00,
-    'end_fixed': 0x01,
-    'end_kart': 0x02,
-    'cutscene': 0x03,
+    'end_fixed': 0x00,
+    'end_kart': 0x01,
+    'cutscene': 0x02,
 }
 
 track_object = np.dtype([
@@ -214,17 +214,22 @@ track_cannon = np.dtype([
 
 track_goal = np.dtype([
     ('id', 'U127'),
+    ('line', stk_utils.line),
     ('team', np.bool_),
 ])
 
 track_light = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('distance', np.float32),
+    ('energy', np.float32),
+    ('color', stk_utils.vec3),
     ('visible_if', 'U127'),
 ])
 
 track_camera = np.dtype([
     ('id', 'U127'),
+    ('transform', stk_utils.transform),
     ('type', np.int8),
     ('distance', np.float32),
 ])
@@ -245,6 +250,7 @@ def write_scene(context: bpy.context, report):
     checklines = []
     cannons = []
     goals = []
+    sun = None
     lights = []
     cameras = []
 
@@ -338,7 +344,7 @@ def write_scene(context: bpy.context, report):
                 else:
                     is_static = False
                 staged.append(flags)
-                staged.append((props.glow_color.r, props.glow_color.g, props.glow_color.b))
+                staged.append(tuple(props.glow_color))
 
                 # Scripting and output related
                 staged.append(props.visible_if)
@@ -462,8 +468,8 @@ def write_scene(context: bpy.context, report):
                 godrays.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
-                    props.lightshaft_opacity,               # Light shaft opacity and color
-                    (props.lightshaft_color.r, props.lightshaft_color.g, props.lightshaft_color.b),
+                    props.lightshaft_opacity,               # Light shaft opacity
+                    tuple(props.lightshaft_color),          # Light shaft color
                 ))
 
                 used_identifiers.append(obj.name)
@@ -536,11 +542,6 @@ def write_scene(context: bpy.context, report):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                # track_checkline = np.dtype([
-                #     ('id', 'U127'),
-                #     ('index', np.int32),
-                #     ('active', np.int32),
-                # ])
                 line_v1 = obj.matrix_world @ obj.data.vertices[0].co
                 line_v2 = obj.matrix_world @ obj.data.vertices[1].co
 
@@ -548,10 +549,10 @@ def write_scene(context: bpy.context, report):
                         (line_v2[0], line_v2[2], line_v2[1]))
 
                 checklines.append((
-                    obj.name,                                   # ID
-                    line,                                       # Line data
-                    props.checkline_index,                      # Checkline index
-                    props.checkline_activate,                   # Activation index
+                    obj.name,                   # ID
+                    line,                       # Line data
+                    props.checkline_index,      # Checkline index
+                    props.checkline_activate,   # Activation index
                 ))
 
                 used_identifiers.append(obj.name)
@@ -571,9 +572,6 @@ def write_scene(context: bpy.context, report):
                 if not props.cannon_path:
                     report({'WARNING'}, f"The cannon '{obj.name}' has no curve defined and will be ignored!")
                     continue
-
-                print(obj.data.edges)
-                print(props.cannon_end_trigger.data.edges)
 
                 if len(obj.data.edges) != 1 or len(props.cannon_end_trigger.data.edges) != 1:
                     report({'WARNING'}, f"The cannon '{obj.name}' has invalid start or end lines and will be ignored!")
@@ -598,10 +596,85 @@ def write_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
+            # Goal line data
+            elif obj.type != 'EMPTY' and t == 'goal':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                line_v1 = obj.matrix_world @ obj.data.vertices[0].co
+                line_v2 = obj.matrix_world @ obj.data.vertices[1].co
+
+                line = ((line_v1[0], line_v1[2], line_v1[1]),
+                        (line_v2[0], line_v2[2], line_v2[1]))
+
+                goals.append((
+                    obj.name,                   # ID
+                    line,                       # Line data
+                    props.goal_team == 'ally',  # Goal team (true: ally, false: enemy)
+                ))
+
+                used_identifiers.append(obj.name)
+
         elif obj.type == 'LIGHT' and hasattr(obj.data, 'stk'):
-            pass
+            # Categorize light
+            props = obj.data.stk
+            light = obj.data
+
+            # Sun
+            if light.type == 'SUN':
+                # Skip if already a sun defined
+                if sun:
+                    report({'WARNING'}, f"The sun '{obj.name}' will be ignored, as the scene cannot contain multiple "
+                           "suns!")
+                    continue
+
+                sun = (
+                    stk_utils.object_get_transform(obj),    # Transform
+                    light.color,                            # Sun diffuse color
+                    props.sun_specular,                     # Sun specular color
+                )
+
+            # Light
+            elif light.type == 'POINT':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                lights.append((
+                    obj.name,                                   # ID
+                    stk_utils.object_get_transform(obj),        # Transform
+                    props.point_distance,                       # Light distance
+                    light.energy if light.energy else 100.0,    # Light energy
+                    tuple(light.color),                         # Light color
+                    props.visible_if,                           # Scripting
+                ))
+
+                used_identifiers.append(obj.name)
+
         elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
-            pass
+            # Categorize light
+            props = obj.data.stk
+            camera = obj.data
+
+            # If used as a STK camera
+            if props.type != 'none':
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
+                           "will be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                cameras.append((
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    camera_type[props.type],                # Camera type
+                    props.distance,                         # End-camera distance
+                ))
         else:
             continue
 
@@ -622,4 +695,5 @@ def write_scene(context: bpy.context, report):
         np.array(goals, dtype=track_goal),
         np.array(lights, dtype=track_light),
         np.array(cameras, dtype=track_camera),
+        sun,
     )
