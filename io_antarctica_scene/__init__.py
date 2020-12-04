@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# <pep8-120 compliant>
+# <pep8 compliant>
 
 bl_info = {
     'name': "SuperTuxKart Exporter Tools",
@@ -37,6 +37,8 @@ bl_info = {
 
 if 'bpy' in locals():
     import importlib
+    if 'stk_prefs' in locals():
+        importlib.reload(stk_prefs)  # pylint: disable=used-before-assignment
     if 'stk_props' in locals():
         importlib.reload(stk_props)  # pylint: disable=used-before-assignment
     if 'stk_panel' in locals():
@@ -63,7 +65,8 @@ from nodeitems_utils import NodeItem, \
                             register_node_categories, \
                             unregister_node_categories  # noqa(E402,)
 
-from . import stk_props, \
+from . import stk_prefs, \
+              stk_props, \
               stk_panel, \
               stk_operators, \
               stk_shaders, \
@@ -73,19 +76,8 @@ from . import stk_props, \
               stk_track_new  # noqa(E402,)
 
 
-def menu_func_export_stk_material(self, context):
-    self.layout.operator(
-        stk_material.STK_Material_Export_Operator.bl_idname, text="STK Materials")
-
-
-def menu_func_export_stk_kart(self, context):
-    self.layout.operator(
-        stk_kart.STK_Kart_Export_Operator.bl_idname, text="STK Kart")
-
-
-def menu_func_export_stk_track(self, context):
-    self.layout.operator(
-        stk_track.STK_Track_Export_Operator.bl_idname, text="STK Track")
+def menu_func_export(self, context):
+    self.layout.menu('STK_MT_export_menu', text="SuperTuxKart")
 
 
 def menu_func_add_stk_object(self, context):
@@ -104,7 +96,7 @@ classes = (
     stk_panel.STK_MissingProps_Object,
     stk_panel.STK_MissingProps_Scene,
     stk_panel.STK_MissingProps_Material,
-    stk_panel.StkPanelAddonPreferences,
+    # stk_panel.StkPanelAddonPreferences,
     stk_panel.STK_PT_Object_Panel,
     stk_panel.STK_PT_Scene_Panel,
     stk_panel.STK_OT_Add_Object,
@@ -115,6 +107,8 @@ classes = (
     stk_kart.STK_Kart_Export_Operator,
     stk_track.STK_Track_Export_Operator,
 
+    stk_prefs.STKAddonPreferences,
+
     stk_panel.STK_PT_SceneProperties,
     stk_panel.STK_PT_ObjectProperties,
     stk_panel.STK_PT_LightProperties,
@@ -122,6 +116,7 @@ classes = (
     stk_panel.STK_PT_MaterialProperties,
 
     stk_operators.STK_OT_TrackExport,
+    stk_operators.STK_MT_ExportMenu,
 
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
@@ -156,9 +151,7 @@ def register():
 
     load_post.append(load_handler)
 
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_export_stk_material)
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_export_stk_kart)
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_export_stk_track)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
     bpy.types.VIEW3D_MT_add.append(menu_func_add_stk_object)
 
 
@@ -167,9 +160,7 @@ def unregister():
     from bpy.app.handlers import load_post
 
     bpy.types.VIEW3D_MT_add.remove(menu_func_add_stk_object)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_stk_material)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_stk_kart)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export_stk_track)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
     load_post.remove(load_handler)
 

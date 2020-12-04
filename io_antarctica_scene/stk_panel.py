@@ -559,8 +559,7 @@ class STK_PT_Quick_Export_Panel(bpy.types.Panel):
         # ==== Types group ====
         row = layout.row()
 
-        assets_path = context.preferences.addons[os.path.basename(
-            os.path.dirname(__file__))].preferences.stk_assets_path
+        assets_path = context.preferences.addons[__package__].preferences.assets_path
 
         if assets_path is not None and len(assets_path) > 0:
             row.label(text='Assets (data) path: ' + assets_path)
