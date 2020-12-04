@@ -72,15 +72,15 @@
 
         <!-- object file name -->
         <string id="name" label="Object Name" default="some_model"
-                bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
-                doc="Name of this object (file name); objects with the same name are exported as a single file"/>
+                bind="type" condition="lambda t: t == 'object' or t == 'lod_standalone' or t == 'lod_model'"
+                doc="Name of this object (file name)"/>
 
         <!-- level of detail -->
         <float id="lod_distance" label="LOD Distance" default="100.0" min="0.0" max="5000.0"
                bind="type" condition="lambda t: t == 'lod_model' or t == 'lod_standalone'"
                doc="Distance from the camera at which this level of detail starts being used"/>
         <collection id="lod_collection" label="LOD Collection"
-                    filter="lambda c: len([o for o in c.objects if o.supertuxkart.type == 'lod_model']) > 0"
+                    filter="lambda c: len([o for o in c.objects if o.stk_track.type == 'lod_model']) > 0"
                     doc="The collection from which the LOD models get loaded"
                     bind="type" condition="lambda t: t == 'lod_instance'"/>
         <bool id="lod_modifiers" label="Use Object Modifiers Model" default="false"

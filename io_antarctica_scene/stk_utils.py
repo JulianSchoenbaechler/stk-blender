@@ -41,7 +41,8 @@ vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
 vec4 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('w', np.float32)])
 line = np.dtype([('p1', vec3), ('p2', vec3)])
 transform = np.dtype([('xyz', vec3), ('hpr', vec3), ('scale', vec3)])
-keyframe = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
+keyframe2d = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
+keyframe3d = np.dtype([('c', vec3), ('h1', vec3), ('h2', vec3)])
 
 
 def getObject(context, contextLevel):
@@ -94,8 +95,22 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
     return False
 
 
+def get_main_texture_stk_material(mat: bpy.types.Material):
+    if not mat or not mat.use_nodes or not is_stk_material(mat.node_tree):
+        return None
+
+    if 'Main Texture' in mat.node_tree.nodes:
+        return mat.node_tree.nodes['Main Texture'].image
+
+    return None
+
+
+def object_has_skeletal_animation(obj: bpy.types.Object):
+    return any(m for m in obj.modifiers if m.type == 'ARMATURE')
+
+
 def object_is_animated(obj: bpy.types.Object):
-    return obj.animation_data or any(m for m in obj.modifiers if m.type == 'ARMATURE')
+    return obj.animation_data or object_has_skeletal_animation(obj)
 
 
 def object_get_transform(obj: bpy.types.Object, local=False):
@@ -107,6 +122,14 @@ def object_get_transform(obj: bpy.types.Object, local=False):
         (rot_euler.x, rot_euler.y, rot_euler.z),
         (loc_rot_scale[2].x, loc_rot_scale[2].z, loc_rot_scale[2].y)
     )
+
+
+def parse_bezier(obj: bpy.types.Object):
+    assert (obj.type == 'CURVE')
+
+
+def parse_fcurves(obj: bpy.types.AnimData):
+    pass
 
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property
@@ -206,6 +229,24 @@ def str_to_vector(val: str):
 
 def str_to_enum(val: str):
     return val.split()
+
+
+def transform_to_str(val: transform):
+    return 'xyz="{:.2f} {:.2f} {:.2f}" hpr="{:.2f} {:.2f} {:.2f}" scale="{:.2f} {:.2f} {:.2f}"'.format(
+        val['xyz'][0], val['xyz'][1], val['xyz'][2],
+        val['hpr'][0], val['hpr'][1], val['hpr'][2],
+        val['scale'][0], val['scale'][1], val['scale'][2],
+    )
+
+
+def transform_to_xyz_str(val: transform, explode=False):
+    output = 'xyz="{:.2f} {:.2f} {:.2f}"' if not explode else 'x="{:.2f}" y="{:.2f}" z="{:.2f}"'
+    return output.format(val['xyz'][0], val['xyz'][1], val['xyz'][2])
+
+
+def transform_to_xyzh_str(val: transform, explode=False):
+    output = 'xyz="{:.2f} {:.2f} {:.2f}" h="{:.2f}"' if not explode else 'x="{:.2f}" y="{:.2f}" z="{:.2f}" h="{:.2f}"'
+    return output.format(val['xyz'][0], val['xyz'][1], val['xyz'][2], val['hpr'][0])
 
 # ------------------------------------------------------------------------------
 # FIXME: should use xyz="..." format

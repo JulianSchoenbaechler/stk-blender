@@ -21,41 +21,84 @@
 # SOFTWARE.
 
 import bpy
+import io
+import os
 import numpy as np
 from . import stk_utils, stk_track, stk_track_new
+from bpy.props import (
+    IntProperty,
+    FloatProperty,
+    BoolProperty,
+    StringProperty,
+    FloatVectorProperty,
+    EnumProperty,
+    PointerProperty
+)
 
 
 class STK_OT_TrackExport(bpy.types.Operator):
     """Export the current scene as a SuperTuxKart track."""
-    bl_idname = "stk.export_track"
+    bl_idname = 'stk.export_track'
     bl_label = "Export STK Track"
     bl_description = "Exports the current scene from the context as a SuperTuxKart track"
 
+    output_path: StringProperty(
+        name="Output Path",
+        description="The output path for the exported track",
+        default='//',
+        subtype='DIR_PATH'
+    )
+
     def invoke(self, context, event):
+        # Generate output path
+        stk_prefs = context.preferences.addons[__package__].preferences
+        stk_scene = stk_utils.get_stk_context(context, 'scene')
+
+        # pylint: disable=assignment-from-no-return
+        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
+
+        # Non-existent assets path
+        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
+            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
+                                   "the path to the assets directory in the add-on's preferences.")
+            return {'CANCELLED'}
+
+        output_path = os.path.join(
+            assets_path,
+            'tracks' if stk_scene.category != 'wip' else 'wip-tracks'
+        )
+
+        # Invalid assets path
+        if not os.path.isdir(output_path):
+            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
+                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
+            return {'CANCELLED'}
+
+        self.output_path = output_path
+
         return self.execute(context)
 
     def execute(self, context):
+        stk_scene = stk_utils.get_stk_context(context, 'scene')
+        # pylint: disable=assignment-from-no-return
+        output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
+
+        # Create track folder if non-existent
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+
+        # Ensure the object properties have been loaded
         bpy.ops.stk.reload_object_properties()
 
+        # Get evaluated gependency-graph
         dg = context.evaluated_depsgraph_get()
-        scene = stk_track_new.write_scene(context, self.report)
-        # print("static", scene.static_objects)
-        # print("dynamic", scene.dynamic_objects)
-        # print("billboards", scene.billboards)
-        print("sun", scene.sun)
-        print("lights", scene.lights, 2)
-        print("cameras", scene.cameras)
 
-        for obj in context.scene.objects:
-            pass
+        # Gather and stage all scene objects that should be exported
+        scene = stk_track_new.collect_scene(context, self.report)
 
-        # some_seq = np.zeros((len(context.scene.objects) * 3), dtype=stk_utils.vec3)
-        # some_seq = [0] * len(context.scene.objects)
-        # context.scene.objects.foreach_get('type', some_seq)
-        # print(some_seq)
+        stk_track_new.write_scene_file(stk_scene, scene, output_dir)
 
-        # for thing in some_seq:
-        #    print(thing)
+        # IO: export destination
 
         print("EXPORT!!!!")
         return {'FINISHED'}
@@ -79,3 +122,13 @@ class STK_OT_TrackExport(bpy.types.Operator):
             return False
 
         return stk_utils.get_stk_scene_type(context) == 'track'
+
+
+class STK_MT_ExportMenu(bpy.types.Menu):
+    bl_idname = 'STK_MT_export_menu'
+    bl_label = "STK Export"
+    bl_description = "Export operators for the current SuperTuxKart scene"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator('stk.export_track', text="Export Track")

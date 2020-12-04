@@ -21,11 +21,16 @@
 # SOFTWARE.
 
 import bpy
-import mathutils
 import collections
+import mathutils
+import os
 import numpy as np
-from . import stk_utils
+from . import stk_utils, stk_props
 
+STANDALONE_LOD_PREFIX = '_standalone_'
+
+# TODO: Particle system object placement
+# TODO: Library nodes collecting
 SceneCollection = collections.namedtuple('SceneCollection', [
     'lod_groups',
     'static_objects',
@@ -120,9 +125,9 @@ track_object = np.dtype([
     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
     ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
     ('uv_animated', 'O'),                   # Material reference for UV animation
-    ('uv_speed_u', np.float32),             # UV aniamtion speed U
-    ('uv_speed_v', np.float32),             # UV aniamtion speed V
-    ('uv_speed_dt', np.float32),            # UV step aniamtion speed (<0 if disabled)
+    ('uv_speed_u', np.float32),             # UV animation speed U
+    ('uv_speed_v', np.float32),             # UV animation speed V
+    ('uv_speed_dt', np.float32),            # UV step animation speed (<0 if disabled)
     ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
     ('interaction', np.int8),               # Interaction type (object_interaction)
     ('shape', np.int8),                     # Physics shape (object_physics_shape)
@@ -235,7 +240,7 @@ track_camera = np.dtype([
 ])
 
 
-def write_scene(context: bpy.context, report):
+def collect_scene(context: bpy.context, report):
     used_identifiers = []
     lod_groups = set()
     static_objects = []
@@ -250,9 +255,9 @@ def write_scene(context: bpy.context, report):
     checklines = []
     cannons = []
     goals = []
-    sun = None
     lights = []
     cameras = []
+    sun = None
 
     # Gather and categorize all objects that need to get exported
     for obj in context.scene.objects:
@@ -305,12 +310,19 @@ def write_scene(context: bpy.context, report):
                 staged.append(stk_utils.object_get_transform(obj))
 
                 # LOD
-                staged.append(props.lod_collection)
-                staged.append(props.lod_distance if t == 'lod_standalone' else -1.0)
-                staged.append(props.lod_modifiers if t == 'lod_standalone' and props.lod_modifiers_distance else -1.0)
-
-                if props.lod_collection:
+                if t == 'lod_instance' and props.lod_collection and len(props.lod_collection.objects) > 0:
+                    staged.append(props.lod_collection)
                     lod_groups.add(props.lod_collection)
+                else:
+                    staged.append(None)
+
+                if t == 'lod_standalone':
+                    staged.append(props.lod_distance)
+                    staged.append(props.lod_modifiers if props.lod_modifiers_distance else -1.0)
+                    lod_groups.add(obj)
+                else:
+                    staged.append(-1.0)
+                    staged.append(-1.0)
 
                 # Animated textures
                 staged.append(props.uv_material if props.uv_animated else None)
@@ -358,6 +370,9 @@ def write_scene(context: bpy.context, report):
                 # Non-static if animated
                 if is_static and stk_utils.object_is_animated(obj):
                     is_static = False
+
+                # TODO: It might be better letting the artist decide if an object is static or not. This branching-logic
+                # should act as default to not break compatibility but should be overridable.
 
                 if is_static:
                     static_objects.append(tuple(staged))
@@ -697,3 +712,140 @@ def write_scene(context: bpy.context, report):
         np.array(cameras, dtype=track_camera),
         sun,
     )
+
+
+def xml_lod_data(lod_groups: set, indent=1):
+    if len(lod_groups) == 0:
+        return []
+
+    # Level-of-detail nodes
+    node_lod = [f"{'  ' * indent}<!-- Level-of-detail groups -->", f"{'  ' * indent}<lod>"]
+    indent += 1
+
+    for lod_group in lod_groups:
+        # LOD group
+        if isinstance(lod_group, bpy.types.Collection):
+            node_lod.append(f"{'  ' * indent}<group name=\"{lod_group.name}\">")
+            indent += 1
+
+            # Iterate the whole LOD collection
+            for lod_model in lod_group.objects:
+                model_props = lod_model.stk_track
+
+                # Skip non-LOD models
+                if model_props.type != 'lod_model':
+                    continue
+
+                # Gather data for this LOD model in the current group
+                node_lod.append("{indent}<static-object model=\"{id}.spm\" lod_distance=\"{dist}\" "
+                                "lod_group=\"{group}\" skeletal-animation=\"{anim}\"/>"
+                                .format(
+                                    indent='  ' * indent,
+                                    id=model_props.name if len(model_props.name) > 0 else lod_model.name,
+                                    dist=model_props.lod_distance,
+                                    group=lod_group.name,
+                                    anim='true' if stk_utils.object_has_skeletal_animation(lod_model) else 'false'
+                                ))
+
+            indent -= 1
+            node_lod.append(f"{'  ' * indent}</group>")
+
+        # LOD standalone
+        else:
+            # 'lod_group' is not a collection but a standalone LOD object ('bpy.types.Object')
+            model_props = lod_group.stk_track
+            model_id = model_props.name if len(model_props.name) > 0 else lod_group.name
+            model_group = f'{STANDALONE_LOD_PREFIX}{model_id}'
+            model_skeletal = 'true' if stk_utils.object_has_skeletal_animation(lod_group) else 'false'
+
+            node_lod.append(f"    <group name=\"{model_group}\">")
+            indent += 1
+
+            # Use modifiers as LOD level
+            if model_props.lod_modifiers:
+                node_lod.append("{indent}<static-object model=\"{id}.spm\" lod_distance=\"{dist}\" "
+                                "lod_group=\"{group}\" skeletal-animation=\"{anim}\"/>"
+                                .format(
+                                    indent='  ' * indent,
+                                    id=model_id,
+                                    dist=model_props.lod_modifiers_distance,
+                                    group=model_group,
+                                    anim=model_skeletal
+                                ))
+                node_lod.append("{indent}<static-object model=\"{id}_low.spm\" lod_distance=\"{dist}\" "
+                                "lod_group=\"{group}\" skeletal-animation=\"{anim}\"/>"
+                                .format(
+                                    indent='  ' * indent,
+                                    id=model_id,
+                                    dist=model_props.lod_distance,
+                                    group=model_group,
+                                    anim=model_skeletal
+                                ))
+
+            # Single standalone
+            else:
+                node_lod.append("{indent}<static-object model=\"{id}.spm\" lod_distance=\"{dist}\" "
+                                "lod_group=\"{group}\" skeletal-animation=\"{anim}\"/>"
+                                .format(
+                                    indent='  ' * indent,
+                                    id=model_id,
+                                    dist=model_props.lod_distance,
+                                    group=model_group,
+                                    anim=model_skeletal
+                                ))
+
+            indent -= 1
+            node_lod.append(f"{'  ' * indent}</group>")
+
+    indent -= 1
+    node_lod.append(f"{'  ' * indent}</lod>")
+
+    return node_lod
+
+
+def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: SceneCollection, output_dir: str):
+    path = os.path.join(output_dir, 'scene.xml')
+
+    # Prepare LOD node data
+    xml_lod = xml_lod_data(collection.lod_groups)
+
+    node_track = [f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">"]
+
+    # track_object = np.dtype([
+    #     ('id', 'U127'),                         # ID
+    #     ('object', 'O'),                        # Object reference
+    #     ('transform', stk_utils.transform),     # Transform
+    #     ('lod', 'O'),                           # LOD collection reference
+    #     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
+    #     ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
+    #     ('uv_animated', 'O'),                   # Material reference for UV animation
+    #     ('uv_speed_u', np.float32),             # UV animation speed U
+    #     ('uv_speed_v', np.float32),             # UV animation speed V
+    #     ('uv_speed_dt', np.float32),            # UV step animation speed (<0 if disabled)
+    #     ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
+    #     ('interaction', np.int8),               # Interaction type (object_interaction)
+    #     ('shape', np.int8),                     # Physics shape (object_physics_shape)
+    #     ('flags', np.int8),                     # Object flags (object_flags)
+    #     ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
+    #     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
+    #     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
+    #     ('custom_xml', 'U127'),                 # Additional custom XML
+    # ])
+
+    # Iterate all static objects
+    for obj in collection.static_objects:
+        attributes = []
+
+        # Transform
+        attributes.append(stk_utils.transform_to_str(obj['transform']))
+
+    with open(path, 'w', encoding='utf8', newline="\n") as f:
+        f.writelines([
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            "<scene>\n"
+        ])
+
+        f.write("\n".join(xml_lod))
+
+        # all the things...
+        f.write("\n</scene>\n")
