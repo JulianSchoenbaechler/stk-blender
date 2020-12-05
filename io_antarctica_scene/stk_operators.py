@@ -97,6 +97,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         scene = stk_track_new.collect_scene(context, self.report)
 
         stk_track_new.write_scene_file(stk_scene, scene, output_dir)
+        print(scene.track_objects)
 
         # IO: export destination
 

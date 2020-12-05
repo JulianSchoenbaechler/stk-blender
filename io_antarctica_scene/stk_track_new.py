@@ -33,6 +33,7 @@ STANDALONE_LOD_PREFIX = '_standalone_'
 # TODO: Library nodes collecting
 SceneCollection = collections.namedtuple('SceneCollection', [
     'lod_groups',
+    'track_objects',
     'static_objects',
     'dynamic_objects',
     'placeables',
@@ -243,6 +244,7 @@ track_camera = np.dtype([
 def collect_scene(context: bpy.context, report):
     used_identifiers = []
     lod_groups = set()
+    track_objects = []
     static_objects = []
     dynamic_objects = []
     placeables = []
@@ -272,27 +274,7 @@ def collect_scene(context: bpy.context, report):
 
             # Unassigned model (defaults to static track scenery)
             if obj.type != 'EMPTY' and t == 'none':
-                # Skip if already an object with this identifier
-                if obj.name in used_identifiers:
-                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
-                           "will be ignored! Check if different objects have the same name identifier.")
-                    continue
-
-                static_objects.append((
-                    obj.name, obj,                          # ID, Object reference
-                    stk_utils.object_get_transform(obj),    # Transform
-                    None, -1.0, -1.0,                       # LOD: collection, distance, modifiers distance
-                    None, 0.0, 0.0, -1.0,                   # Animated UV: material, speed U, speed V, step
-                    object_geo_detail_level['off'],         # Geometry level detail
-                    object_interaction['static'],           # Object interaction
-                    object_physics_shape['box'],            # Physics shape
-                    object_flags['none'],                   # Object specific flags
-                    (0.0, 0.0, 0.0),                        # Glow color (if glow enabled)
-                    "",                                     # Scripting: poll function (if)
-                    "",                                     # Scripting: collision callback
-                    "",                                     # Custom XML
-                ))
-                used_identifiers.append(obj.name)
+                track_objects.append(obj)
 
             # Object (including LOD) with specified properties
             elif obj.type != 'EMPTY' and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone'):
@@ -343,9 +325,9 @@ def collect_scene(context: bpy.context, report):
 
                 # Object flags
                 flags = object_flags['none']
-                if props.driveable:
+                if props.interaction == 'static' and props.driveable:
                     flags |= object_flags['driveable']
-                if props.soccer_ball:
+                if props.interaction == 'movable' and props.soccer_ball:
                     flags |= object_flags['soccer_ball']
                     is_static = False
                 if props.glow:
@@ -696,6 +678,7 @@ def collect_scene(context: bpy.context, report):
     # Create and return scene collection
     return SceneCollection(
         lod_groups,
+        np.array(track_objects, dtype=object),
         np.array(static_objects, dtype=track_object),
         np.array(dynamic_objects, dtype=track_object),
         np.array(placeables, dtype=track_placeable),
@@ -744,7 +727,7 @@ def xml_lod_data(lod_groups: set, indent=1):
                                     id=model_props.name if len(model_props.name) > 0 else lod_model.name,
                                     dist=model_props.lod_distance,
                                     group=lod_group.name,
-                                    anim='true' if stk_utils.object_has_skeletal_animation(lod_model) else 'false'
+                                    anim='y' if stk_utils.object_has_skeletal_animation(lod_model) else 'n'
                                 ))
 
             indent -= 1
@@ -756,7 +739,7 @@ def xml_lod_data(lod_groups: set, indent=1):
             model_props = lod_group.stk_track
             model_id = model_props.name if len(model_props.name) > 0 else lod_group.name
             model_group = f'{STANDALONE_LOD_PREFIX}{model_id}'
-            model_skeletal = 'true' if stk_utils.object_has_skeletal_animation(lod_group) else 'false'
+            model_skeletal = 'y' if stk_utils.object_has_skeletal_animation(lod_group) else 'n'
 
             node_lod.append(f"    <group name=\"{model_group}\">")
             indent += 1
@@ -803,34 +786,158 @@ def xml_lod_data(lod_groups: set, indent=1):
     return node_lod
 
 
+def xml_object_data(objects: np.ndarray, static=False, indent=1):
+    if np.size(objects) == 0:
+        return []
+
+    nodes = []
+    tag_name = None
+
+    if static:
+        tag_name = 'static-object'
+    else:
+        tag_name = 'object'
+
+    # Iterate all objects
+    for obj in objects:
+        attributes = [f"id=\"{obj['object'].name}\""]
+
+        # Object type
+        if obj['interaction'] == object_interaction['movable']:
+            attributes.append("type=\"movable\"")
+        elif obj['object'].animation_data:
+            attributes.append("type=\"animation\"")
+        else:
+            attributes.append("type=\"static\"")
+
+        # LOD instance
+        is_lod = False
+
+        if obj['lod']:
+            attributes.append(f"lod_instance=\"y\" lod_group=\"{obj['lod'].name}\"")
+            is_lod = True
+        elif obj['lod_distance'] >= 0:
+            attributes.append(f"lod_instance=\"y\" lod_group=\"{STANDALONE_LOD_PREFIX}{obj['id']}\"")
+            is_lod = True
+        else:
+            attributes.append(f"model=\"{obj['id']}.spm\"")
+
+        # Geometry level visibility
+        if obj['visibility'] != object_geo_detail_level['off']:
+            attributes.append(f"geometry-level=\"{obj['visibility']}\"")
+
+        # Object interaction
+        if obj['interaction'] == object_interaction['movable']:
+            attributes.append("interaction=\"movable\"")
+        elif obj['interaction'] == object_interaction['ghost']:
+            attributes.append("interaction=\"ghost\"")
+        elif obj['interaction'] == object_interaction['physics']:
+            attributes.append("interaction=\"physics-only\"")
+        elif obj['interaction'] == object_interaction['reset']:
+            attributes.append("interaction=\"reset\" reset=\"y\"")
+        elif obj['interaction'] == object_interaction['knock']:
+            attributes.append("interaction=\"explode\" explode=\"y\"")
+        elif obj['interaction'] == object_interaction['flatten']:
+            attributes.append("interaction=\"flatten\" flatten=\"y\"")
+
+        # Physics
+        # Only define shape:
+        # - if not LOD and not ghost or physics-only obj
+        # - if LOD and movable (but then ignore exact collision detection)
+        if not is_lod and obj['interaction'] != object_interaction['ghost'] and \
+           obj['interaction'] != object_interaction['physics']:
+            # Append shape
+            if obj['shape'] == object_physics_shape['sphere']:
+                attributes.append("shape=\"sphere\"")
+            elif obj['shape'] == object_physics_shape['cylinder_x']:
+                attributes.append("shape=\"cylinderX\"")
+            elif obj['shape'] == object_physics_shape['cylinder_y']:
+                attributes.append("shape=\"cylinderY\"")
+            elif obj['shape'] == object_physics_shape['cylinder_z']:
+                attributes.append("shape=\"cylinderZ\"")
+            elif obj['shape'] == object_physics_shape['cone_x']:
+                attributes.append("shape=\"coneX\"")
+            elif obj['shape'] == object_physics_shape['cone_y']:
+                attributes.append("shape=\"coneY\"")
+            elif obj['shape'] == object_physics_shape['cone_z']:
+                attributes.append("shape=\"coneZ\"")
+            elif obj['shape'] == object_physics_shape['exact']:
+                attributes.append("shape=\"exact\"")
+            else:
+                attributes.append("shape=\"box\"")
+
+        elif is_lod and obj['interaction'] != object_interaction['movable']:
+            # Append shape
+            if obj['shape'] == object_physics_shape['sphere']:
+                attributes.append("shape=\"sphere\"")
+            elif obj['shape'] == object_physics_shape['cylinder_x']:
+                attributes.append("shape=\"cylinderX\"")
+            elif obj['shape'] == object_physics_shape['cylinder_y']:
+                attributes.append("shape=\"cylinderY\"")
+            elif obj['shape'] == object_physics_shape['cylinder_z']:
+                attributes.append("shape=\"cylinderZ\"")
+            elif obj['shape'] == object_physics_shape['cone_x']:
+                attributes.append("shape=\"coneX\"")
+            elif obj['shape'] == object_physics_shape['cone_y']:
+                attributes.append("shape=\"coneY\"")
+            elif obj['shape'] == object_physics_shape['cone_z']:
+                attributes.append("shape=\"coneZ\"")
+            else:
+                attributes.append("shape=\"box\"")
+
+        # Object flags
+        if obj['flags'] & object_flags['driveable'] > 0:
+            attributes.append("driveable=\"y\"")
+        if obj['flags'] & object_flags['soccer_ball'] > 0:
+            attributes.append("soccer_ball=\"y\"")
+        if obj['flags'] & object_flags['glow'] > 0:
+            attributes.append(f"glow=\"{stk_utils.color_to_str(obj['glow'])}\"")
+        if obj['flags'] & object_flags['shadows'] == 0:
+            attributes.append("shadow-pass=\"n\"")
+
+        # Scripting
+        if obj['visible_if'] and len(obj['visible_if']):
+            attributes.append(f"if=\"{obj['visible_if']}\"")
+        if obj['on_collision'] and len(obj['on_collision']):
+            attributes.append(f"on-kart-collision=\"{obj['on_collision']}\"")
+
+        # Custom XML
+        if obj['custom_xml'] and len(obj['custom_xml']):
+            attributes.append(obj['custom_xml'])
+
+        # track_object = np.dtype([
+        #     ('id', 'U127'),                         # ID
+        #     ('object', 'O'),                        # Object reference
+        #     ('transform', stk_utils.transform),     # Transform
+        #     ('lod', 'O'),                           # LOD collection reference
+        #     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
+        #     ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
+        #     ('uv_animated', 'O'),                   # Material reference for UV animation
+        #     ('uv_speed_u', np.float32),             # UV animation speed U
+        #     ('uv_speed_v', np.float32),             # UV animation speed V
+        #     ('uv_speed_dt', np.float32),            # UV step animation speed (<0 if disabled)
+        #     ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
+        #     ('interaction', np.int8),               # Interaction type (object_interaction)
+        #     ('shape', np.int8),                     # Physics shape (object_physics_shape)
+        #     ('flags', np.int8),                     # Object flags (object_flags)
+        #     ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
+        #     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
+        #     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
+        #     ('custom_xml', 'U127'),                 # Additional custom XML
+        # ])
+        print(' '.join(attributes))
+
+    return nodes
+
+
 def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: SceneCollection, output_dir: str):
     path = os.path.join(output_dir, 'scene.xml')
 
     # Prepare LOD node data
     xml_lod = xml_lod_data(collection.lod_groups)
+    xml_static_objects = xml_object_data(collection.static_objects, True)
 
     node_track = [f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">"]
-
-    # track_object = np.dtype([
-    #     ('id', 'U127'),                         # ID
-    #     ('object', 'O'),                        # Object reference
-    #     ('transform', stk_utils.transform),     # Transform
-    #     ('lod', 'O'),                           # LOD collection reference
-    #     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
-    #     ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
-    #     ('uv_animated', 'O'),                   # Material reference for UV animation
-    #     ('uv_speed_u', np.float32),             # UV animation speed U
-    #     ('uv_speed_v', np.float32),             # UV animation speed V
-    #     ('uv_speed_dt', np.float32),            # UV step animation speed (<0 if disabled)
-    #     ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
-    #     ('interaction', np.int8),               # Interaction type (object_interaction)
-    #     ('shape', np.int8),                     # Physics shape (object_physics_shape)
-    #     ('flags', np.int8),                     # Object flags (object_flags)
-    #     ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
-    #     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
-    #     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
-    #     ('custom_xml', 'U127'),                 # Additional custom XML
-    # ])
 
     # Iterate all static objects
     for obj in collection.static_objects:

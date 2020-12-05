@@ -154,7 +154,7 @@
             <item value="cone_x" label="Cone (X)"/>
             <item value="cone_y" label="Cone (Y)"/>
             <item value="cone_z" label="Cone (Z)"/>
-            <item value="exact" label="Exact"/>
+            <item value="exact" label="Exact" doc="Not supported for LOD instances"/>
         </enum>
 
         <!-- object specific -->

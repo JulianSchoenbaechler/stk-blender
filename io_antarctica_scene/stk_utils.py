@@ -248,6 +248,10 @@ def transform_to_xyzh_str(val: transform, explode=False):
     output = 'xyz="{:.2f} {:.2f} {:.2f}" h="{:.2f}"' if not explode else 'x="{:.2f}" y="{:.2f}" z="{:.2f}" h="{:.2f}"'
     return output.format(val['xyz'][0], val['xyz'][1], val['xyz'][2], val['hpr'][0])
 
+
+def color_to_str(val: vec3):
+    return '{:d} {:d} {:d}'.format(val['x'] * 255, val['y'] * 255, val['z'] * 255)
+
 # ------------------------------------------------------------------------------
 # FIXME: should use xyz="..." format
 # Returns a string 'x="1" y="2" z="3" h="4"', where 1, 2, ...are the actual
