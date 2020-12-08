@@ -307,10 +307,17 @@ def collect_scene(context: bpy.context, report):
                     staged.append(-1.0)
 
                 # Animated textures
-                staged.append(props.uv_material if props.uv_animated else None)
-                staged.append(props.uv_speed_u)
-                staged.append(props.uv_speed_v)
-                staged.append(props.uv_speed_dt if props.uv_step else -1.0)
+                if props.uv_animated and props.uv_material.use_nodes \
+                   and stk_utils.is_stk_material(props.uv_material.node_tree):
+                    staged.append(props.uv_material)
+                    staged.append(props.uv_speed_u)
+                    staged.append(props.uv_speed_v)
+                    staged.append(props.uv_speed_dt if props.uv_step else - 1.0)
+                else:
+                    staged.append(None)
+                    staged.append(0.0)
+                    staged.append(0.0)
+                    staged.append(-1.0)
 
                 # Object geometry visibility
                 if props.visibility:
@@ -371,14 +378,23 @@ def collect_scene(context: bpy.context, report):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
+                visibility = eggs_visibility['none']
+
+                if 'easy' in props.easteregg_visibility:
+                    visibility |= eggs_visibility['easy']
+                if 'intermediate' in props.easteregg_visibility:
+                    visibility |= eggs_visibility['intermediate']
+                if 'hard' in props.easteregg_visibility:
+                    visibility |= eggs_visibility['hard']
+
                 placeables.append((
-                    obj.name,                                       # ID
-                    stk_utils.object_get_transform(obj),            # Transform
-                    placeable_type[t],                              # Placeable type
-                    props.start_index,                              # Start index for start positions
-                    props.snap_ground,                              # Snap to ground
-                    props.ctf_only,                                 # Enabled in CTF mode only
-                    eggs_visibility[props.easteregg_visibility],    # Item visibility (only used in easter-egg mode)
+                    obj.name,                               # ID
+                    stk_utils.object_get_transform(obj),    # Transform
+                    placeable_type[t],                      # Placeable type
+                    props.start_index,                      # Start index for start positions
+                    props.snap_ground,                      # Snap to ground
+                    props.ctf_only,                         # Enabled in CTF mode only
+                    visibility,                             # Item visibility (only used in easter-egg mode)
                 ))
 
                 used_identifiers.append(obj.name)
@@ -800,7 +816,11 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
 
     # Iterate all objects
     for obj in objects:
-        attributes = [f"id=\"{obj['object'].name}\""]
+        anim_texture = None
+        ipo_data = None
+
+        # ID and transform
+        attributes = [f"id=\"{obj['object'].name}\"", stk_utils.transform_to_str(obj['transform'])]
 
         # Object type
         if obj['interaction'] == object_interaction['movable']:
@@ -816,11 +836,13 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
         if obj['lod']:
             attributes.append(f"lod_instance=\"y\" lod_group=\"{obj['lod'].name}\"")
             is_lod = True
-        elif obj['lod_distance'] >= 0:
+        elif obj['lod_distance'] >= 0.0:
             attributes.append(f"lod_instance=\"y\" lod_group=\"{STANDALONE_LOD_PREFIX}{obj['id']}\"")
             is_lod = True
         else:
-            attributes.append(f"model=\"{obj['id']}.spm\"")
+            # Skeletal animation
+            anim = 'y' if stk_utils.object_has_skeletal_animation(obj['object']) else 'n'
+            attributes.append(f"model=\"{obj['id']}.spm\" skeletal-animation=\"{anim}\"")
 
         # Geometry level visibility
         if obj['visibility'] != object_geo_detail_level['off']:
@@ -927,6 +949,32 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
         # ])
         print(' '.join(attributes))
 
+        # Animated texture (object specific)
+        if obj['uv_animated']:
+            anim_texture_attributes = [f"name=\"{stk_utils.get_main_texture_stk_material(obj['uv_animated'])}"]
+
+            if obj['uv_speed_dt'] >= 0.0:
+                anim_texture_attributes.append(f"animByStep=\"y\" dt=\"{obj['uv_speed_dt']:.3f}\"")
+
+            anim_texture_attributes.append(f"dx=\"{obj['uv_speed_u']:.5f}\"")
+            anim_texture_attributes.append(f"dy=\"{obj['uv_speed_v']:.5f}\"")
+
+            anim_texture = f"<animated-texture {' '.join(anim_texture_attributes)}/>"
+
+        # Build object node
+        if not anim_texture and not ipo_data:
+            nodes.append(f"{'  ' * indent}<{tag_name} {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<{tag_name} {' '.join(attributes)}>")
+            indent += 1
+
+            # Animated texture as sub-node
+            if anim_texture:
+                nodes.append(f"{'  ' * indent}{anim_texture}")
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</{tag_name}>")
+
     return nodes
 
 
@@ -935,16 +983,14 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: Sce
 
     # Prepare LOD node data
     xml_lod = xml_lod_data(collection.lod_groups)
-    xml_static_objects = xml_object_data(collection.static_objects, True)
 
-    node_track = [f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">"]
-
-    # Iterate all static objects
-    for obj in collection.static_objects:
-        attributes = []
-
-        # Transform
-        attributes.append(stk_utils.transform_to_str(obj['transform']))
+    # Prepare static track data
+    xml_track = [
+        "  <!-- Track model and static objects -->",
+        f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">",
+        "\n".join(xml_object_data(collection.static_objects, True, 2)),
+        "  </track>"
+    ]
 
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -953,6 +999,8 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: Sce
         ])
 
         f.write("\n".join(xml_lod))
+        f.write("\n")
+        f.write("\n".join(xml_track))
 
         # all the things...
         f.write("\n</scene>\n")
