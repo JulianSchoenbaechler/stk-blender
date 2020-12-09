@@ -743,7 +743,7 @@ def xml_lod_data(lod_groups: set, indent=1):
                                     id=model_props.name if len(model_props.name) > 0 else lod_model.name,
                                     dist=model_props.lod_distance,
                                     group=lod_group.name,
-                                    anim='y' if stk_utils.object_has_skeletal_animation(lod_model) else 'n'
+                                    anim='y' if lod_model.find_armature() else 'n'
                                 ))
 
             indent -= 1
@@ -755,7 +755,7 @@ def xml_lod_data(lod_groups: set, indent=1):
             model_props = lod_group.stk_track
             model_id = model_props.name if len(model_props.name) > 0 else lod_group.name
             model_group = f'{STANDALONE_LOD_PREFIX}{model_id}'
-            model_skeletal = 'y' if stk_utils.object_has_skeletal_animation(lod_group) else 'n'
+            model_skeletal = 'y' if lod_group.find_armature() else 'n'
 
             node_lod.append(f"    <group name=\"{model_group}\">")
             indent += 1
@@ -802,6 +802,10 @@ def xml_lod_data(lod_groups: set, indent=1):
     return node_lod
 
 
+def xml_ipo_data(object: bpy.types.Object):
+    pass
+
+
 def xml_object_data(objects: np.ndarray, static=False, indent=1):
     if np.size(objects) == 0:
         return []
@@ -841,7 +845,7 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
             is_lod = True
         else:
             # Skeletal animation
-            anim = 'y' if stk_utils.object_has_skeletal_animation(obj['object']) else 'n'
+            anim = 'y' if obj['object'].find_armature() else 'n'
             attributes.append(f"model=\"{obj['id']}.spm\" skeletal-animation=\"{anim}\"")
 
         # Geometry level visibility
@@ -927,31 +931,12 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
         if obj['custom_xml'] and len(obj['custom_xml']):
             attributes.append(obj['custom_xml'])
 
-        # track_object = np.dtype([
-        #     ('id', 'U127'),                         # ID
-        #     ('object', 'O'),                        # Object reference
-        #     ('transform', stk_utils.transform),     # Transform
-        #     ('lod', 'O'),                           # LOD collection reference
-        #     ('lod_distance', np.float32),           # LOD standalone distance (<0 for instances)
-        #     ('lod_modifiers', np.float32),          # LOD modifiers distance (<0 for instances or disabled)
-        #     ('uv_animated', 'O'),                   # Material reference for UV animation
-        #     ('uv_speed_u', np.float32),             # UV animation speed U
-        #     ('uv_speed_v', np.float32),             # UV animation speed V
-        #     ('uv_speed_dt', np.float32),            # UV step animation speed (<0 if disabled)
-        #     ('visibility', np.int8),                # Geometry level visibility (object_geo_detail_level)
-        #     ('interaction', np.int8),               # Interaction type (object_interaction)
-        #     ('shape', np.int8),                     # Physics shape (object_physics_shape)
-        #     ('flags', np.int8),                     # Object flags (object_flags)
-        #     ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
-        #     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
-        #     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
-        #     ('custom_xml', 'U127'),                 # Additional custom XML
-        # ])
-        print(' '.join(attributes))
-
         # Animated texture (object specific)
         if obj['uv_animated']:
-            anim_texture_attributes = [f"name=\"{stk_utils.get_main_texture_stk_material(obj['uv_animated'])}"]
+            image = stk_utils.get_main_texture_stk_material(obj['uv_animated'])
+            anim_texture_attributes = [
+                f"name=\"{obj['uv_animated'].name}.{'png' if image.file_format == 'PNG' else 'jpg'}\""
+            ]
 
             if obj['uv_speed_dt'] >= 0.0:
                 anim_texture_attributes.append(f"animByStep=\"y\" dt=\"{obj['uv_speed_dt']:.3f}\"")

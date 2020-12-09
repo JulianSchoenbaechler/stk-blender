@@ -96,21 +96,27 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
 
 
 def get_main_texture_stk_material(mat: bpy.types.Material):
-    if not mat or not mat.use_nodes or not is_stk_material(mat.node_tree):
+    if not mat or not mat.use_nodes:
         return None
 
-    if 'Main Texture' in mat.node_tree.nodes:
-        return mat.node_tree.nodes['Main Texture'].image
+    for node in mat.node_tree.nodes:
+        if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+            socket = node.inputs['Surface']
+
+            if socket.is_linked:
+                shader_node = socket.links[0].from_node
+
+                # Use simple string comparison to make it work for future shaders
+                if shader_node.__class__.__name__.startswith('Antarctica')\
+                   and shader_node.node_tree.nodes['Main Texture']:
+                    return shader_node.node_tree.nodes['Main Texture'].image
 
     return None
 
 
-def object_has_skeletal_animation(obj: bpy.types.Object):
-    return any(m for m in obj.modifiers if m.type == 'ARMATURE')
-
-
 def object_is_animated(obj: bpy.types.Object):
-    return obj.animation_data or object_has_skeletal_animation(obj)
+    return obj.animation_data or obj.find_armature().animation_data or \
+        (obj.parent and obj.parent.type == 'ARMATURE' and obj.parent.animation_data)
 
 
 def object_get_transform(obj: bpy.types.Object, local=False):

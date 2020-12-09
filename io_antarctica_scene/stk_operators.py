@@ -97,9 +97,28 @@ class STK_OT_TrackExport(bpy.types.Operator):
         scene = stk_track_new.collect_scene(context, self.report)
 
         stk_track_new.write_scene_file(stk_scene, scene, output_dir)
-        print(scene.track_objects)
 
-        # IO: export destination
+        # Demo: export materials
+        for mat in bpy.data.materials:
+            image = stk_utils.get_main_texture_stk_material(mat)
+            print(mat, image)
+
+            if not image:
+                continue
+
+            original_path = image.filepath_raw
+
+            if image.file_format == 'JPEG':
+                image.filepath_raw = os.path.join(output_dir, f'{mat.name}.jpg')
+            elif image.file_format == 'PNG':
+                image.filepath_raw = os.path.join(output_dir, f'{mat.name}.png')
+            else:
+                print("Error exporting images...")
+                continue
+
+            # Save image
+            image.save()
+            image.filepath_raw = original_path
 
         print("EXPORT!!!!")
         return {'FINISHED'}
