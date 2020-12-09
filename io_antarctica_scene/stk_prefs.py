@@ -54,8 +54,6 @@ class STKAddonPreferences(AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
-        #layout.label(text="The data folder contains folders named 'karts', 'tracks', 'textures', etc.")
         layout.prop(self, 'assets_path')
-        #layout.operator('screen.stk_pick_assets_path', icon='FILEBROWSER', text="Select...")
         layout.prop(self, 'clean_destination_on_export')
         layout.prop(self, 'export_images')

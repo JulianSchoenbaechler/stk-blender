@@ -24,7 +24,7 @@ import bpy
 import io
 import os
 import numpy as np
-from . import stk_utils, stk_track, stk_track_new
+from . import stk_utils, stk_track, stk_track_utils
 from bpy.props import (
     IntProperty,
     FloatProperty,
@@ -94,9 +94,9 @@ class STK_OT_TrackExport(bpy.types.Operator):
         dg = context.evaluated_depsgraph_get()
 
         # Gather and stage all scene objects that should be exported
-        scene = stk_track_new.collect_scene(context, self.report)
+        scene = stk_track_utils.collect_scene(context, self.report)
 
-        stk_track_new.write_scene_file(stk_scene, scene, output_dir)
+        stk_track.write_scene_file(stk_scene, scene, output_dir)
 
         # Demo: export materials
         for mat in bpy.data.materials:

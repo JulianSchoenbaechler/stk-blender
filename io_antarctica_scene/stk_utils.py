@@ -115,8 +115,13 @@ def get_main_texture_stk_material(mat: bpy.types.Material):
 
 
 def object_is_animated(obj: bpy.types.Object):
-    return obj.animation_data or obj.find_armature().animation_data or \
-        (obj.parent and obj.parent.type == 'ARMATURE' and obj.parent.animation_data)
+    if obj.animation_data:
+        return obj.animation_data
+
+    armature = obj.find_armature()
+
+    return (armature and armature.animation_data) or \
+           (obj.parent and obj.parent.type == 'ARMATURE' and obj.parent.animation_data)
 
 
 def object_get_transform(obj: bpy.types.Object, local=False):

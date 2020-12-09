@@ -51,10 +51,6 @@ if 'bpy' in locals():
         importlib.reload(stk_material)  # pylint: disable=used-before-assignment
     if 'stk_kart' in locals():
         importlib.reload(stk_kart)  # pylint: disable=used-before-assignment
-    if 'stk_track' in locals():
-        importlib.reload(stk_track)  # pylint: disable=used-before-assignment
-    if 'stk_track_new' in locals():
-        importlib.reload(stk_track_new)  # pylint: disable=used-before-assignment
 
 import bpy  # noqa(E402,)
 from bpy.app.handlers import persistent  # noqa(E402,)
@@ -71,9 +67,7 @@ from . import stk_prefs, \
               stk_operators, \
               stk_shaders, \
               stk_material, \
-              stk_kart, \
-              stk_track, \
-              stk_track_new  # noqa(E402,)
+              stk_kart  # noqa(E402,)
 
 
 def menu_func_export(self, context):
@@ -105,7 +99,6 @@ classes = (
     stk_material.ANTARCTICA_PT_properties,
     stk_material.STK_Material_Export_Operator,
     stk_kart.STK_Kart_Export_Operator,
-    stk_track.STK_Track_Export_Operator,
 
     stk_prefs.STKAddonPreferences,
 
@@ -115,8 +108,8 @@ classes = (
     stk_panel.STK_PT_CameraProperties,
     stk_panel.STK_PT_MaterialProperties,
 
-    stk_operators.STK_OT_TrackExport,
     stk_operators.STK_MT_ExportMenu,
+    stk_operators.STK_OT_TrackExport,
 
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
