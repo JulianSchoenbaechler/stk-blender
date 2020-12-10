@@ -96,7 +96,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         # Gather and stage all scene objects that should be exported
         scene = stk_track_utils.collect_scene(context, self.report)
 
-        stk_track.write_scene_file(stk_scene, scene, output_dir)
+        stk_track.write_scene_file(stk_scene, scene, output_dir, self.report)
 
         # Demo: export materials
         for mat in bpy.data.materials:
@@ -121,6 +121,9 @@ class STK_OT_TrackExport(bpy.types.Operator):
             image.filepath_raw = original_path
 
         print("EXPORT!!!!")
+
+        # Reset frames
+        context.scene.frame_set(context.scene.frame_start)
         return {'FINISHED'}
 
     @ classmethod

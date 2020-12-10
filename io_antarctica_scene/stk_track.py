@@ -135,7 +135,7 @@ def xml_lod_data(lod_groups: set, indent=1):
     return node_lod
 
 
-def xml_ipo_data(anim: bpy.types.AnimData, indent=2):
+def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode: str, indent=2, report=print):
     """Creates an iterable of strings that represent the writable XML node for an object's IPO curve animation data
     specification of the scene XML file.
 
@@ -151,9 +151,110 @@ def xml_ipo_data(anim: bpy.types.AnimData, indent=2):
     list of str
         Each element represents a line for writing the formatted XML data
     """
+    if not animation_data or not animation_data.action:
+        return []
+
+    # Check rotation mode of the animated object, report on incorrect selection
+    # STK does the axis order conversion for us, so make sure the order of Euler axes are XYZ (not XZY)
+    # https://github.com/supertuxkart/stk-code/blob/82b7ab/src/animations/three_d_animation.cpp#L98-L101
+    if rotation_mode == 'QUATERNION' or rotation_mode == 'AXIS_ANGLE':
+        report({'ERROR'}, f"The rotation mode of the object with the identifier '{obj_id}' is not supported in "
+               " SuperTuxKart! The animation curves of the rotation of this object can not be exported correctly. "
+               "Please use the 'XYZ Euler' rotation mode for animated objects.")
+    elif rotation_mode != 'XYZ':
+        report({'WARNING'}, f"The rotation order of the object with the identifier '{obj_id}' is incorrect! "
+               f"'XYZ Euler' should be used, but '{rotation_mode} Euler' is selected. The animation of this object "
+               " will likely look different in-game.")
+
+    axes = ('X', 'Z', 'Y')  # Swap Y and Z axis
+    node_curves = []
+
+    for curve in animation_data.action.fcurves:
+        factor = 1
+
+        if curve.data_path == 'location':
+            channel = f'Loc{axes[curve.array_index]}'
+        elif curve.data_path == 'rotation_euler':
+            channel = f'Rot{axes[curve.array_index]}'
+            factor = -57.2957795131  # rad2deg
+        elif curve.data_path == 'scale':
+            channel = f'Scale{axes[curve.array_index]}'
+        else:
+            # Do not report on armature bone curves
+            if 'pose.bones' not in curve.data_path:
+                report({'WARNING'}, f"Unknown IPO curve type '{curve.data_path}' (animation)!")
+            continue
+
+        # Extrapolation of the curve (constant or cyclic)
+        extrapolation = 'const' if len([m for m in curve.modifiers if m == 'CYCLES']) == 0 else 'cyclic'
+        interpolation = 'const'
+        changed_interpolation = False
+        keyframes = []
+
+        # Gather keyframe points of the curve (packing)
+        for i, kp in enumerate(curve.keyframe_points):
+            if kp.interpolation != 'CONSTANT' and kp.interpolation != 'LINEAR':
+                # Change interpolation method
+                # Mixture of interpolation method if change happens after first iteration
+                if interpolation != 'bezier':
+                    interpolation = 'bezier'
+                    changed_interpolation |= i > 0
+
+                keyframes.append((
+                    (kp.co[0], kp.co[1]),
+                    (kp.handle_left[0], kp.handle_left[1]),
+                    (kp.handle_right[0], kp.handle_right[1]),
+                ))
+            else:
+                # Change interpolation method; bezier interpolation is the fallback
+                # Mixture of interpolation method if change happens after first iteration
+                if interpolation == 'bezier':
+                    changed_interpolation = True
+                elif kp.interpolation == 'LINEAR':
+                    interpolation = 'linear'
+                    changed_interpolation |= i > 0
+
+                keyframes.append((
+                    (kp.co[0], kp.co[1]),
+                    (kp.co[0], kp.co[1]),
+                    (kp.co[0], kp.co[1]),
+                ))
+
+        packed_kp = np.array(keyframes, dtype=stk_utils.keyframe2d)
+        node_curves.append(f"{'  ' * indent}<curve channel=\"{channel}\" interpolation=\"{interpolation}\" "
+                           f"extend=\"{extrapolation}\">")
+        indent += 1
+
+        if interpolation == 'bezier':
+            for kp in packed_kp:
+                node_curves.append("{}<p c=\"{:.1f} {:.3f}\" h1=\"{:.1f} {:.3f}\" h2=\"{:.1f} {:.3f}\"/>".format(
+                    '  ' * indent,
+                    kp['c']['x'], kp['c']['y'] * factor,
+                    kp['h1']['x'], kp['h1']['y'] * factor,
+                    kp['h2']['x'], kp['h2']['y'] * factor
+                ))
+
+        else:
+            for kp in packed_kp:
+                node_curves.append("{}<p c=\"{:.1f} {:.3f}\"/>".format(
+                    '  ' * indent,
+                    kp['c']['x'], kp['c']['y'] * factor
+                ))
+
+        # Report inconsistent keyframe points interpolation
+        if changed_interpolation:
+            report({'WARNING'}, f"The object with the identifier '{obj_id}' uses a mixture of different keyframe "
+                   "interpolations in its IPO curve! Check the objects F-Curves in the Graph Editor. SuperTuxKart "
+                   "supports 'Constant', 'Linear' and 'Bezier' interpolations, but only if all keyframe points on a "
+                   "curve use the same interpolation method.")
+
+        indent -= 1
+        node_curves.append(f"{'  ' * indent}</curve>")
+
+    return node_curves
 
 
-def xml_object_data(objects: np.ndarray, static=False, indent=1):
+def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, report=print):
     """Creates an iterable of strings that represent the writable XML node for generic scene objects (including static)
     of the scene XML file.
 
@@ -185,7 +286,7 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
     # Iterate all objects
     for obj in objects:
         anim_texture = None
-        ipo_data = None
+        animation_data = stk_utils.object_is_ipo_animated(obj['object'])
 
         # ID and transform
         attributes = [f"id=\"{obj['object'].name}\"", stk_utils.transform_to_str(obj['transform'])]
@@ -193,8 +294,8 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
         # Object type
         if obj['interaction'] == tu.object_interaction['movable']:
             attributes.append("type=\"movable\"")
-        elif obj['object'].animation_data:
-            attributes.append("type=\"animation\"")
+        elif animation_data:
+            attributes.append(f"type=\"animation\" fps=\"{fps:.2f}\"")
         else:
             attributes.append("type=\"static\"")
 
@@ -311,7 +412,7 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
             anim_texture = f"<animated-texture {' '.join(anim_texture_attributes)}/>"
 
         # Build object node
-        if not anim_texture and not ipo_data:
+        if not anim_texture and not animation_data:
             nodes.append(f"{'  ' * indent}<{tag_name} {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<{tag_name} {' '.join(attributes)}>")
@@ -321,13 +422,19 @@ def xml_object_data(objects: np.ndarray, static=False, indent=1):
             if anim_texture:
                 nodes.append(f"{'  ' * indent}{anim_texture}")
 
+            # IPO animation
+            nodes.extend(xml_ipo_data(obj['id'], animation_data, obj['object'].rotation_mode, indent, report))
+
             indent -= 1
             nodes.append(f"{'  ' * indent}</{tag_name}>")
 
     return nodes
 
 
-def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: tu.SceneCollection, output_dir: str):
+def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
+                     collection: tu.SceneCollection,
+                     output_dir: str,
+                     report=print):
     path = os.path.join(output_dir, 'scene.xml')
 
     # Prepare LOD node data
@@ -337,9 +444,11 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup, collection: tu.
     xml_track = [
         "  <!-- Track model and static objects -->",
         f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">",
-        "\n".join(xml_object_data(collection.static_objects, True, 2)),
+        "\n".join(xml_object_data(collection.static_objects, True, collection.fps, 2, report)),
         "  </track>"
     ]
+
+    print("\n".join(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report)))
 
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([

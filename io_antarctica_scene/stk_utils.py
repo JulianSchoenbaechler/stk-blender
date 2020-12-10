@@ -115,22 +115,21 @@ def get_main_texture_stk_material(mat: bpy.types.Material):
 
 
 def object_is_animated(obj: bpy.types.Object):
-    if obj.animation_data:
-        return obj.animation_data
-
     armature = obj.find_armature()
+    return (armature and armature.animation_data) or object_is_ipo_animated(obj)
 
-    return (armature and armature.animation_data) or \
-           (obj.parent and obj.parent.type == 'ARMATURE' and obj.parent.animation_data)
+
+def object_is_ipo_animated(obj: bpy.types.Object):
+    return obj.animation_data or (obj.parent and obj.parent.type == 'ARMATURE' and obj.parent.animation_data)
 
 
 def object_get_transform(obj: bpy.types.Object, local=False):
     matrix = obj.matrix_local if local else obj.matrix_world
     loc_rot_scale = matrix.decompose()
-    rot_euler = mathutils.Vector(loc_rot_scale[1].to_euler('ZXY')) * 57.2957795131  # rad2deg
+    rot_euler = mathutils.Vector(loc_rot_scale[1].to_euler('XZY')) * -57.2957795131  # rad2deg
     return (
         (loc_rot_scale[0].x, loc_rot_scale[0].z, loc_rot_scale[0].y),
-        (rot_euler.x, rot_euler.y, rot_euler.z),
+        (rot_euler.x, rot_euler.z, rot_euler.y),
         (loc_rot_scale[2].x, loc_rot_scale[2].z, loc_rot_scale[2].y)
     )
 

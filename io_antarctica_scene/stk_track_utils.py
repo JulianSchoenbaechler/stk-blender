@@ -47,6 +47,7 @@ SceneCollection = collections.namedtuple('SceneCollection', [
     'lights',
     'cameras',
     'sun',
+    'fps',
 ])
 
 object_geo_detail_level = {
@@ -708,4 +709,5 @@ def collect_scene(context: bpy.context, report):
         np.array(lights, dtype=track_light),
         np.array(cameras, dtype=track_camera),
         sun,
+        context.scene.render.fps / context.scene.render.fps_base
     )
