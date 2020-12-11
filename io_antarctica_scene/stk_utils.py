@@ -114,6 +114,18 @@ def get_main_texture_stk_material(mat: bpy.types.Material):
     return None
 
 
+def iter_enabled_collections(collection: bpy.types.Collection):
+    if collection.hide_viewport or collection.hide_render:
+        return
+
+    yield collection
+    for child in collection.children:
+        if child.hide_viewport or child.hide_render:
+            continue
+
+        yield from iter_enabled_collections(child)
+
+
 def object_is_animated(obj: bpy.types.Object):
     armature = obj.find_armature()
     return (armature and armature.animation_data) or object_is_ipo_animated(obj)

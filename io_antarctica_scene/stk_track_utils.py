@@ -260,8 +260,15 @@ def collect_scene(context: bpy.context, report):
     cameras = []
     sun = None
 
-    # Gather and categorize all objects that need to get exported
-    for obj in context.scene.objects:
+    # Gather all objects from enabled collections
+    # If collections are hidden in viewport or render, all their objects should get ignored
+    objects = []
+
+    for col in stk_utils.iter_enabled_collections(context.scene.collection):
+        objects.extend(col.objects)
+
+    # Categorize all objects that need to get exported
+    for obj in objects:
         # Ignore disabled
         if obj.hide_viewport or obj.hide_render:
             continue

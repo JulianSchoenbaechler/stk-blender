@@ -440,7 +440,7 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare LOD node data
     xml_lod = xml_lod_data(collection.lod_groups)
 
-    # Prepare static track data
+    # Prepare static track data (including static objects)
     xml_track = [
         "  <!-- Track model and static objects -->",
         f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">",
@@ -448,7 +448,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         "  </track>"
     ]
 
-    print("\n".join(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report)))
+    # Prepare dynamic objects
+    xml_objects = ["  <!-- Dynamic/animated and non-static objects -->"]
+    xml_objects.extend(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report))
 
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -459,6 +461,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         f.write("\n".join(xml_lod))
         f.write("\n")
         f.write("\n".join(xml_track))
+        f.write("\n")
+        f.write("\n".join(xml_objects))
+        f.write("\n")
 
         # all the things...
-        f.write("\n</scene>\n")
+        f.write("</scene>\n")
