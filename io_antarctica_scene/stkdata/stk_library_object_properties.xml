@@ -191,12 +191,21 @@
         </box>
 
         <!-- action trigger -->
+        <enum id="action_trigger" label="Trigger Type" default="point"
+              bind="type" condition="lambda t: t == 'action_trigger'"
+              doc="The trigger type (shape)">
+            <item value="point" label="Point"/>
+            <item value="cylinder" label="Cylinder"/>
+        </enum>
         <string id="action" label="Action" default=""
                 bind="type" condition="lambda t: t == 'action_trigger'"
                 doc="Name of the action to trigger"/>
         <float id="action_distance" label="Trigger Distance" default="5.0"  min="0.0" max="5000.0"
                bind="type" condition="lambda t: t == 'action_trigger'"
                doc="Distance at which this action is triggered"/>
+        <float id="action_height" label="Trigger Height" default="3.0" min="0.0" max="5000.0"
+               bind="type action_trigger" condition="lambda t, p: t == 'action_trigger' and p == 'cylinder'"
+               doc="Height of this cylindrical action trigger"/>
         <float id="action_timeout" label="Re-Enable Timeout" default="1.0"  min="0.0" max="1000000.0"
                bind="type" condition="lambda t: t == 'action_trigger'"
                doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
@@ -204,12 +213,6 @@
                 filter="lambda o: o.supertuxkart.type == 'object' or o.supertuxkart.type == 'lod_instance' or o.supertuxkart.type == 'lod_standalone'"
                 bind="type" condition="lambda t: t == 'action_trigger'"
                 doc="Name of the object for being triggered"/>
-        <enum id="action_trigger" label="Trigger Type" default="point"
-              bind="type" condition="lambda t: t == 'action_trigger'"
-              doc="The trigger type (shape)">
-            <item value="point" label="Point"/>
-            <item value="cylinder" label="Cylinder"/>
-        </enum>
 
         <!-- scripting callbacks -->
         <string id="visible_if" label="Visible If"

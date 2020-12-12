@@ -218,6 +218,9 @@
         <bool id="particles_emit" label="Emit On Start" default="true"
               bind="type" condition="lambda t:  t == 'particle_emitter'"
               doc="Whether the particles will automatically start emitting; can be started through scripting if disabled"/>
+        <string id="particles_condition" label="Cutscene Condition" default=""
+                bind="type" condition="lambda t: t == 'particle_emitter'"
+                doc="The condition used in cutscenes for this emitter; Only used in cutscene tracks"/>
 
         <!-- god rays (light shaft) emitter -->
         <float id="lightshaft_opacity" label="Strength (Opacity)" default="0.7" min="0.0" max="1.0"
@@ -231,7 +234,7 @@
         <string id="sfx" label="Sound File" default="some_file.ogg"
                 bind="type" condition="lambda t: t == 'sfx_emitter'"
                 doc="File name of the sound to play"/>
-        <float id="sfx_volume" label="Volume" default="1.0"  min="0.0" max="1.0"
+        <float id="sfx_volume" label="Volume" default="1.0" min="0.0" max="1.0"
                bind="type" condition="lambda t: t == 'sfx_emitter'"
                doc="The volume of the sound playback"/>
         <float id="sfx_rolloff" label="Roll-Off Rate" default="0.1" min="0.0" max="2.5"
@@ -248,23 +251,29 @@
             <float id="sfx_trigger_distance" label="Distance" default="10.0" min="0.0" max="1000.0"
                    doc="Distance from the kart at which the sound starts playing"/>
         </box>
+        <string id="sfx_condition" label="Cutscene Condition" default=""
+                bind="type" condition="lambda t: t == 'sfx_emitter'"
+                doc="The condition used in cutscenes for this emitter; Only used in cutscene tracks"/>
 
         <!-- action trigger -->
-        <string id="action" label="Action" default=""
-                bind="type" condition="lambda t: t == 'action_trigger'"
-                doc="Name of the action to trigger"/>
-        <float id="action_distance" label="Trigger Distance" default="5.0"  min="0.0" max="5000.0"
-               bind="type" condition="lambda t: t == 'action_trigger'"
-               doc="Distance at which this action is triggered"/>
-        <float id="action_timeout" label="Re-Enable Timeout" default="1.0"  min="0.0" max="1000000.0"
-               bind="type" condition="lambda t: t == 'action_trigger'"
-               doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
         <enum id="action_trigger" label="Trigger Type" default="point"
               bind="type" condition="lambda t: t == 'action_trigger'"
               doc="The trigger type (shape)">
             <item value="point" label="Point"/>
             <item value="cylinder" label="Cylinder"/>
         </enum>
+        <string id="action" label="Action" default=""
+                bind="type" condition="lambda t: t == 'action_trigger'"
+                doc="Name of the action to trigger"/>
+        <float id="action_distance" label="Trigger Distance" default="5.0" min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'action_trigger'"
+               doc="Distance at which this action is triggered; radius of the trigger sphere or cylinder"/>
+        <float id="action_height" label="Trigger Height" default="3.0" min="0.0" max="5000.0"
+               bind="type action_trigger" condition="lambda t, p: t == 'action_trigger' and p == 'cylinder'"
+               doc="Height of this cylindrical action trigger"/>
+        <float id="action_timeout" label="Re-Enable Timeout" default="1.0" min="0.0" max="1000000.0"
+               bind="type" condition="lambda t: t == 'action_trigger'"
+               doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
 
         <!-- drivelines -->
         <float id="driveline_lower" label="Min Height Testing" default="-1.0" min="-50.0" max="0.0"

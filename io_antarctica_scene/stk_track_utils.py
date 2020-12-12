@@ -165,6 +165,7 @@ track_particles = np.dtype([
     ('file', 'U127'),
     ('distance', np.float32),
     ('emit', np.bool_),
+    ('condition', 'U127'),
 ])
 
 track_godrays = np.dtype([
@@ -183,15 +184,16 @@ track_audio = np.dtype([
     ('rolloff', np.float32),
     ('distance', np.float32),
     ('trigger', np.float32),
+    ('condition', 'U127'),
 ])
 
 track_action = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
     ('animation', 'O'),
-    ('rotation_mode', 'U10'),
     ('action', 'U127'),
     ('distance', np.float32),
+    ('height', np.float32),
     ('timeout', np.float32),
     ('cylindrical', np.bool_),
 ])
@@ -477,6 +479,7 @@ def collect_scene(context: bpy.context, report):
                     props.particles,                        # Particles file name
                     props.particles_distance,               # Particles clip distance
                     props.particles_emit,                   # Particles auto-emit
+                    props.particles_condition,              # Particles cutscene condition
                 ))
 
                 used_identifiers.append(obj.name)
@@ -515,6 +518,7 @@ def collect_scene(context: bpy.context, report):
                     props.sfx_rolloff,                                          # Sound rolloff
                     props.sfx_distance,                                         # Sound hearing distance
                     props.sfx_trigger_distance if props.sfx_trigger else -1.0,  # Sound trigger distance
+                    props.sfx_condition,                                        # Sound cutscene condition
                 ))
 
                 used_identifiers.append(obj.name)
@@ -531,9 +535,9 @@ def collect_scene(context: bpy.context, report):
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
                     stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
-                    obj.rotation_mode,                      # Object's rotation mode
                     props.action,                           # Action call
                     props.action_distance,                  # Trigger distance (radius)
+                    props.action_height,                    # Trigger height
                     props.action_timeout,                   # Action re-enable timeout
                     props.action_trigger == 'cylinder',     # Trigger shape (point or cylinder)
                 ))

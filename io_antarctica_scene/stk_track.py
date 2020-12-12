@@ -51,7 +51,7 @@ def xml_lod_data(lod_groups: set, indent=1):
         return []
 
     # Level-of-detail nodes
-    node_lod = [f"{'  ' * indent}<!-- Level-of-detail groups -->", f"{'  ' * indent}<lod>"]
+    node_lod = [f"{'  ' * indent}<!-- level-of-detail groups -->", f"{'  ' * indent}<lod>"]
     indent += 1
 
     for lod_group in lod_groups:
@@ -136,8 +136,8 @@ def xml_lod_data(lod_groups: set, indent=1):
 
 
 def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode: str, indent=2, report=print):
-    """Creates an iterable of strings that represent the writable XML node for an object's IPO curve animation data
-    specification of the scene XML file.
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for an object's IPO
+    curve animation data specification.
 
     Parameters
     ----------
@@ -261,8 +261,8 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
 
 
 def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node for generic scene objects (including static)
-    of the scene XML file.
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for generic scene
+    objects (including static).
 
     Parameters
     ----------
@@ -442,7 +442,7 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
 
 
 def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node for billboard objects of the scene XML file.
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for billboard objects.
 
     Parameters
     ----------
@@ -464,7 +464,7 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
         return []
 
     # Billboards nodes
-    nodes = [f"{'  ' * indent}<!-- Billboards -->"]
+    nodes = [f"{'  ' * indent}<!-- billboards -->"]
 
     for billboard in billboards:
         # Type, identifier and transform
@@ -492,7 +492,7 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
         if not billboard['animation']:
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
         else:
-            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}>")
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
             indent += 1
 
             # IPO animation
@@ -501,6 +501,128 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
 
             indent -= 1
             nodes.append(f"{'  ' * indent}</object>")
+
+    return nodes
+
+
+def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for billboard objects.
+
+    Parameters
+    ----------
+    actions : np.ndarray
+        An array of action trigger data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(actions) == 0:
+        return []
+
+    # Action trigger nodes
+    nodes = [f"{'  ' * indent}<!-- action triggers -->"]
+
+    for action in actions:
+        # Type, identifier and transform
+        attributes = [
+            "type=\"action-trigger\"",
+            f"id=\"{action['id']}\"",
+            stk_utils.transform_to_str(action['transform'])
+        ]
+
+        # Trigger type (shape)
+        if action['cylindrical']:
+            attributes.append(
+                f"trigger-type=\"cylinder\" radius=\"{action['distance']:.2f}\" height=\"{action['height']:.2f}\""
+            )
+        else:
+            attributes.append(f"trigger-type=\"point\" distance=\"{action['distance']:.2f}\"")
+
+        # Trigger action and re-enable timeout
+        attributes.append(f"action=\"{action['action']}\"")
+        attributes.append(f"reenable-timeout=\"{action['timeout']:.2f}\"")
+
+        # Build action node
+        if not action['animation']:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
+            indent += 1
+
+            # IPO animation
+            # Set to default rotation mode as rotation does not matter for action triggers (pint & cylinder)
+            nodes.extend(xml_ipo_data(action['id'], action['animation'], 'XYZ', report=report))
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</object>")
+
+    return nodes
+
+
+def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for particle emitters.
+
+    Parameters
+    ----------
+    particles : np.ndarray
+        An array of particle emitters data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(particles) == 0:
+        return []
+
+    # Particle emitter nodes
+    nodes = [f"{'  ' * indent}<!-- particle emitters -->"]
+
+    for emitter in particles:
+        # Identifier and transform
+        attributes = [f"id=\"{emitter['id']}\"", stk_utils.transform_to_xyzh_str(emitter['transform'])]
+
+        # Particles definition file
+        attributes.append(f"kind=\"{emitter['file']}\"")
+
+        # Particle emitter clipping distance
+        if emitter['distance'] != 0.0:
+            attributes.append(f"clip_distance=\"{emitter['distance']:.2f}\"")
+
+        # Particles emitter auto-emit
+        attributes.append(f"auto_emit=\"{'y' if emitter['emit'] else 'n'}\"")
+
+        # Particle emitter cutscene condition
+        if len(emitter['condition']) > 0:
+            attributes.append(f"conditions=\"{emitter['condition']}\"")
+
+        # Build particle emitter node
+        if not emitter['animation']:
+            nodes.append(f"{'  ' * indent}<particle-emitter {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<particle-emitter {' '.join(attributes)} fps=\"{fps:.2f}\">")
+            indent += 1
+
+            # IPO animation
+            # Set to default rotation mode as rotation does not matter for particle emitters
+            nodes.extend(xml_ipo_data(emitter['id'], emitter['animation'], 'XYZ', report=report))
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</particle-emitter>")
 
     return nodes
 
@@ -516,18 +638,24 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
     # Prepare static track data (including static objects)
     xml_track = [
-        "  <!-- Track model and static objects -->",
+        "  <!-- track model and static objects -->",
         f"  <track model=\"{stk_scene.identifier}_track.spm\" x=\"0\" y=\"0\" z=\"0\">",
         "\n".join(xml_object_data(collection.static_objects, True, collection.fps, 2, report)),
         "  </track>"
     ]
 
     # Prepare dynamic objects
-    xml_objects = ["  <!-- Dynamic/animated and non-static objects -->"]
+    xml_objects = ["  <!-- dynamic/animated and non-static objects -->"]
     xml_objects.extend(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report))
 
     # Prepare billboards
     xml_billboards = xml_billboard_data(collection.billboards, collection.fps, 1, report)
+
+    # Prepare action triggers
+    xml_action_triggers = xml_action_trigger_data(collection.action_triggers, collection.fps, 1, report)
+
+    # Prepare particle emitters
+    xml_particles = xml_particles_data(collection.particles, collection.fps, 1, report)
 
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
@@ -543,6 +671,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         f.write("\n".join(xml_objects))
         f.write("\n")
         f.write("\n".join(xml_billboards))
+        f.write("\n")
+        f.write("\n".join(xml_action_triggers))
+        f.write("\n")
+        f.write("\n".join(xml_particles))
         f.write("\n")
 
         # all the things...

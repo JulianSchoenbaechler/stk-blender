@@ -141,7 +141,7 @@ def object_get_transform(obj: bpy.types.Object, local=False):
     rot_euler = mathutils.Vector(loc_rot_scale[1].to_euler('XZY')) * -57.2957795131  # rad2deg
     return (
         (loc_rot_scale[0].x, loc_rot_scale[0].z, loc_rot_scale[0].y),
-        (rot_euler.x, rot_euler.z, rot_euler.y),
+        (rot_euler.z, rot_euler.y, rot_euler.x),
         (loc_rot_scale[2].x, loc_rot_scale[2].z, loc_rot_scale[2].y)
     )
 
