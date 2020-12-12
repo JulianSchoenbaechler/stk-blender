@@ -558,13 +558,67 @@ def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=prin
             indent += 1
 
             # IPO animation
-            # Set to default rotation mode as rotation does not matter for action triggers (pint & cylinder)
+            # Set to default rotation mode as rotation does not matter for action triggers (point & cylinder)
             nodes.extend(xml_ipo_data(action['id'], action['animation'], 'XYZ', report=report))
 
             indent -= 1
             nodes.append(f"{'  ' * indent}</object>")
 
     return nodes
+
+
+def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for cutscene cameras.
+
+    Parameters
+    ----------
+    cameras : np.ndarray
+        An array of camera data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(cameras) == 0:
+        return []
+
+    # Action trigger nodes
+    nodes = [f"{'  ' * indent}<!-- cutscene cameras -->"]
+
+    for camera in cameras:
+        # Skip if not a cutscene camera
+        if camera['type'] != tu.camera_type['cutscene']:
+            continue
+
+        # Type, identifier and transform
+        attributes = [
+            "type=\"cutscene_camera\"",
+            f"id=\"{camera['id']}\"",
+            stk_utils.transform_to_str(camera['transform'])
+        ]
+
+        # Build action node
+        if not camera['animation']:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
+            indent += 1
+
+            # IPO animation
+            nodes.extend(xml_ipo_data(camera['id'], camera['animation'], camera['rotation_mode'], report=report))
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</object>")
+
+    # Return empty array if no cutscene cameras in scene
+    return nodes if len(nodes) > 1 else []
 
 
 def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
@@ -654,6 +708,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare action triggers
     xml_action_triggers = xml_action_trigger_data(collection.action_triggers, collection.fps, 1, report)
 
+    # Prepare action triggers
+    xml_cutscene_cameras = xml_cutscene_camera_data(collection.cameras, collection.fps, 1, report)
+
     # Prepare particle emitters
     xml_particles = xml_particles_data(collection.particles, collection.fps, 1, report)
 
@@ -664,18 +721,33 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
             "<scene>\n"
         ])
 
-        f.write("\n".join(xml_lod))
-        f.write("\n")
-        f.write("\n".join(xml_track))
-        f.write("\n")
-        f.write("\n".join(xml_objects))
-        f.write("\n")
-        f.write("\n".join(xml_billboards))
-        f.write("\n")
-        f.write("\n".join(xml_action_triggers))
-        f.write("\n")
-        f.write("\n".join(xml_particles))
-        f.write("\n")
+        if xml_lod:
+            f.write("\n".join(xml_lod))
+            f.write("\n")
+
+        if xml_track:
+            f.write("\n".join(xml_track))
+            f.write("\n")
+
+        if xml_objects:
+            f.write("\n".join(xml_objects))
+            f.write("\n")
+
+        if xml_billboards:
+            f.write("\n".join(xml_billboards))
+            f.write("\n")
+
+        if xml_action_triggers:
+            f.write("\n".join(xml_action_triggers))
+            f.write("\n")
+
+        if xml_cutscene_cameras:
+            f.write("\n".join(xml_cutscene_cameras))
+            f.write("\n")
+
+        if xml_particles:
+            f.write("\n".join(xml_particles))
+            f.write("\n")
 
         # all the things...
         f.write("</scene>\n")
