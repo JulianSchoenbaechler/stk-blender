@@ -141,10 +141,16 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
 
     Parameters
     ----------
-    anim : bpy.types.AnimData
+    obj_id : str
+        The object identifier the animation data belongs to
+    animation_data : bpy.types.AnimData
         The animation data to be processed
+    rotation_mode : str
+        The rotation mode that is used for the animated rotation of the object
     indent : int, optional
         The tab indent for writing the XML node, by default 2
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
 
     Returns
     -------
@@ -264,8 +270,12 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
         An array of object data that should be processed
     static : bool, optional
         True if the objects should be labeled as static, by default False
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
     indent : int, optional
         The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
 
     Returns
     -------
@@ -431,6 +441,70 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
     return nodes
 
 
+def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node for billboard objects of the scene XML file.
+
+    Parameters
+    ----------
+    billboards : np.ndarray
+        An array of billboard data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(billboards) == 0:
+        return []
+
+    # Billboards nodes
+    nodes = [f"{'  ' * indent}<!-- Billboards -->"]
+
+    for billboard in billboards:
+        # Type, identifier and transform
+        attributes = [
+            "type=\"billboard\"",
+            f"id=\"{billboard['id']}\"",
+            stk_utils.transform_to_xyz_str(billboard['transform'])
+        ]
+
+        # Add image texture
+        image = stk_utils.get_main_texture_stk_material(billboard['material'])
+        attributes.append(
+            f"texture=\"{billboard['material'].name}.{'png' if image.file_format == 'PNG' else 'jpg'}\""
+        )
+
+        # Billboard size
+        attributes.append(f"width=\"{billboard['size']['x']:.2f}\" height=\"{billboard['size']['y']:.2f}\"")
+
+        # Billboard fading
+        if billboard['fadeout_start'] >= 0 and billboard['fadeout_end'] >= 0:
+            attributes.append("fadeout=\"y\"")
+            attributes.append(f"start=\"{billboard['fadeout_start']:.2f}\" end=\"{billboard['fadeout_end']:.2f}\"")
+
+        # Build billboard node
+        if not billboard['animation']:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}>")
+            indent += 1
+
+            # IPO animation
+            # Set to default rotation mode as rotation does not matter for billboards
+            nodes.extend(xml_ipo_data(billboard['id'], billboard['animation'], 'XYZ', report=report))
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</object>")
+
+    return nodes
+
+
 def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
                      collection: tu.SceneCollection,
                      output_dir: str,
@@ -452,6 +526,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     xml_objects = ["  <!-- Dynamic/animated and non-static objects -->"]
     xml_objects.extend(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report))
 
+    # Prepare billboards
+    xml_billboards = xml_billboard_data(collection.billboards, collection.fps, 1, report)
+
+    # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
@@ -463,6 +541,8 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         f.write("\n".join(xml_track))
         f.write("\n")
         f.write("\n".join(xml_objects))
+        f.write("\n")
+        f.write("\n".join(xml_billboards))
         f.write("\n")
 
         # all the things...

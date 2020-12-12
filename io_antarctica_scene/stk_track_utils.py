@@ -151,7 +151,8 @@ track_placeable = np.dtype([
 track_billboard = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
-    ('texture', 'U127'),
+    ('animation', 'O'),
+    ('material', 'O'),
     ('size', stk_utils.vec2),
     ('fadeout_start', np.float32),
     ('fadeout_end', np.float32),
@@ -160,6 +161,7 @@ track_billboard = np.dtype([
 track_particles = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
+    ('animation', 'O'),
     ('file', 'U127'),
     ('distance', np.float32),
     ('emit', np.bool_),
@@ -175,6 +177,7 @@ track_godrays = np.dtype([
 track_audio = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
+    ('animation', 'O'),
     ('file', 'U127'),
     ('volume', np.float32),
     ('rolloff', np.float32),
@@ -185,6 +188,8 @@ track_audio = np.dtype([
 track_action = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
+    ('animation', 'O'),
+    ('rotation_mode', 'U10'),
     ('action', 'U127'),
     ('distance', np.float32),
     ('timeout', np.float32),
@@ -235,6 +240,8 @@ track_light = np.dtype([
 track_camera = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
+    ('animation', 'O'),
+    ('rotation_mode', 'U10'),
     ('type', np.int8),
     ('distance', np.float32),
 ])
@@ -420,15 +427,13 @@ def collect_scene(context: bpy.context, report):
                     continue
 
                 # Check billboard material
-                material = None
-
                 if len(obj.material_slots) == 0:
                     report({'WARNING'}, f"The billboard '{obj.name}' has no material assigned!")
                     continue
                 else:
                     material = obj.material_slots[obj.data.polygons[0].material_index].material
 
-                    if len(material.name) > 127 or not stk_utils.is_stk_material(material.node_tree):
+                    if not stk_utils.is_stk_material(material.node_tree):
                         report({'WARNING'}, f"The material of the billboard '{obj.name}' is not supported!")
                         continue
 
@@ -437,12 +442,10 @@ def collect_scene(context: bpy.context, report):
                 for i in range(0, 4):
                     normal += obj.data.vertices[i].normal
 
-                size = tuple()
-
                 # Check if billboard faces upwards (angle between normal and up-vector less than 45 degree)
-                if normal.angle((0.0, 0.0, 1.0)) < 0.7853981634:
+                if normal.angle((0.0, 0.0, 1.0)) < 0.7853981634 or normal.angle((0.0, 0.0, -1.0)) < 0.7853981634:
                     size = (obj.dimensions[0], obj.dimensions[1])
-                elif normal.angle((0.0, 1.0, 0.0)) < 0.7853981634:
+                elif normal.angle((0.0, 1.0, 0.0)) < 0.7853981634 or normal.angle((0.0, -1.0, 0.0)) < 0.7853981634:
                     size = (obj.dimensions[0], obj.dimensions[2])
                 else:
                     size = (obj.dimensions[1], obj.dimensions[2])
@@ -450,7 +453,8 @@ def collect_scene(context: bpy.context, report):
                 billboards.append((
                     obj.name,                                           # ID
                     stk_utils.object_get_transform(obj),                # Transform
-                    material.name,                                      # Material name
+                    stk_utils.object_is_ipo_animated(obj),              # Get IPO animation
+                    material,                                           # Material
                     size,                                               # Size
                     props.fadeout_start if props.fadeout else -1.0,     # Fadeout start
                     props.fadeout_end if props.fadeout else -1.0,       # Fadeout end
@@ -469,6 +473,7 @@ def collect_scene(context: bpy.context, report):
                 particles.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
+                    stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
                     props.particles,                        # Particles file name
                     props.particles_distance,               # Particles clip distance
                     props.particles_emit,                   # Particles auto-emit
@@ -504,6 +509,7 @@ def collect_scene(context: bpy.context, report):
                 audio_sources.append((
                     obj.name,                                                   # ID
                     stk_utils.object_get_transform(obj),                        # Transform
+                    stk_utils.object_is_ipo_animated(obj),                      # Get IPO animation
                     props.sfx,                                                  # Sound file
                     props.sfx_volume,                                           # Sound volume
                     props.sfx_rolloff,                                          # Sound rolloff
@@ -524,6 +530,8 @@ def collect_scene(context: bpy.context, report):
                 action_triggers.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
+                    stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
+                    obj.rotation_mode,                      # Object's rotation mode
                     props.action,                           # Action call
                     props.action_distance,                  # Trigger distance (radius)
                     props.action_timeout,                   # Action re-enable timeout
@@ -691,6 +699,8 @@ def collect_scene(context: bpy.context, report):
                 cameras.append((
                     obj.name,                               # ID
                     stk_utils.object_get_transform(obj),    # Transform
+                    stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
+                    obj.rotation_mode,                      # Object's rotation mode
                     camera_type[props.type],                # Camera type
                     props.distance,                         # End-camera distance
                 ))
