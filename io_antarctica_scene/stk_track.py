@@ -261,7 +261,7 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
 
 
 def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for generic scene
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for generic scene
     objects (including static).
 
     Parameters
@@ -442,7 +442,7 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
 
 
 def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for billboard objects.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for billboard objects.
 
     Parameters
     ----------
@@ -506,7 +506,7 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
 
 
 def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for billboard objects.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for action triggers.
 
     Parameters
     ----------
@@ -568,7 +568,7 @@ def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=prin
 
 
 def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for cutscene cameras.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for cutscene cameras.
 
     Parameters
     ----------
@@ -622,7 +622,7 @@ def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=pri
 
 
 def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for sound emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for sound emitters.
 
     Parameters
     ----------
@@ -686,7 +686,7 @@ def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
 
 
 def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for particle emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for particle emitters.
 
     Parameters
     ----------
@@ -746,11 +746,11 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
 
 
 def xml_godrays_data(godrays: np.ndarray, indent=1):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for particle emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for particle emitters.
 
     Parameters
     ----------
-    particles : np.ndarray
+    godrays : np.ndarray
         An array of godray emitters data that should be processed
     indent : int, optional
         The tab indent for writing the XML node, by default 1
@@ -775,6 +775,85 @@ def xml_godrays_data(godrays: np.ndarray, indent=1):
 
         # Build godrays emitter node
         nodes.append(f"{'  ' * indent}<lightshaft {' '.join(attributes)}/>")
+
+    return nodes
+
+
+def xml_placeables_data(placeables: np.ndarray, indent=1):
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for placeables/items.
+
+    Parameters
+    ----------
+    placeables : np.ndarray
+        An array of godray emitters data that should be processed
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(placeables) == 0:
+        return []
+
+    # Godray emitter nodes
+    nodes = [f"{'  ' * indent}<!-- placeables/items -->"]
+    nodes_gift = []
+    nodes_banana = []
+    nodes_nitro_small = []
+    nodes_nitro_big = []
+    nodes_flags = []
+
+    for item in placeables:
+        # Ignore start positions and easter eggs
+        if item['type'] == tu.placeable_type['start_position'] or item['type'] == tu.placeable_type['item_easteregg']:
+            continue
+
+        # Identifier and transform
+        attributes = [
+            f"id=\"{item['id']}\"",
+            stk_utils.transform_to_xyz_str(item['transform'], True)
+        ]
+
+        # Snap/drop to ground
+        if not item['snap_ground']:
+            attributes.append("drop=\"n\"")
+
+        # Bananas
+        if item['type'] == tu.placeable_type['item_banana']:
+            if item['ctf_only']:
+                attributes.append("ctf=\"y\"")
+            nodes_banana.append(f"{'  ' * indent}<banana {' '.join(attributes)}/>")
+
+        # Small nitro cans
+        elif item['type'] == tu.placeable_type['item_nitro_small']:
+            if item['ctf_only']:
+                attributes.append("ctf=\"y\"")
+            nodes_nitro_small.append(f"{'  ' * indent}<small-nitro {' '.join(attributes)}/>")
+
+        # Big nitro cans
+        elif item['type'] == tu.placeable_type['item_nitro_big']:
+            if item['ctf_only']:
+                attributes.append("ctf=\"y\"")
+            nodes_nitro_big.append(f"{'  ' * indent}<big-nitro {' '.join(attributes)}/>")
+
+        # CTF flag red
+        elif item['type'] == tu.placeable_type['item_flag_red']:
+            nodes_flags.append(f"{'  ' * indent}<red-flag {' '.join(attributes)}/>")
+
+        # CTF flag blue
+        elif item['type'] == tu.placeable_type['item_flag_blue']:
+            nodes_flags.append(f"{'  ' * indent}<blue-flag {' '.join(attributes)}/>")
+
+        # Item gift boxes
+        else:
+            if item['ctf_only']:
+                attributes.append("ctf=\"y\"")
+            nodes_gift.append(f"{'  ' * indent}<item {' '.join(attributes)}/>")
+
+    # Collect all different nodes (sorted)
+    nodes.extend(nodes_gift + nodes_banana + nodes_nitro_small + nodes_nitro_big + nodes_flags)
 
     return nodes
 
@@ -806,7 +885,7 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare action triggers
     xml_action_triggers = xml_action_trigger_data(collection.action_triggers, collection.fps, 1, report)
 
-    # Prepare action triggers
+    # Prepare cutscene cameras
     xml_cutscene_cameras = xml_cutscene_camera_data(collection.cameras, collection.fps, 1, report)
 
     # Prepare sfx emitters
@@ -817,6 +896,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
     # Prepare godrays emitters
     xml_godrays = xml_godrays_data(collection.godrays, 1)
+
+    # Prepare placeables/items emitters
+    xml_placeables = xml_placeables_data(collection.placeables, 1)
 
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
@@ -859,6 +941,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
         if xml_godrays:
             f.write("\n".join(xml_godrays))
+            f.write("\n")
+
+        if xml_placeables:
+            f.write("\n".join(xml_placeables))
             f.write("\n")
 
         # all the things...
