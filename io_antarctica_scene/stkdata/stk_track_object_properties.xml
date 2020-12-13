@@ -184,7 +184,8 @@
               bind="type" condition="lambda t: t.startswith('item')"
               doc="Item will snap and align to the underneath drivable geometry"/>
         <bool id="ctf_only" label="Capture The Flag Only" default="false"
-              bind="type" condition="lambda t: t.startswith('item') and not t.startswith('item_flag')"
+              bind="type"
+              condition="lambda t: (t == 'start_position' or t.startswith('item')) and not t.startswith('item_flag')"
               doc="Item will only be placed in 'Capture the Flag' mode"/>
 
         <!-- easter egg visibility -->

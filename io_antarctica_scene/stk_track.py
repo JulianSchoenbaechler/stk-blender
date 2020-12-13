@@ -691,7 +691,7 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
     Parameters
     ----------
     particles : np.ndarray
-        An array of particle emitters data that should be processed
+        An array of particle emitter data that should be processed
     fps : float, optional
         The frames-per-second value the animation should run on, by default 25.0
     indent : int, optional
@@ -751,7 +751,7 @@ def xml_godrays_data(godrays: np.ndarray, indent=1):
     Parameters
     ----------
     godrays : np.ndarray
-        An array of godray emitters data that should be processed
+        An array of godrays emitter data that should be processed
     indent : int, optional
         The tab indent for writing the XML node, by default 1
 
@@ -785,7 +785,7 @@ def xml_placeables_data(placeables: np.ndarray, indent=1):
     Parameters
     ----------
     placeables : np.ndarray
-        An array of godray emitters data that should be processed
+        An array of placeables data that should be processed
     indent : int, optional
         The tab indent for writing the XML node, by default 1
 
@@ -797,7 +797,7 @@ def xml_placeables_data(placeables: np.ndarray, indent=1):
     if np.size(placeables) == 0:
         return []
 
-    # Godray emitter nodes
+    # Placeable nodes
     nodes = [f"{'  ' * indent}<!-- placeables/items -->"]
     nodes_gift = []
     nodes_banana = []
@@ -858,6 +858,55 @@ def xml_placeables_data(placeables: np.ndarray, indent=1):
     return nodes
 
 
+def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for start positions.
+
+    Parameters
+    ----------
+    placeables : np.ndarray
+        An array of placeables data that should be processed
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(placeables) == 0:
+        return []
+
+    # Start position nodes
+    nodes_start = []
+    nodes_ctf_start = []
+
+    for item in placeables:
+        # Ignore everything except start positions
+        if item['type'] != tu.placeable_type['start_position']:
+            continue
+
+        # Write start positions
+        if item['ctf_only']:
+            nodes_start.append(f"{'  ' * indent}<start {stk_utils.transform_to_xyz_str(item['transform'], True)}/>")
+        else:
+            nodes_ctf_start.append(
+                f"{'  ' * indent}<ctf-start {stk_utils.transform_to_xyz_str(item['transform'], True)}/>"
+            )
+
+    # Check number of start positions
+    if nodes_start and len(nodes_start) < 4:
+        report({'WARNING'}, f"For arenas, there should be at least 4 start positions defined!")
+    if nodes_ctf_start and len(nodes_ctf_start) < 16:
+        report({'WARNING'}, f"For capture the flag arena mode, there should be at least 16 start positions defined!")
+
+    # Collect all different nodes (sorted)
+    nodes_start.extend(nodes_ctf_start)
+
+    return nodes_start
+
+
 def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
                      collection: tu.SceneCollection,
                      output_dir: str,
@@ -900,6 +949,23 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare placeables/items emitters
     xml_placeables = xml_placeables_data(collection.placeables, 1)
 
+    # default-start karts-per-row
+    #           forwards-distance
+    #           sidewards-distance
+    #           upwards-distance
+    xml_start_positions = ["  <!-- start positions -->"]
+
+    if stk_scene.track_type == 'race':
+        xml_start_positions.append(
+            f"  <default-start karts-per-row=\"{stk_scene.start_rows:d}\" "
+            f"forwards-distance=\"{stk_scene.start_forward:.2f}\" "
+            f"sidewards-distance=\"{stk_scene.start_side:.2f}\" "
+            f"upwards-distance=\"{stk_scene.start_up:.2f}\"/>"
+        )
+
+    elif stk_scene.track_type == 'arena' or stk_scene.track_type == 'soccer':
+        xml_start_positions.append(xml_start_positions_data(collection.placeables, 1, report))
+
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -911,9 +977,8 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
             f.write("\n".join(xml_lod))
             f.write("\n")
 
-        if xml_track:
-            f.write("\n".join(xml_track))
-            f.write("\n")
+        f.write("\n".join(xml_track))
+        f.write("\n")
 
         if xml_objects:
             f.write("\n".join(xml_objects))
@@ -946,6 +1011,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         if xml_placeables:
             f.write("\n".join(xml_placeables))
             f.write("\n")
+
+        f.write("\n".join(xml_start_positions))
+        f.write("\n")
 
         # all the things...
         f.write("</scene>\n")
