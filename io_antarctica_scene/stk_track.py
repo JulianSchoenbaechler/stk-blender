@@ -621,6 +621,70 @@ def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=pri
     return nodes if len(nodes) > 1 else []
 
 
+def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for sound emitters.
+
+    Parameters
+    ----------
+    audio_sources : np.ndarray
+        An array of sound emitter data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(audio_sources) == 0:
+        return []
+
+    # Sound emitter nodes
+    nodes = [f"{'  ' * indent}<!-- sfx emitters -->"]
+
+    for sfx in audio_sources:
+        # Type, identifier and transform
+        attributes = [
+            "type=\"sfx-emitter\"",
+            f"id=\"{sfx['id']}\"",
+            stk_utils.transform_to_xyz_str(sfx['transform'])
+        ]
+
+        # SFX audio settings
+        attributes.append(f"sound=\"{sfx['file']}\"")
+        attributes.append(f"volume=\"{sfx['volume']:.2f}\"")
+        attributes.append(f"rolloff=\"{sfx['rolloff']:.2f}\"")
+        attributes.append(f"max_dist=\"{sfx['distance']:.2f}\"")
+
+        # Trigger on approach
+        if sfx['trigger'] >= 0.0:
+            attributes.append(f"play-when-near=\"y\" distance=\"{sfx['trigger']:.2f}\"")
+
+        # SFX emitter cutscene condition
+        if len(sfx['condition']) > 0:
+            attributes.append(f"conditions=\"{sfx['condition']}\"")
+
+        # Build sfx emitter node
+        if not sfx['animation']:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
+            indent += 1
+
+            # IPO animation
+            # Set to default rotation mode as rotation does not matter for SFX emitters
+            nodes.extend(xml_ipo_data(sfx['id'], sfx['animation'], 'XYZ', report=report))
+
+            indent -= 1
+            nodes.append(f"{'  ' * indent}</object>")
+
+    return nodes
+
+
 def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
     """Creates an iterable of strings that represent the writable XML node of the scene XML file for particle emitters.
 
@@ -711,6 +775,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare action triggers
     xml_cutscene_cameras = xml_cutscene_camera_data(collection.cameras, collection.fps, 1, report)
 
+    # Prepare sfx emitters
+    xml_sfx = xml_sfx_data(collection.audio_sources, collection.fps, 1, report)
+
     # Prepare particle emitters
     xml_particles = xml_particles_data(collection.particles, collection.fps, 1, report)
 
@@ -743,6 +810,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
         if xml_cutscene_cameras:
             f.write("\n".join(xml_cutscene_cameras))
+            f.write("\n")
+
+        if xml_sfx:
+            f.write("\n".join(xml_sfx))
             f.write("\n")
 
         if xml_particles:
