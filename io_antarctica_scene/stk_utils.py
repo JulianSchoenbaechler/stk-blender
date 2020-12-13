@@ -272,7 +272,7 @@ def transform_to_xyzh_str(val: transform, explode=False):
 
 
 def color_to_str(val: vec3):
-    return '{:d} {:d} {:d}'.format(val['x'] * 255, val['y'] * 255, val['z'] * 255)
+    return '{:d} {:d} {:d}'.format(int(val['x'] * 255), int(val['y'] * 255), int(val['z'] * 255))
 
 # ------------------------------------------------------------------------------
 # FIXME: should use xyz="..." format

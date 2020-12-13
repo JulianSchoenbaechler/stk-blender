@@ -745,6 +745,40 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
     return nodes
 
 
+def xml_godrays_data(godrays: np.ndarray, indent=1):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for particle emitters.
+
+    Parameters
+    ----------
+    particles : np.ndarray
+        An array of godray emitters data that should be processed
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(godrays) == 0:
+        return []
+
+    # Godray emitter nodes
+    nodes = [f"{'  ' * indent}<!-- godrays -->"]
+
+    for emitter in godrays:
+        # Identifier and transform
+        attributes = [f"id=\"{emitter['id']}\"", stk_utils.transform_to_xyz_str(emitter['transform'])]
+
+        # Godrays opacity and color
+        attributes.append(f"opacity=\"{emitter['opacity']:.2f}\" color=\"{stk_utils.color_to_str(emitter['color'])}\"")
+
+        # Build godrays emitter node
+        nodes.append(f"{'  ' * indent}<lightshaft {' '.join(attributes)}/>")
+
+    return nodes
+
+
 def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
                      collection: tu.SceneCollection,
                      output_dir: str,
@@ -780,6 +814,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
     # Prepare particle emitters
     xml_particles = xml_particles_data(collection.particles, collection.fps, 1, report)
+
+    # Prepare godrays emitters
+    xml_godrays = xml_godrays_data(collection.godrays, 1)
 
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
@@ -818,6 +855,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
 
         if xml_particles:
             f.write("\n".join(xml_particles))
+            f.write("\n")
+
+        if xml_godrays:
+            f.write("\n".join(xml_godrays))
             f.write("\n")
 
         # all the things...
