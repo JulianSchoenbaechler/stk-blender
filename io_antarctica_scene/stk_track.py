@@ -949,10 +949,7 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     # Prepare placeables/items emitters
     xml_placeables = xml_placeables_data(collection.placeables, 1)
 
-    # default-start karts-per-row
-    #           forwards-distance
-    #           sidewards-distance
-    #           upwards-distance
+    # Prepare start positions and start row definitions
     xml_start_positions = ["  <!-- start positions -->"]
 
     if stk_scene.track_type == 'race':

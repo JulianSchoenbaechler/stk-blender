@@ -955,6 +955,8 @@ class STK_PT_ObjectProperties(bpy.types.Panel, STKPanelMixin):
         if not p_stk:
             stk_scene = stk_utils.get_stk_scene_type(context)
             layout.operator('stk.reload_object_properties', text=f"Setup {stk_scene.title()} Properties")
+        elif context.object.proxy is not None:
+            layout.label(text="Library nodes can not be configured here.")
         else:
             super().draw(context)
 
