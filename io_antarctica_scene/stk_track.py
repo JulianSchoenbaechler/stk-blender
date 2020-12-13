@@ -907,6 +907,49 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
     return nodes_start
 
 
+def xml_end_cameras_data(cameras: np.ndarray, indent=1):
+    """Creates an iterable of strings that represent the writable XML node of the scene XML file for end cameras.
+
+    Parameters
+    ----------
+    cameras : np.ndarray
+        An array of camera data that should be processed
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(cameras) == 0:
+        return []
+
+    # End camera node
+    node = [f"{'  ' * indent}<end-cameras>"]
+    indent += 1
+
+    for camera in cameras:
+        # Ignore cutscene cameras
+        if camera['type'] == tu.camera_type['cutscene']:
+            continue
+
+        # Camera properties
+        attributes = [
+            f"type=\"{'static_follow_kart' if camera['type'] == tu.camera_type['end_fixed'] else 'ahead_of_kart'}\"",
+            stk_utils.transform_to_xyz_str(camera['transform']),
+            f"distance=\"{camera['distance']:.2f}\""
+        ]
+
+        # Build node
+        node.append(f"{'  ' * indent}<camera {' '.join(attributes)}/> <!-- {camera['id']} -->")
+
+    indent -= 1
+    node.append(f"{'  ' * indent}</end-cameras>")
+
+    return node
+
+
 def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
                      collection: tu.SceneCollection,
                      output_dir: str,
@@ -963,6 +1006,10 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     elif stk_scene.track_type == 'arena' or stk_scene.track_type == 'soccer':
         xml_start_positions.append(xml_start_positions_data(collection.placeables, 1, report))
 
+    # Prepare camera rendering and end cameras
+    xml_cameras = ["  <!-- camera rendering and end cameras -->", f"  <camera far=\"{stk_scene.far_clip:.1f}\"/>"]
+    xml_cameras.extend(xml_end_cameras_data(collection.cameras, 1))
+
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -1010,6 +1057,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
             f.write("\n")
 
         f.write("\n".join(xml_start_positions))
+        f.write("\n")
+
+        f.write("\n".join(xml_cameras))
         f.write("\n")
 
         # all the things...

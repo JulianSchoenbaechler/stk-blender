@@ -88,6 +88,9 @@
             <item value="soccer" label="Soccer Field" doc="Play soccer on this track"/>
             <item value="cutscene" label="Cutscene" doc="An in-game cutscene"/>
         </enum>
+        <float id="far_clip" label="Camera Far Clip Distance" default="1000.0" min="0.0" max="5000.0"
+               bind="type" condition="lambda t: t == 'track'"
+               doc="Main cameras far clipping distance; distance from the camera at which objects are no more visible"/>
         <bool id="ctf_active" label="Is 'Capture The Flag' Arena" default="false"
               bind="type track_type" condition="lambda t, p: p == 'arena' and t == 'track'"
               doc="Checked if possible to play 'Capture The Flag' in this arena"/>
