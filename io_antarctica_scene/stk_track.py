@@ -859,7 +859,7 @@ def xml_placeables_data(placeables: np.ndarray, indent=1):
 
 
 def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for start positions.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for start positions.
 
     Parameters
     ----------
@@ -879,8 +879,8 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
         return []
 
     # Start position nodes
-    nodes_start = []
-    nodes_ctf_start = []
+    nodes_start = {}
+    nodes_ctf_start = {}
 
     for item in placeables:
         # Ignore everything except start positions
@@ -889,22 +889,35 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
 
         # Write start positions
         if item['ctf_only']:
-            nodes_start.append(f"{'  ' * indent}<start {stk_utils.transform_to_xyz_str(item['transform'], True)}/>")
+            if item['start_index'] in nodes_ctf_start:
+                report({'WARNING'}, f"Start position index '{item['start_index']}' is already used! This start "
+                       "position will be ignored.")
+                continue
+
+            nodes_ctf_start[item['start_index']] = "{}<ctf-start {}/>".format(
+                '  ' * indent,
+                stk_utils.transform_to_xyz_str(item['transform'], True)
+            )
         else:
-            nodes_ctf_start.append(
-                f"{'  ' * indent}<ctf-start {stk_utils.transform_to_xyz_str(item['transform'], True)}/>"
+            if item['start_index'] in nodes_start:
+                report({'WARNING'}, f"Start position index '{item['start_index']}' is already used! This start "
+                       "position will be ignored.")
+                continue
+
+            nodes_start[item['start_index']] = "{}<start {}/>".format(
+                '  ' * indent,
+                stk_utils.transform_to_xyz_str(item['transform'], True)
             )
 
     # Check number of start positions
     if nodes_start and len(nodes_start) < 4:
-        report({'WARNING'}, f"For arenas, there should be at least 4 start positions defined!")
+        report({'WARNING'}, "For arenas, there should be at least 4 start positions defined!")
     if nodes_ctf_start and len(nodes_ctf_start) < 16:
-        report({'WARNING'}, f"For capture the flag arena mode, there should be at least 16 start positions defined!")
+        report({'WARNING'}, "For capture the flag arena mode, there should be at least 16 start positions defined!")
 
     # Collect all different nodes (sorted)
-    nodes_start.extend(nodes_ctf_start)
-
-    return nodes_start
+    return [nodes_start[key] for key in sorted(nodes_start.keys())] + \
+           [nodes_ctf_start[key] for key in sorted(nodes_ctf_start.keys())]
 
 
 def xml_end_cameras_data(cameras: np.ndarray, indent=1):
