@@ -123,9 +123,10 @@
                bind="type track_type" condition="lambda t, p: p == 'race' and t == 'track'"
                doc="Sometimes drivelines are too low and will be under the actual mesh. This is a simple vertical offset added to each start positions to make sure that karts start on top of the track (and not under it). Generally the drivelines should be fixed, but this allows a quick solution for existing tracks"/>
 
-        <!-- track lighting -->
+        <!-- track lighting/weather -->
         <panel id="track_lighting" label="Lighting" bind="type" condition="lambda t: t == 'track'">
-            <bool id="shadows" label="Dynamic Shadows" default="true" doc="Whether to enable dynamic shadows on this track"/>
+            <bool id="shadows" label="Dynamic Shadows" default="true"
+                  doc="Whether to enable dynamic shadows on this track"/>
             <enum id="daytime" label="Daytime" default="day"
                   doc="Set the time of the track; used for enabling or disabling some lighting effects">
                 <item value="day" label="Day"/>
@@ -136,16 +137,33 @@
             <label id="sky_info">Use world shaders for skybox and environment lighting.</label>
 
             <!-- track fog -->
+            <separator id="__separator2"/>
             <bool id="fog" label="Fog" default="false"
                   doc="Enable fog on this track; simulates particles in the air and naturally leads to light halos (bloom)"/>
             <box id="fog_box" bind="fog" condition="lambda f: f">
-                <color id="fog_color" label="Color" default="0.5 0.5 0.5" doc="The color of the fog"/>
+                <color id="fog_color" label="Color" default="0.8 0.8 0.8" doc="The color of the fog"/>
                 <float id="fog_max" label="Maximum Density" default="0.8" min="0.0" max="1.0"
                        doc="The maximum density of the fog; a value of 1.0 completely covers scenery in fog at the furthest distance"/>
-                <float id="fog_from" label="From Distance" default="50.0" min="0.0" max="5000.0"
+                <float id="fog_from" label="From Distance" default="5.0" min="0.0" max="5000.0"
                        doc="The distance from the camera the fog starts; it will gain in density linearly"/>
-                <float id="fog_to" label="To Distance" default="1000.0" min="0.0" max="5000.0"
+                <float id="fog_to" label="To Distance" default="200.0" min="0.0" max="5000.0"
                        doc="The distance from the camera the fog will have reached its maximum density"/>
+            </box>
+
+            <!-- track weather effect -->
+            <separator id="__separator3" bind="fog" condition="lambda f: f"/>
+            <label id="weather_info">Weather</label>
+            <box id="weather_box">
+                <enum id="weather" label="Weather Effect" default="none"
+                      doc="Select a weather effect for this track">
+                    <item value="none" label="None"/>
+                    <item value="rain" label="Rain"/>
+                    <item value="snow" label="Snow"/>
+                </enum>
+                <bool id="weather_lightning" label="Lightning" default="false"
+                      doc="Whether to enable a lightning effect on this track"/>
+                <string id="weather_sound" label="Sound Effect" default=""
+                        doc="File name of the weather sound to play"/>
             </box>
         </panel>
     </panel>

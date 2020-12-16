@@ -82,7 +82,7 @@ def get_stk_context(context: bpy.context, context_level: str):
 
 def is_stk_material(node_tree: bpy.types.NodeTree):
     for node in node_tree.nodes:
-        if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+        if isinstance(node, bpy.types.ShaderNodeOutputMaterial) or isinstance(node, bpy.types.ShaderNodeOutputWorld):
             socket = node.inputs['Surface']
 
             if socket.is_linked:
@@ -90,9 +90,9 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
 
                 # Use simple string comparison to make it work for future shaders
                 if shader_node.__class__.__name__.startswith('Antarctica'):
-                    return True
+                    return shader_node
 
-    return False
+    return None
 
 
 def get_main_texture_stk_material(mat: bpy.types.Material):
@@ -273,6 +273,10 @@ def transform_to_xyzh_str(val: transform, explode=False):
 
 def color_to_str(val: vec3):
     return '{:d} {:d} {:d}'.format(int(val['x'] * 255), int(val['y'] * 255), int(val['z'] * 255))
+
+
+def bcolor_to_str(val: mathutils.Color):
+    return '{:d} {:d} {:d}'.format(int(val.r * 255), int(val.g * 255), int(val.b * 255))
 
 # ------------------------------------------------------------------------------
 # FIXME: should use xyz="..." format

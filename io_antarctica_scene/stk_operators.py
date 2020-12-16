@@ -96,7 +96,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         # Gather and stage all scene objects that should be exported
         scene = stk_track_utils.collect_scene(context, self.report)
 
-        stk_track.write_scene_file(stk_scene, scene, output_dir, self.report)
+        stk_track.write_scene_file(context, scene, output_dir, self.report)
 
         # Demo: export materials
         for mat in bpy.data.materials:

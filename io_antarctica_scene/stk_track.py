@@ -26,14 +26,14 @@ import mathutils
 import os
 import numpy as np
 from . import stk_track_utils as tu
-from . import stk_utils, stk_props
+from . import stk_props, stk_shaders, stk_utils
 
 STANDALONE_LOD_PREFIX = '_standalone_'
 
 
 def xml_lod_data(lod_groups: set, indent=1):
     """Creates an iterable of strings that represent the writable XML node for the level-of-detail specification of the
-    scene XML file.
+    scene file.
 
     Parameters
     ----------
@@ -136,8 +136,8 @@ def xml_lod_data(lod_groups: set, indent=1):
 
 
 def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode: str, indent=2, report=print):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for an object's IPO
-    curve animation data specification.
+    """Creates an iterable of strings that represent the writable XML node of the scene file for an object's IPO curve
+    animation data specification.
 
     Parameters
     ----------
@@ -261,8 +261,8 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
 
 
 def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for generic scene
-    objects (including static).
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for generic scene objects
+    (including static).
 
     Parameters
     ----------
@@ -442,7 +442,7 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
 
 
 def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for billboard objects.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for billboard objects.
 
     Parameters
     ----------
@@ -506,7 +506,7 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
 
 
 def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for action triggers.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for action triggers.
 
     Parameters
     ----------
@@ -568,7 +568,7 @@ def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=prin
 
 
 def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for cutscene cameras.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for cutscene cameras.
 
     Parameters
     ----------
@@ -622,7 +622,7 @@ def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=pri
 
 
 def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for sound emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for sound emitters.
 
     Parameters
     ----------
@@ -686,7 +686,7 @@ def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
 
 
 def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for particle emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for particle emitters.
 
     Parameters
     ----------
@@ -746,7 +746,7 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
 
 
 def xml_godrays_data(godrays: np.ndarray, indent=1):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for particle emitters.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for particle emitters.
 
     Parameters
     ----------
@@ -780,7 +780,7 @@ def xml_godrays_data(godrays: np.ndarray, indent=1):
 
 
 def xml_placeables_data(placeables: np.ndarray, indent=1):
-    """Creates an iterable of strings that represent the writable XML nodes of the scene XML file for placeables/items.
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for placeables/items.
 
     Parameters
     ----------
@@ -921,7 +921,7 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
 
 
 def xml_end_cameras_data(cameras: np.ndarray, indent=1):
-    """Creates an iterable of strings that represent the writable XML node of the scene XML file for end cameras.
+    """Creates an iterable of strings that represent the writable XML node of the scene file for end cameras.
 
     Parameters
     ----------
@@ -963,10 +963,144 @@ def xml_end_cameras_data(cameras: np.ndarray, indent=1):
     return node
 
 
-def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
-                     collection: tu.SceneCollection,
-                     output_dir: str,
-                     report=print):
+def xml_sky_data(sky, sh=None, indent=1, report=print):
+    """Creates a string that represent the writable XML node of the scene file for the sky data.
+
+    Parameters
+    ----------
+    sky : mathutils.Color or tuple of bpy.types.Image
+        A specified sky color as Blender color tuple or collection of 6 skybox textures
+    sh : tuple of bpy.types.Image
+        A specified spherical harmonics ambient map as collection of 6 skybox textures
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    str
+        The formatted sky-color/sky-box XML node
+    """
+    if isinstance(sky, mathutils.Color):
+        return f"{'  ' * indent}<sky-color rgb=\"{stk_utils.bcolor_to_str(sky)}\"/>"
+
+    # Check textures
+    for i in range(6):
+        if not sky[i]:
+            report({'WARNING'}, "Antarctica Skybox material missing textures! Unable to export the skybox correctly.")
+            return ''
+
+        if sh and not sh[i]:
+            report({'WARNING'}, "Antarctica Skybox material missing ambient textures! Spherical harmonics textures "
+                   "will be ignored.")
+            sh = None
+
+    attributes = ["texture=\"{} {} {} {} {} {}\"".format(bpy.path.basename(sky[4].filepath_raw),   # Top
+                                                         bpy.path.basename(sky[5].filepath_raw),   # Bottom
+                                                         bpy.path.basename(sky[1].filepath_raw),   # East
+                                                         bpy.path.basename(sky[3].filepath_raw),   # West
+                                                         bpy.path.basename(sky[2].filepath_raw),   # South
+                                                         bpy.path.basename(sky[0].filepath_raw))]  # Nord
+
+    # Use spherical harmonics ambient map
+    if sh:
+        attributes = ["sh-texture=\"{} {} {} {} {} {}\"".format(bpy.path.basename(sh[4].filepath_raw),   # Top
+                                                                bpy.path.basename(sh[5].filepath_raw),   # Bottom
+                                                                bpy.path.basename(sh[1].filepath_raw),   # East
+                                                                bpy.path.basename(sh[3].filepath_raw),   # West
+                                                                bpy.path.basename(sh[2].filepath_raw),   # South
+                                                                bpy.path.basename(sh[0].filepath_raw))]  # Nord
+
+    return f"{'  ' * indent}<sky-box {' '.join(attributes)}/>"
+
+
+def xml_sun_data(sun: tuple, ambient: mathutils.Color, stk_scene: stk_props.STKScenePropertyGroup, indent=1):
+    """Creates a string that represent the writable XML node of the scene file for the sun.
+
+    Parameters
+    ----------
+    sun : tuple, including transform diffuse and specular color
+        The sun lighting data to be written
+    ambient : mathutils.Color or None
+        The worlds ambient light color, None if the ambient is specified through an ambient map
+    stk_scene : stk_props.STKScenePropertyGroup
+        The STK scene properties used for accessing screen-space fog data (which is stored in the sun XML node)
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    str
+        The formatted sun XML node
+    """
+    # Position and color of the sun
+    # Transform is the first element in the tuple (index 0)
+    #  - xyz is the first element in the transform tuple (nested index 0)
+    #  - then accessing each axis with [0] [1] [2]
+    attributes = [
+        f"xyz=\"{sun[0][0][0]:.2f} {sun[0][0][1]:.2f} {sun[0][0][2]:.2f}\"",
+        f"sun-diffuse=\"{stk_utils.bcolor_to_str(sun[1])}\"",
+        f"sun-specular=\"{stk_utils.bcolor_to_str(sun[2])}\""
+    ]
+
+    # Ambient lighting color
+    if ambient:
+        attributes.append(f"ambient=\"{stk_utils.bcolor_to_str(ambient)}\"")
+
+    # Screen-space fog
+    if stk_scene.fog:
+        attributes.append(f"fog=\"y\" fog-color=\"{stk_utils.bcolor_to_str(stk_scene.fog_color)}\"")
+        attributes.append(f"fog-max=\"{stk_scene.fog_max:.2f}\"")
+        attributes.append(f"fog-start=\"{stk_scene.fog_from:.2f}\"")
+        attributes.append(f"fog-end=\"{stk_scene.fog_to:.2f}\"")
+
+    # Build sun XML node
+    return f"{'  ' * indent}<sun {' '.join(attributes)}/>"
+
+
+def xml_weather_data(stk_scene: stk_props.STKScenePropertyGroup, indent=1):
+    """Creates a string that represent the writable XML node of the scene file for the weather.
+
+    Parameters
+    ----------
+    stk_scene : stk_props.STKScenePropertyGroup
+        The STK scene properties used for accessing weather data
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    str
+        The formatted weather XML node
+    """
+    attributes = []
+
+    # Weather effect (particles)
+    if stk_scene.weather == 'rain':
+        attributes.append("particles=\"rain.xml\"")
+    elif stk_scene.weather == 'snow':
+        attributes.append("particles=\"snow.xml\"")
+
+    # Lightning
+    if stk_scene.weather_lightning:
+        attributes.append("lightning=\"y\"")
+
+    # Weather sound effect
+    if len(stk_scene.weather_sound) > 0:
+        attributes.append(f"sound=\"{stk_scene.weather_sound}\"")
+
+    # Build weather XML node
+    if attributes:
+        return f"{'  ' * indent}<weather {' '.join(attributes)}/>"
+    else:
+        return None
+
+
+def write_scene_file(context: bpy.context, collection: tu.SceneCollection, output_dir: str, report=print):
+    stk_scene = stk_utils.get_stk_context(context, 'scene')
+    world = context.scene.world
+
     path = os.path.join(output_dir, 'scene.xml')
 
     # Prepare LOD node data
@@ -1023,6 +1157,49 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
     xml_cameras = ["  <!-- camera rendering and end cameras -->", f"  <camera far=\"{stk_scene.far_clip:.1f}\"/>"]
     xml_cameras.extend(xml_end_cameras_data(collection.cameras, 1))
 
+    # Prepare scene lighting and weather effects
+    xml_light_weather = ["  <!-- scene lighting and weather effects -->"]
+
+    world_material = stk_utils.is_stk_material(world.node_tree)
+
+    # Gather world material
+    if world.use_nodes and world_material:
+        if isinstance(world_material, stk_shaders.AntarcticaSkybox):
+            world_ambient = world_material.prop_ambient if not world_material.prop_use_map else None
+            xml_light_weather.append(xml_sky_data(
+                (
+                    world_material.get_texture('Texture North'),
+                    world_material.get_texture('Texture East'),
+                    world_material.get_texture('Texture South'),
+                    world_material.get_texture('Texture West'),
+                    world_material.get_texture('Texture Top'),
+                    world_material.get_texture('Texture Bottom'),
+                ),
+                (
+                    world_material.get_texture('Ambient North'),
+                    world_material.get_texture('Ambient East'),
+                    world_material.get_texture('Ambient South'),
+                    world_material.get_texture('Ambient West'),
+                    world_material.get_texture('Ambient Top'),
+                    world_material.get_texture('Ambient Bottom'),
+                ) if world_material.prop_use_map else None
+            ))
+        else:
+            world_ambient = world_material.prop_ambient
+            xml_light_weather.append(xml_sky_data(world_material.prop_color))
+    else:
+        world_ambient = mathutils.Color(rgb=(0.8, 0.8, 0.8))
+        xml_light_weather.append(xml_sky_data(world.color))
+
+    # Prepare sun
+    xml_light_weather.append(xml_sun_data(collection.sun, world_ambient, stk_scene))
+
+    # Prepare weather effect
+    xml_weather = xml_weather_data(stk_scene)
+
+    if xml_weather:
+        xml_light_weather.append(xml_weather_data(stk_scene))
+
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -1073,6 +1250,9 @@ def write_scene_file(stk_scene: stk_props.STKScenePropertyGroup,
         f.write("\n")
 
         f.write("\n".join(xml_cameras))
+        f.write("\n")
+
+        f.write("\n".join(xml_light_weather))
         f.write("\n")
 
         # all the things...

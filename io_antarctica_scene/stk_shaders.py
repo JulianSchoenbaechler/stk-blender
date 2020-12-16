@@ -1215,34 +1215,7 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
     def __set_use_ambient(self, value):
         """Setter of the ambient color value."""
         self.node_tree.nodes['Ambient'].inputs['Fac'].default_value = 1.0 if value else 0.0
-
     # Shader properties
-
-    # Skybox texture samplers
-    prop_texture_n: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture North"
-    )
-    prop_texture_e: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture East"
-    )
-    prop_texture_s: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture South"
-    )
-    prop_texture_w: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture West"
-    )
-    prop_texture_t: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture Top"
-    )
-    prop_texture_b: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Texture Bottom"
-    )
 
     # Use ambient light map (skybox)
     prop_use_map: bpy.props.BoolProperty(
@@ -1263,31 +1236,8 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
         set=__set_ambient
     )
 
-    # Ambient light map texture samplers
-    prop_ambient_n: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient North"
-    )
-    prop_ambient_e: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient East"
-    )
-    prop_ambient_s: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient South"
-    )
-    prop_ambient_w: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient West"
-    )
-    prop_ambient_t: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient Top"
-    )
-    prop_ambient_b: bpy.props.PointerProperty(
-        type=bpy.types.Image,
-        name="Ambient Bottom"
-    )
+    def get_texture(self, name):
+        return getattr(self.node_tree.nodes[name], 'image', None) if self.node_tree.nodes[name] else None
 
     @staticmethod
     def setup_skybox(nt, nd_northTex, nd_eastTex, nd_southTex, nd_westTex, nd_topTex, nd_bottomTex):
