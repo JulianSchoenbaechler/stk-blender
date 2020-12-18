@@ -920,49 +920,6 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
            [nodes_ctf_start[key] for key in sorted(nodes_ctf_start.keys())]
 
 
-def xml_end_cameras_data(cameras: np.ndarray, indent=1):
-    """Creates an iterable of strings that represent the writable XML node of the scene file for end cameras.
-
-    Parameters
-    ----------
-    cameras : np.ndarray
-        An array of camera data that should be processed
-    indent : int, optional
-        The tab indent for writing the XML node, by default 1
-
-    Returns
-    -------
-    list of str
-        Each element represents a line for writing the formatted XML data
-    """
-    if np.size(cameras) == 0:
-        return []
-
-    # End camera node
-    node = [f"{'  ' * indent}<end-cameras>"]
-    indent += 1
-
-    for camera in cameras:
-        # Ignore cutscene cameras
-        if camera['type'] == tu.camera_type['cutscene']:
-            continue
-
-        # Camera properties
-        attributes = [
-            f"type=\"{'static_follow_kart' if camera['type'] == tu.camera_type['end_fixed'] else 'ahead_of_kart'}\"",
-            stk_utils.transform_to_xyz_str(camera['transform']),
-            f"distance=\"{camera['distance']:.2f}\""
-        ]
-
-        # Build node
-        node.append(f"{'  ' * indent}<camera {' '.join(attributes)}/> <!-- {camera['id']} -->")
-
-    indent -= 1
-    node.append(f"{'  ' * indent}</end-cameras>")
-
-    return node
-
-
 def xml_sky_data(sky, sh=None, indent=1, report=print):
     """Creates a string that represent the writable XML node of the scene file for the sky data.
 
@@ -1097,6 +1054,49 @@ def xml_weather_data(stk_scene: stk_props.STKScenePropertyGroup, indent=1):
         return None
 
 
+def xml_end_cameras_data(cameras: np.ndarray, indent=1):
+    """Creates an iterable of strings that represent the writable XML node of the scene file for end cameras.
+
+    Parameters
+    ----------
+    cameras : np.ndarray
+        An array of camera data that should be processed
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(cameras) == 0:
+        return []
+
+    # End camera node
+    node = [f"{'  ' * indent}<end-cameras>"]
+    indent += 1
+
+    for camera in cameras:
+        # Ignore cutscene cameras
+        if camera['type'] == tu.camera_type['cutscene']:
+            continue
+
+        # Camera properties
+        attributes = [
+            f"type=\"{'static_follow_kart' if camera['type'] == tu.camera_type['end_fixed'] else 'ahead_of_kart'}\"",
+            stk_utils.transform_to_xyz_str(camera['transform']),
+            f"distance=\"{camera['distance']:.2f}\""
+        ]
+
+        # Build node
+        node.append(f"{'  ' * indent}<camera {' '.join(attributes)}/> <!-- {camera['id']} -->")
+
+    indent -= 1
+    node.append(f"{'  ' * indent}</end-cameras>")
+
+    return node
+
+
 def write_scene_file(context: bpy.context, collection: tu.SceneCollection, output_dir: str, report=print):
     stk_scene = stk_utils.get_stk_context(context, 'scene')
     world = context.scene.world
@@ -1153,14 +1153,14 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     elif stk_scene.track_type == 'arena' or stk_scene.track_type == 'soccer':
         xml_start_positions.append(xml_start_positions_data(collection.placeables, 1, report))
 
-    # Prepare camera rendering and end cameras
-    xml_cameras = ["  <!-- camera rendering and end cameras -->", f"  <camera far=\"{stk_scene.far_clip:.1f}\"/>"]
-    xml_cameras.extend(xml_end_cameras_data(collection.cameras, 1))
-
     # Prepare scene lighting and weather effects
     xml_light_weather = ["  <!-- scene lighting and weather effects -->"]
 
     world_material = stk_utils.is_stk_material(world.node_tree)
+
+    # Prepare camera rendering and end cameras
+    xml_cameras = ["  <!-- camera rendering and end cameras -->", f"  <camera far=\"{stk_scene.far_clip:.1f}\"/>"]
+    xml_cameras.extend(xml_end_cameras_data(collection.cameras, 1))
 
     # Gather world material
     if world.use_nodes and world_material:
@@ -1249,10 +1249,10 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
         f.write("\n".join(xml_start_positions))
         f.write("\n")
 
-        f.write("\n".join(xml_cameras))
+        f.write("\n".join(xml_light_weather))
         f.write("\n")
 
-        f.write("\n".join(xml_light_weather))
+        f.write("\n".join(xml_cameras))
         f.write("\n")
 
         # all the things...

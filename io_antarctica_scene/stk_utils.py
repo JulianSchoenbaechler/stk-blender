@@ -40,6 +40,7 @@ vec2 = np.dtype([('x', np.float32), ('y', np.float32)])
 vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
 vec4 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('w', np.float32)])
 line = np.dtype([('p1', vec3), ('p2', vec3)])
+edge = np.dtype([('v1', np.int32), ('v2', np.int32)])
 transform = np.dtype([('xyz', vec3), ('hpr', vec3), ('scale', vec3)])
 keyframe2d = np.dtype([('c', vec2), ('h1', vec2), ('h2', vec2)])
 keyframe3d = np.dtype([('c', vec3), ('h1', vec3), ('h2', vec3)])
@@ -150,9 +151,6 @@ def parse_bezier(obj: bpy.types.Object):
     assert (obj.type == 'CURVE')
 
 
-def parse_fcurves(obj: bpy.types.AnimData):
-    pass
-
 # ------------------------------------------------------------------------------
 # Gets a custom property of a scene, returning the default if the id property
 # is not set. If set_value_if_undefined is set and the property is not
@@ -251,6 +249,18 @@ def str_to_vector(val: str):
 
 def str_to_enum(val: str):
     return val.split()
+
+
+def vec2_to_str(val: vec2):
+    return f"{val['x']:.3f} {val['y']:.3f}"
+
+
+def vec3_to_str(val: vec3):
+    return f"{val['x']:.3f} {val['y']:.3f} {val['z']:.3f}"
+
+
+def vec4_to_str(val: vec4):
+    return f"{val['x']:.3f} {val['y']:.3f} {val['z']:.3f} {val['w']:.3f}"
 
 
 def transform_to_str(val: transform):

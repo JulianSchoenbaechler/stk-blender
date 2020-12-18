@@ -732,3 +732,10 @@ def collect_scene(context: bpy.context, report):
         sun,
         context.scene.render.fps / context.scene.render.fps_base
     )
+
+
+def parse_driveline(mesh: bpy.types.Mesh):
+    verts = np.empty(len(mesh.vertices), dtype=stk_utils.vec3)
+    edges = np.empty(len(mesh.edges), dtype=stk_utils.edge)
+    mesh.vertices.foreach_get('co', verts)
+    mesh.edges.foreach_get('vertices', edges)
