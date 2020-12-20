@@ -734,8 +734,143 @@ def collect_scene(context: bpy.context, report):
     )
 
 
-def parse_driveline(mesh: bpy.types.Mesh):
-    verts = np.empty(len(mesh.vertices), dtype=stk_utils.vec3)
-    edges = np.empty(len(mesh.edges), dtype=stk_utils.edge)
+def parse_drivelines(mesh: bpy.types.Mesh):
+    vert_count = len(mesh.vertices)
+    edge_count = len(mesh.edges)
+    side_count = int(vert_count * 0.5)
+
+    verts = np.empty(vert_count * 3, dtype=np.float32)
+    edges = np.empty(edge_count * 2, dtype=np.int32)
+    neighbors = np.full((vert_count, 3), -1, dtype=np.int32)
+
+    left = np.full(side_count, -1, dtype=np.int32)
+    right = np.full(side_count, -1, dtype=np.int32)
+
     mesh.vertices.foreach_get('co', verts)
     mesh.edges.foreach_get('vertices', edges)
+    verts = verts.reshape((vert_count, 3))
+    edges = edges.reshape((edge_count, 2))
+
+    # Search neighbors for each vertex
+    for iv in np.arange(vert_count):
+        wi = 0
+
+        # Through all edges
+        for ie in np.arange(edge_count):
+            # If one of the vertices of the edge is the current one, get the othe as its neighbor
+            if edges[ie][0] == iv:
+                neighbors[iv][wi] = edges[ie][1]
+                wi += 1
+            elif edges[ie][1] == iv:
+                neighbors[iv][wi] = edges[ie][0]
+                wi += 1
+
+            # Maximum of 3 neighbors for each vertex
+            if wi >= 3:
+                break
+
+    # Find starting antennas
+    for iv in np.arange(vert_count):
+        n = 0
+
+        # Count neighbors of vertex
+        for ni in neighbors[iv]:
+            if ni >= 0:
+                n += 1
+
+        # Start has only one neighbor
+        if n == 1:
+            if left[0] < 0:
+                left[0] = iv
+            elif right[0] < 0:
+                right[0] = iv
+            else:
+                # Start positions already found (invalid)
+                pass
+
+        elif n == side_count - 1:
+            # End positions
+            pass
+
+    if left[0] < 0 or right[0] < 0:
+        # No starting antennas
+        pass
+
+    prev_left = left[0]
+    prev_right = right[0]
+
+    # Order vertex indices for the border of the driveline
+    for i in np.arange(1, side_count):
+        n_left = neighbors[left[i - 1]]
+        n_right = neighbors[right[i - 1]]
+        staged_left = -1
+        staged_right = -1
+
+        # Check driveline indices
+        for n in np.arange(3):
+            # Find next index by evaluating if not previously used or linked to the other side
+            if n_left[n] < 0 or n_left[n] == left[i - 2] or n_left[n] == right[i - 1]:
+                pass
+            else:
+                staged_left = n_left[n]
+
+            if n_right[n] < 0 or n_right[n] == right[i - 2] or n_right[n] == left[i - 1]:
+                pass
+            else:
+                staged_right = n_right[n]
+
+        left[i] = staged_left
+        right[i] = staged_right
+
+    for i in np.arange(side_count):
+        print(left[i], right[i])
+
+
+def parse_drivelines_py(mesh: bpy.types.Mesh):
+    vert_count = len(mesh.vertices)
+    edge_count = len(mesh.edges)
+    side_count = int(vert_count * 0.5)
+
+    verts = [None] * vert_count
+    edges = [None] * edge_count
+    neighbors = [None] * vert_count
+
+    left = []
+    right = []
+
+    #mesh.vertices.foreach_get('co', verts)
+    #mesh.edges.foreach_get('vertices', edges)
+
+    # Search neighbors for each vertex
+    for iv in range(vert_count):
+        neighbors[iv] = []
+
+        # Through all edges
+        for edge in mesh.edges:
+            # If one of the vertices of the edge is the current one, get the othe as its neighbor
+            if edge.vertices[0] == iv:
+                neighbors[iv].append(edge.vertices[1])
+            elif edge.vertices[1] == iv:
+                neighbors[iv].append(edge.vertices[0])
+
+            # Maximum of 3 neighbors for each vertex
+            if len(neighbors[iv]) >= 3:
+                break
+
+    # Find starting antennas
+    for iv in range(vert_count):
+        n = len(neighbors[iv])
+
+        # Start has only one neighbor
+        if n == 1:
+            if len(left) == 0:
+                left.append(iv)
+            elif len(right) == 0:
+                right.append(iv)
+            else:
+                # Start positions already found (invalid)
+                pass
+
+        elif n == side_count - 1:
+            # End positions
+            pass

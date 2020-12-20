@@ -147,6 +147,51 @@ class STK_OT_TrackExport(bpy.types.Operator):
         return stk_utils.get_stk_scene_type(context) == 'track'
 
 
+class STK_OT_DemoOperator(bpy.types.Operator):
+    bl_idname = 'stk.demo'
+    bl_label = "STK Test Operator"
+    bl_description = "Demo..."
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+    def execute(self, context):
+        # Ensure the object properties have been loaded
+        bpy.ops.stk.reload_object_properties()
+
+        # Get evaluated gependency-graph
+        dg = context.evaluated_depsgraph_get()
+
+        # Gather and stage all scene objects that should be exported
+        scene = stk_track_utils.collect_scene(context, self.report)
+
+        for driveline in scene.drivelines:
+            stk_track_utils.parse_drivelines(driveline['mesh'])
+            stk_track_utils.parse_drivelines_py(driveline['mesh'])
+
+        return {'FINISHED'}
+
+    @ classmethod
+    def poll(self, context):
+        """Operator poll method.
+        Only execute this operator when scene is a SuperTuxKart track.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        if not context.scene or not context.scene.stk:
+            return False
+
+        return stk_utils.get_stk_scene_type(context) == 'track'
+
+
 class STK_MT_ExportMenu(bpy.types.Menu):
     bl_idname = 'STK_MT_export_menu'
     bl_label = "STK Export"

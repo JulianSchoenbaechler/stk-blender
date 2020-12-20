@@ -991,15 +991,19 @@ def xml_sun_data(sun: tuple, ambient: mathutils.Color, stk_scene: stk_props.STKS
     str
         The formatted sun XML node
     """
-    # Position and color of the sun
-    # Transform is the first element in the tuple (index 0)
-    #  - xyz is the first element in the transform tuple (nested index 0)
-    #  - then accessing each axis with [0] [1] [2]
-    attributes = [
-        f"xyz=\"{sun[0][0][0]:.2f} {sun[0][0][1]:.2f} {sun[0][0][2]:.2f}\"",
-        f"sun-diffuse=\"{stk_utils.bcolor_to_str(sun[1])}\"",
-        f"sun-specular=\"{stk_utils.bcolor_to_str(sun[2])}\""
-    ]
+    # Default lighting
+    if not sun:
+        attributes = ["xyz=\"0.00 60.00 0.00\" sun-diffuse=\"204 204 204\" sun-specular=\"255 255 255\""]
+    else:
+        # Position and color of the sun
+        # Transform is the first element in the tuple (index 0)
+        #  - xyz is the first element in the transform tuple (nested index 0)
+        #  - then accessing each axis with [0] [1] [2]
+        attributes = [
+            f"xyz=\"{sun[0][0][0]:.2f} {sun[0][0][1]:.2f} {sun[0][0][2]:.2f}\"",
+            f"sun-diffuse=\"{stk_utils.bcolor_to_str(sun[1])}\"",
+            f"sun-specular=\"{stk_utils.bcolor_to_str(sun[2])}\""
+        ]
 
     # Ambient lighting color
     if ambient:
@@ -1188,7 +1192,7 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
             world_ambient = world_material.prop_ambient
             xml_light_weather.append(xml_sky_data(world_material.prop_color))
     else:
-        world_ambient = mathutils.Color(rgb=(0.8, 0.8, 0.8))
+        world_ambient = mathutils.Color((0.5, 0.5, 0.5))
         xml_light_weather.append(xml_sky_data(world.color))
 
     # Prepare sun

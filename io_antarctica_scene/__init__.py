@@ -52,14 +52,14 @@ if 'bpy' in locals():
     if 'stk_kart' in locals():
         importlib.reload(stk_kart)  # pylint: disable=used-before-assignment
 
-import bpy  # noqa(E402,)
-from bpy.app.handlers import persistent  # noqa(E402,)
+import bpy  # noqa: E402
+from bpy.app.handlers import persistent  # noqa: E402
 from nodeitems_builtins import ShaderNodeCategory, \
                                world_shader_nodes_poll, \
-                               object_eevee_cycles_shader_nodes_poll  # noqa(E402,)
+                               object_eevee_cycles_shader_nodes_poll  # noqa: E402
 from nodeitems_utils import NodeItem, \
                             register_node_categories, \
-                            unregister_node_categories  # noqa(E402,)
+                            unregister_node_categories  # noqa: E402
 
 from . import stk_prefs, \
               stk_props, \
@@ -67,7 +67,7 @@ from . import stk_prefs, \
               stk_operators, \
               stk_shaders, \
               stk_material, \
-              stk_kart  # noqa(E402,)
+              stk_kart  # noqa: E402
 
 
 def menu_func_export(self, context):
@@ -110,6 +110,7 @@ classes = (
 
     stk_operators.STK_MT_ExportMenu,
     stk_operators.STK_OT_TrackExport,
+    stk_operators.STK_OT_DemoOperator,
 
     stk_shaders.AntarcticaSolidPBR,
     stk_shaders.AntarcticaCutoutPBR,
