@@ -147,7 +147,8 @@ def object_get_transform(obj: bpy.types.Object, local=False):
     )
 
 
-def translation_stk_axis_conversion(vec: mathutils.Vector):
+def translation_stk_axis_conversion(vec: mathutils.Vector, space=mathutils.Matrix.Identity(4)):
+    vec = space @ vec
     return (vec.x, vec.z, vec.y)
 
 

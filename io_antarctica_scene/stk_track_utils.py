@@ -43,7 +43,7 @@ SceneCollection = collections.namedtuple('SceneCollection', [
     'action_triggers',      # NumPy array of action triggers (dtype=track_action)
     'drivelines',           # NumPy array of track drivelines (dtype=track_driveline)
     'checklines',           # NumPy array of track checklines (dtype=track_checkline)
-    'navmesh',              # navmesh bpy.types.Object
+    'navmesh',              # navmesh (NavmeshData)
     'cannons',              # NumPy array of cannons (dtype=track_cannon)
     'goals',                # NumPy array of soccer goals (dtype=track_goal)
     'lights',               # NumPy array of point lights (dtype=track_light)
@@ -59,6 +59,11 @@ DrivelineData = collections.namedtuple('DrivelineData', [
     'start_point',
     'end_point',
     'access_point',
+])
+
+NavmeshData = collections.namedtuple('NavmeshData', [
+    'verts',
+    'faces',
 ])
 
 object_geo_detail_level = {
@@ -615,7 +620,7 @@ def collect_scene(context: bpy.context, report=print):
                            "multiple navmeshes!")
                     continue
 
-                navmesh = obj
+                navmesh = parse_navmesh(obj, report)
 
             # Cannon
             elif obj.type != 'EMPTY' and t == 'cannon_start':
@@ -769,6 +774,7 @@ def collect_scene(context: bpy.context, report=print):
 
 
 def parse_driveline(obj: bpy.types.Object, report=print):
+    space = obj.matrix_world
     bm = bmesh.new(use_operators=False)  # pylint: disable=assignment-from-no-return
     bm.from_mesh(obj.data)
 
@@ -826,12 +832,12 @@ def parse_driveline(obj: bpy.types.Object, report=print):
                f"Check the driveline '{obj.name}''...")
 
     driveline = DrivelineData(
-        np.array([stk_utils.translation_stk_axis_conversion(v.co) for v in l_verts], dtype=stk_utils.vec3),
-        np.array([stk_utils.translation_stk_axis_conversion(v.co) for v in r_verts], dtype=stk_utils.vec3),
-        np.array([stk_utils.translation_stk_axis_conversion(v) for v in mids], dtype=stk_utils.vec3),
-        stk_utils.translation_stk_axis_conversion((l_verts[0].co + r_verts[0].co) * 0.5),
-        stk_utils.translation_stk_axis_conversion((l_verts[-1].co + r_verts[-1].co) * 0.5),
-        stk_utils.translation_stk_axis_conversion((start_verts[0].co + start_verts[1].co) * 0.5)
+        np.array([stk_utils.translation_stk_axis_conversion(v.co, space) for v in l_verts], dtype=stk_utils.vec3),
+        np.array([stk_utils.translation_stk_axis_conversion(v.co, space) for v in r_verts], dtype=stk_utils.vec3),
+        np.array([stk_utils.translation_stk_axis_conversion(v, space) for v in mids], dtype=stk_utils.vec3),
+        stk_utils.translation_stk_axis_conversion((l_verts[0].co + r_verts[0].co) * 0.5, space),
+        stk_utils.translation_stk_axis_conversion((l_verts[-1].co + r_verts[-1].co) * 0.5, space),
+        stk_utils.translation_stk_axis_conversion((start_verts[0].co + start_verts[1].co) * 0.5, space)
     )
 
     bm.free()
@@ -851,6 +857,49 @@ def merge_drivelines(driveline1: DrivelineData, driveline2: DrivelineData):
         driveline2.end_point,
         driveline1.access_point
     )
+
+
+def parse_navmesh(obj: bpy.types.Object, report=print):
+    space = obj.matrix_world
+    bm = bmesh.new(use_operators=False)  # pylint: disable=assignment-from-no-return
+    bm.from_mesh(obj.data)
+
+    verts = [stk_utils.translation_stk_axis_conversion(v.co, space) for v in bm.verts]
+    faces = []
+
+    for face in bm.faces:
+        # Gather indices
+        if len(face.verts) == 4:
+            indices = [v.index for v in face.verts]
+        else:
+            report('heilandsack')
+            continue
+
+        # Collect adjacent faces
+        adjacents = []
+        for edge in face.edges:
+            if len(edge.link_faces) == 2:
+                adjacents.append((edge.link_faces[0] if edge.link_faces[0] != face else edge.link_faces[1]).index)
+            elif len(edge.link_faces) < 2:
+                continue
+            else:
+                report('heilandsack')
+                continue
+
+        while len(adjacents) < 4:
+            adjacents.append(-1)
+
+        # Append face data
+        faces.append((indices, adjacents))
+
+    navmesh = NavmeshData(
+        np.array(verts, dtype=stk_utils.vec3),
+        np.array(faces, dtype=np.int32)
+    )
+
+    bm.free()
+
+    return navmesh
 
 
 def order_drivelines(drivelines: list):
