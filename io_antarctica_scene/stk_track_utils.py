@@ -872,7 +872,8 @@ def parse_navmesh(obj: bpy.types.Object, report=print):
         if len(face.verts) == 4:
             indices = [v.index for v in face.verts]
         else:
-            report('heilandsack')
+            report({'ERROR'}, "Unable to correctly parse the tracks navmesh! The mesh contains faces with that do not "
+                   f"correctly form a quad. Check the navmesh '{obj.name}'...")
             continue
 
         # Collect adjacent faces
@@ -883,7 +884,8 @@ def parse_navmesh(obj: bpy.types.Object, report=print):
             elif len(edge.link_faces) < 2:
                 continue
             else:
-                report('heilandsack')
+                report({'ERROR'}, "Unable to correctly parse the tracks navmesh! The mesh has overlapping faces! Check "
+                       f"the navmesh '{obj.name}'...")
                 continue
 
         while len(adjacents) < 4:
