@@ -147,6 +147,10 @@ def object_get_transform(obj: bpy.types.Object, local=False):
     )
 
 
+def translation_stk_axis_conversion(vec: mathutils.Vector):
+    return (vec.x, vec.z, vec.y)
+
+
 def parse_bezier(obj: bpy.types.Object):
     assert (obj.type == 'CURVE')
 

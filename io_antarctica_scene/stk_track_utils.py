@@ -21,6 +21,7 @@
 # SOFTWARE.
 
 import bpy
+import bmesh
 import collections
 import mathutils
 import os
@@ -30,24 +31,34 @@ from . import stk_utils, stk_props
 # TODO: Particle system object placement
 # TODO: Library nodes collecting
 SceneCollection = collections.namedtuple('SceneCollection', [
-    'lod_groups',
-    'track_objects',
-    'static_objects',
-    'dynamic_objects',
-    'placeables',
-    'billboards',
-    'particles',
-    'godrays',
-    'audio_sources',
-    'action_triggers',
-    'drivelines',
-    'checklines',
-    'cannons',
-    'goals',
-    'lights',
-    'cameras',
-    'sun',
-    'fps',
+    'lod_groups',           # set of bpy.types.Collection (LOD group) and/or bpy.types.Object (LOD standalones)
+    'track_objects',        # NumPy array of unspecified static track object data (dtype=track_object)
+    'static_objects',       # NumPy array of static track object data (dtype=track_object)
+    'dynamic_objects',      # NumPy array of dynamic track object data (dtype=track_object)
+    'placeables',           # NumPy array of placeables (dtype=track_placeable)
+    'billboards',           # NumPy array of billboards (dtype=track_billboard)
+    'particles',            # NumPy array of particle emitters (dtype=track_particles)
+    'godrays',              # NumPy array of godray emitters (dtype=track_godrays)
+    'audio_sources',        # NumPy array of audio sources (dtype=track_audio)
+    'action_triggers',      # NumPy array of action triggers (dtype=track_action)
+    'drivelines',           # NumPy array of track drivelines (dtype=track_driveline)
+    'checklines',           # NumPy array of track checklines (dtype=track_checkline)
+    'navmesh',              # navmesh bpy.types.Object
+    'cannons',              # NumPy array of cannons (dtype=track_cannon)
+    'goals',                # NumPy array of soccer goals (dtype=track_goal)
+    'lights',               # NumPy array of point lights (dtype=track_light)
+    'cameras',              # NumPy array of end or cutscene cameras (dtype=track_camera)
+    'sun',                  # tuple of transform (stk_utils.transform), diffuse and specular color (mathutils.Color)
+    'fps',                  # float defining animation speed
+])
+
+DrivelineData = collections.namedtuple('DrivelineData', [
+    'left',
+    'right',
+    'mid',
+    'start_point',
+    'end_point',
+    'access_point',
 ])
 
 object_geo_detail_level = {
@@ -200,7 +211,7 @@ track_action = np.dtype([
 
 track_driveline = np.dtype([
     ('id', 'U127'),
-    ('mesh', 'O'),
+    ('data', 'O'),
     ('type', np.int8),
     ('lower', np.float32),
     ('higher', np.float32),
@@ -246,10 +257,11 @@ track_camera = np.dtype([
     ('rotation_mode', 'U10'),
     ('type', np.int8),
     ('distance', np.float32),
+    ('order', np.int32),
 ])
 
 
-def collect_scene(context: bpy.context, report):
+def collect_scene(context: bpy.context, report=print):
     used_identifiers = []
     lod_groups = set()
     track_objects = []
@@ -263,6 +275,7 @@ def collect_scene(context: bpy.context, report):
     action_triggers = []
     drivelines = []
     checklines = []
+    navmesh = None
     cannons = []
     goals = []
     lights = []
@@ -414,7 +427,7 @@ def collect_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
-            # Billboard
+            # Billboards
             elif obj.type != 'EMPTY' and t == 'billboard':
                 # Skip if already an object with this identifier
                 if obj.name in used_identifiers:
@@ -544,17 +557,23 @@ def collect_scene(context: bpy.context, report):
 
                 used_identifiers.append(obj.name)
 
-            # Driveline / navmesh data
-            elif obj.type != 'EMPTY' and (t == 'driveline_main' or t == 'driveline_additional' or t == 'navmesh'):
+            # Drivelines
+            elif obj.type != 'EMPTY' and (t == 'driveline_main' or t == 'driveline_additional'):
                 # Skip if already an object with this identifier
                 if obj.name in used_identifiers:
                     report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
+                # Skip if already a main driveline has been defined
+                if t == 'driveline_main' and [True for d in drivelines if d[2] == driveline_type['driveline_main']]:
+                    report({'WARNING'}, f"The main driveline with the name '{obj.name}' will be ignored as there is "
+                           "already a main driveline defined in the scene!")
+                    continue
+
                 drivelines.append((
                     obj.name,                                   # ID
-                    obj.data,                                   # Mesh data
+                    parse_driveline(obj, report),               # Create driveline data
                     driveline_type[t],                          # Driveline type
                     props.driveline_lower,                      # Lower driveline check
                     props.driveline_upper,                      # Upper driveline check
@@ -587,6 +606,16 @@ def collect_scene(context: bpy.context, report):
                 ))
 
                 used_identifiers.append(obj.name)
+
+            # Navmesh data
+            elif obj.type != 'EMPTY' and t == 'navmesh':
+                # Skip if already a navmesh defined
+                if navmesh:
+                    report({'WARNING'}, f"The navmesh '{obj.name}' will be ignored, as the scene cannot contain "
+                           "multiple navmeshes!")
+                    continue
+
+                navmesh = obj
 
             # Cannon
             elif obj.type != 'EMPTY' and t == 'cannon_start':
@@ -701,176 +730,137 @@ def collect_scene(context: bpy.context, report):
                     continue
 
                 cameras.append((
-                    obj.name,                               # ID
-                    stk_utils.object_get_transform(obj),    # Transform
-                    stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
-                    obj.rotation_mode,                      # Object's rotation mode
-                    camera_type[props.type],                # Camera type
-                    props.distance,                         # End-camera distance
+                    obj.name,                                       # ID
+                    stk_utils.object_get_transform(obj),            # Transform
+                    stk_utils.object_is_ipo_animated(obj),          # Get IPO animation
+                    obj.rotation_mode,                              # Object's rotation mode
+                    camera_type[props.type],                        # Camera type
+                    props.distance,                                 # End-camera distance
+                    props.order if not props.auto_order else -1,    # End-camera distance
                 ))
         else:
             continue
 
+    # Bring some collections in order
+    drivelines = order_drivelines(drivelines)
+
     # Create and return scene collection
     return SceneCollection(
-        lod_groups,
-        np.array(track_objects, dtype=object),
-        np.array(static_objects, dtype=track_object),
-        np.array(dynamic_objects, dtype=track_object),
-        np.array(placeables, dtype=track_placeable),
-        np.array(billboards, dtype=track_billboard),
-        np.array(particles, dtype=track_particles),
-        np.array(godrays, dtype=track_godrays),
-        np.array(audio_sources, dtype=track_audio),
-        np.array(action_triggers, dtype=track_action),
-        np.array(drivelines, dtype=track_driveline),
-        np.array(checklines, dtype=track_checkline),
-        np.array(cannons, dtype=track_cannon),
-        np.array(goals, dtype=track_goal),
-        np.array(lights, dtype=track_light),
-        np.array(cameras, dtype=track_camera),
-        sun,
-        context.scene.render.fps / context.scene.render.fps_base
+        lod_groups=lod_groups,
+        track_objects=np.array(track_objects, dtype=object),
+        static_objects=np.array(static_objects, dtype=track_object),
+        dynamic_objects=np.array(dynamic_objects, dtype=track_object),
+        placeables=np.array(placeables, dtype=track_placeable),
+        billboards=np.array(billboards, dtype=track_billboard),
+        particles=np.array(particles, dtype=track_particles),
+        godrays=np.array(godrays, dtype=track_godrays),
+        audio_sources=np.array(audio_sources, dtype=track_audio),
+        action_triggers=np.array(action_triggers, dtype=track_action),
+        drivelines=np.array(drivelines, dtype=track_driveline),
+        checklines=np.array(checklines, dtype=track_checkline),
+        navmesh=navmesh,
+        cannons=np.array(cannons, dtype=track_cannon),
+        goals=np.array(goals, dtype=track_goal),
+        lights=np.array(lights, dtype=track_light),
+        cameras=np.array(cameras, dtype=track_camera),
+        sun=sun,
+        fps=context.scene.render.fps / context.scene.render.fps_base
     )
 
 
-def parse_drivelines(mesh: bpy.types.Mesh):
-    vert_count = len(mesh.vertices)
-    edge_count = len(mesh.edges)
-    side_count = int(vert_count * 0.5)
+def parse_driveline(obj: bpy.types.Object, report=print):
+    bm = bmesh.new(use_operators=False)  # pylint: disable=assignment-from-no-return
+    bm.from_mesh(obj.data)
 
-    verts = np.empty(vert_count * 3, dtype=np.float32)
-    edges = np.empty(edge_count * 2, dtype=np.int32)
-    neighbors = np.full((vert_count, 3), -1, dtype=np.int32)
+    # Finding start antennas
+    antennas = []
+    start_verts = []
+    tmp_edge = None
 
-    left = np.full(side_count, -1, dtype=np.int32)
-    right = np.full(side_count, -1, dtype=np.int32)
+    for vert in bm.verts:
+        if len(vert.link_edges) == 1:
+            tmp_edge = vert.link_edges[0]
+            antennas.append(tmp_edge)
+            start_verts.append(tmp_edge.other_vert(vert))
 
-    mesh.vertices.foreach_get('co', verts)
-    mesh.edges.foreach_get('vertices', edges)
-    verts = verts.reshape((vert_count, 3))
-    edges = edges.reshape((edge_count, 2))
+    # Unable to find start quad
+    if len(antennas) != 2:
+        report({'ERROR'}, f"Unable to correctly parse the tracks driveline! Check the driveline '{obj.name}'...")
+        return DrivelineData(
+            None,
+            None,
+            None,
+            (),
+            (),
+            ()
+        )
 
-    # Search neighbors for each vertex
-    for iv in np.arange(vert_count):
-        wi = 0
+    l_prev_edge = antennas[0]
+    r_prev_edge = antennas[1]
+    l_verts = [start_verts[0]]
+    r_verts = [start_verts[1]]
+    mids = []
 
-        # Through all edges
-        for ie in np.arange(edge_count):
-            # If one of the vertices of the edge is the current one, get the othe as its neighbor
-            if edges[ie][0] == iv:
-                neighbors[iv][wi] = edges[ie][1]
-                wi += 1
-            elif edges[ie][1] == iv:
-                neighbors[iv][wi] = edges[ie][0]
-                wi += 1
-
-            # Maximum of 3 neighbors for each vertex
-            if wi >= 3:
+    # Walk the edges
+    while len(l_verts[-1].link_edges) == 3 and len(r_verts[-1].link_edges) == 3:
+        # Left
+        for edge in l_verts[-1].link_edges:
+            if edge != l_prev_edge and edge not in r_verts[-1].link_edges:
+                l_verts.append(edge.other_vert(l_verts[-1]))
+                l_prev_edge = edge
                 break
 
-    # Find starting antennas
-    for iv in np.arange(vert_count):
-        n = 0
-
-        # Count neighbors of vertex
-        for ni in neighbors[iv]:
-            if ni >= 0:
-                n += 1
-
-        # Start has only one neighbor
-        if n == 1:
-            if left[0] < 0:
-                left[0] = iv
-            elif right[0] < 0:
-                right[0] = iv
-            else:
-                # Start positions already found (invalid)
-                pass
-
-        elif n == side_count - 1:
-            # End positions
-            pass
-
-    if left[0] < 0 or right[0] < 0:
-        # No starting antennas
-        pass
-
-    prev_left = left[0]
-    prev_right = right[0]
-
-    # Order vertex indices for the border of the driveline
-    for i in np.arange(1, side_count):
-        n_left = neighbors[left[i - 1]]
-        n_right = neighbors[right[i - 1]]
-        staged_left = -1
-        staged_right = -1
-
-        # Check driveline indices
-        for n in np.arange(3):
-            # Find next index by evaluating if not previously used or linked to the other side
-            if n_left[n] < 0 or n_left[n] == left[i - 2] or n_left[n] == right[i - 1]:
-                pass
-            else:
-                staged_left = n_left[n]
-
-            if n_right[n] < 0 or n_right[n] == right[i - 2] or n_right[n] == left[i - 1]:
-                pass
-            else:
-                staged_right = n_right[n]
-
-        left[i] = staged_left
-        right[i] = staged_right
-
-    for i in np.arange(side_count):
-        print(left[i], right[i])
-
-
-def parse_drivelines_py(mesh: bpy.types.Mesh):
-    vert_count = len(mesh.vertices)
-    edge_count = len(mesh.edges)
-    side_count = int(vert_count * 0.5)
-
-    verts = [None] * vert_count
-    edges = [None] * edge_count
-    neighbors = [None] * vert_count
-
-    left = []
-    right = []
-
-    #mesh.vertices.foreach_get('co', verts)
-    #mesh.edges.foreach_get('vertices', edges)
-
-    # Search neighbors for each vertex
-    for iv in range(vert_count):
-        neighbors[iv] = []
-
-        # Through all edges
-        for edge in mesh.edges:
-            # If one of the vertices of the edge is the current one, get the othe as its neighbor
-            if edge.vertices[0] == iv:
-                neighbors[iv].append(edge.vertices[1])
-            elif edge.vertices[1] == iv:
-                neighbors[iv].append(edge.vertices[0])
-
-            # Maximum of 3 neighbors for each vertex
-            if len(neighbors[iv]) >= 3:
+        # Right
+        for edge in r_verts[-1].link_edges:
+            if edge != r_prev_edge and edge not in l_verts[-2].link_edges:
+                r_verts.append(edge.other_vert(r_verts[-1]))
+                r_prev_edge = edge
                 break
 
-    # Find starting antennas
-    for iv in range(vert_count):
-        n = len(neighbors[iv])
+        # Midpoints
+        if len(l_verts) >= 2 and len(r_verts) >= 2:
+            mids.append((l_verts[-1].co + r_verts[-1].co + l_verts[-2].co + r_verts[-2].co) * 0.25)
 
-        # Start has only one neighbor
-        if n == 1:
-            if len(left) == 0:
-                left.append(iv)
-            elif len(right) == 0:
-                right.append(iv)
-            else:
-                # Start positions already found (invalid)
-                pass
+    if len(l_verts) != len(r_verts):
+        report({'WARNING'}, "The tracks driveline has an invalid shape! It will probably not work correctly in-game. "
+               f"Check the driveline '{obj.name}''...")
 
-        elif n == side_count - 1:
-            # End positions
-            pass
+    driveline = DrivelineData(
+        np.array([stk_utils.translation_stk_axis_conversion(v.co) for v in l_verts], dtype=stk_utils.vec3),
+        np.array([stk_utils.translation_stk_axis_conversion(v.co) for v in r_verts], dtype=stk_utils.vec3),
+        np.array([stk_utils.translation_stk_axis_conversion(v) for v in mids], dtype=stk_utils.vec3),
+        stk_utils.translation_stk_axis_conversion((l_verts[0].co + r_verts[0].co) * 0.5),
+        stk_utils.translation_stk_axis_conversion((l_verts[-1].co + r_verts[-1].co) * 0.5),
+        stk_utils.translation_stk_axis_conversion((start_verts[0].co + start_verts[1].co) * 0.5)
+    )
+
+    bm.free()
+
+    return driveline
+
+
+def merge_drivelines(driveline1: DrivelineData, driveline2: DrivelineData):
+    connect_mid = (mathutils.Vector(driveline1.left[-1]) + mathutils.Vector(driveline1.right[-1]) +
+                   mathutils.Vector(driveline2.left[0]) + mathutils.Vector(driveline2.right[0])) * 0.25
+
+    return DrivelineData(
+        np.concatenate(driveline1.left, driveline2.left),
+        np.concatenate(driveline1.right, driveline2.right),
+        np.concatenate(np.append(driveline1.mid, connect_mid), driveline2.mid),
+        driveline1.start_point,
+        driveline2.end_point,
+        driveline1.access_point
+    )
+
+
+def order_drivelines(drivelines: list):
+    ordered = []
+
+    # Move main driveline to position (index) 0
+    for d in drivelines:
+        if d[2] == driveline_type['driveline_main']:
+            ordered.insert(0, d)
+        else:
+            ordered.append(d)
+
+    return ordered

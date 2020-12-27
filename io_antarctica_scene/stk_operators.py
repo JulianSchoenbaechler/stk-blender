@@ -88,7 +88,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
             os.makedirs(output_dir)
 
         # Ensure the object properties have been loaded
-        bpy.ops.stk.reload_object_properties()
+        bpy.ops.stk.reload_object_properties()  # pylint: disable=no-member
 
         # Get evaluated gependency-graph
         dg = context.evaluated_depsgraph_get()
@@ -156,6 +156,7 @@ class STK_OT_DemoOperator(bpy.types.Operator):
         return self.execute(context)
 
     def execute(self, context):
+        from timeit import default_timer as timer
         # Ensure the object properties have been loaded
         bpy.ops.stk.reload_object_properties()
 
@@ -165,9 +166,10 @@ class STK_OT_DemoOperator(bpy.types.Operator):
         # Gather and stage all scene objects that should be exported
         scene = stk_track_utils.collect_scene(context, self.report)
 
-        for driveline in scene.drivelines:
-            stk_track_utils.parse_drivelines(driveline['mesh'])
-            stk_track_utils.parse_drivelines_py(driveline['mesh'])
+        #start = timer()
+        # for _ in range(100):
+        # stk_track_utils.parse_driveline(context.active_object.data)
+        #print(timer() - start)
 
         return {'FINISHED'}
 
