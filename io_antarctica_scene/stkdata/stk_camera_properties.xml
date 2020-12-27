@@ -11,4 +11,11 @@
     <float id="distance" label="Activate Distance" default="10.0" min="0.0" max="1000.0"
            bind="type" condition="lambda t: t.startswith('end_')"
            doc="The distance from the end camera (sphere radius) in which it will be activated"/>
+    <bool id="auto_order" label="Automatic Activation Order" default="true"
+          bind="type" condition="lambda t: t.startswith('end_')"
+          doc="If checked, the order in which this end camera gets activated is calculated automatically according to the tracks driveline"/>
+    <box id="order_box" bind="auto_order" condition="lambda f: not f">
+        <int id="order" label="Activate Index" default="0" min="0" max="100"
+             doc="The order index of this end camera; use 0 for the camera that should get triggered first (if activation distance is reached), then continue incrementally"/>
+    </box>
 </properties>
