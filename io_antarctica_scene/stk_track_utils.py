@@ -748,6 +748,8 @@ def collect_scene(context: bpy.context, report=print):
 
     # Bring some collections in order
     drivelines = order_drivelines(drivelines)
+    checklines = order_checklines(checklines)
+    cameras = order_cameras(cameras, drivelines[0][1])  # [0] is always main driveline
 
     # Create and return scene collection
     return SceneCollection(
@@ -872,7 +874,7 @@ def parse_navmesh(obj: bpy.types.Object, report=print):
         if len(face.verts) == 4:
             indices = [v.index for v in face.verts]
         else:
-            report({'ERROR'}, "Unable to correctly parse the tracks navmesh! The mesh contains faces with that do not "
+            report({'ERROR'}, "Unable to correctly parse the tracks navmesh! The mesh contains faces that do not "
                    f"correctly form a quad. Check the navmesh '{obj.name}'...")
             continue
 
@@ -915,3 +917,63 @@ def order_drivelines(drivelines: list):
             ordered.append(d)
 
     return ordered
+
+
+def order_checklines(checklines: list):
+    # [2] is the checkline index (lap line is 0)
+    return sorted(checklines, key=lambda c: c[2])
+
+
+def order_cameras(cameras: list, main_driveline: DrivelineData):
+    auto_sorted = []
+    fix_sorted = []
+
+    for camera in cameras:
+        # Ignore cutscene cameras
+        if camera[4] == camera_type['cutscene']:
+            continue
+
+        if camera[6] < 0:
+            auto_sorted.append(camera)
+        else:
+            inserted = False
+            # Directly sort cameras with a fixed order
+            for i, fix_c in enumerate(fix_sorted):
+                # Check the order index ([6]) and insert into the list at the defined position
+                if camera[6] < fix_c[6]:
+                    fix_sorted.insert(i, camera)
+                    inserted = True
+                    break
+
+            # Last element / highest index
+            if not inserted:
+                fix_sorted.append(camera)
+
+    # Auto-sort cameras according to their distance to the main driveline
+    if auto_sorted:
+        length = np.size(main_driveline.mid, axis=0)
+        # A reshaping of the view is necessary as NumPy does not like custom dtypes for operations between arrays
+        quads = main_driveline.mid.view(dtype=np.float32).reshape(length, 3)
+        tmp = []
+
+        for camera in auto_sorted:
+            # Calculate the distance to the camera (vectorized)
+            pos = np.repeat(camera[1], (length, 0, 0), axis=0)
+            dist = np.linalg.norm(pos - quads, axis=1)
+
+            # Fill a temporary array with a tuple:
+            # [0]   The quad index of the main driveline which is the nearest to the current camera
+            # [1]   Reference to the camera object
+            tmp.append((np.argmin(dist), camera))
+
+        # Sort by quad indicies (traverses along main driveline and to determine which cameras come one after another)
+        tmp.sort(key=lambda ac: ac[0])
+        auto_sorted = [ac[1] for ac in tmp]
+
+        # Insert cameras with fixed indicies
+        for fix_c in fix_sorted:
+            auto_sorted.insert(fix_c[6], fix_c)
+
+        return auto_sorted
+
+    return fix_sorted
