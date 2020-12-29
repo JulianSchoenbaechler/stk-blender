@@ -268,6 +268,11 @@ def vec4_to_str(val: vec4):
     return f"{val['x']:.3f} {val['y']:.3f} {val['z']:.3f} {val['w']:.3f}"
 
 
+def line_to_str(val: line, attr_name='p'):
+    return f"{attr_name}1=\"{val['p1']['x']:.2f} {val['p1']['y']:.2f} {val['p1']['z']:.2f}\" " \
+           f"{attr_name}2=\"{val['p2']['x']:.2f} {val['p2']['y']:.2f} {val['p2']['z']:.2f}\""
+
+
 def transform_to_str(val: transform):
     return 'xyz="{:.2f} {:.2f} {:.2f}" hpr="{:.2f} {:.2f} {:.2f}" scale="{:.2f} {:.2f} {:.2f}"'.format(
         val['xyz'][0], val['xyz'][1], val['xyz'][2],

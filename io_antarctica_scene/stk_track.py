@@ -135,6 +135,65 @@ def xml_lod_data(lod_groups: set, indent=1):
     return node_lod
 
 
+def xml_curve_data(curve: bpy.types.Curve, space: mathutils.Matrix, extend='const', speed=50.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene file for a 3d curve (e.g.
+    cannon) data specification.
+
+    Parameters
+    ----------
+    curve : bpy.types.Curve
+        The curve data to be processed
+    space : mathutils.Matrix
+        The transformation matrix that should be applied to the curve data
+    extend : str
+        The curve extrapolation; 'const' or 'cyclic'
+    speed : float
+        The speed value the curve will be processed/evaluated
+    indent : int, optional
+        The tab indent for writing the XML node, by default 2
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if len(curve.splines) > 1:
+        report({'WARNING'}, f"The curve '{curve.name}' contains multiple splines! Only one will be considered.")
+
+    if curve.splines[0].type != 'BEZIER':
+        report({'ERROR'}, f"The curve '{curve.name}' must use an underlying spline of type bezier.")
+        return []
+
+    points = []
+
+    for pt in curve.splines[0].bezier_points:
+        points.append((
+            stk_utils.translation_stk_axis_conversion(pt.co, space),            # c
+            stk_utils.translation_stk_axis_conversion(pt.handle_left, space),   # h1
+            stk_utils.translation_stk_axis_conversion(pt.handle_right, space)   # h2
+        ))
+
+    # As we do not operate on this array this is not really necessary, we just keep consistency
+    # The performance hit of the NumPy overhead is tolerable for this case though
+    packed_pt = np.array(points, dtype=stk_utils.keyframe3d)
+
+    nodes = [f"{'  ' * indent}<curve channel=\"LocXYZ\" interpolation=\"bezier\" extend=\"{extend}\" "
+             f"speed=\"{speed:.1f}\">"]
+    indent += 1
+
+    for pt in packed_pt:
+        nodes.append(f"{'  ' * indent}<p c=\"{pt['c']['x']:.2f} {pt['c']['y']:.2f} {pt['c']['z']:.2f}\" "
+                     f"h1=\"{pt['h1']['x']:.2f} {pt['h1']['y']:.2f} {pt['h1']['z']:.2f}\" "
+                     f"h2=\"{pt['h2']['x']:.2f} {pt['h2']['y']:.2f} {pt['h2']['z']:.2f}\"/>")
+
+    indent -= 1
+    nodes.append(f"{'  ' * indent}</curve>")
+
+    return nodes
+
+
 def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode: str, indent=2, report=print):
     """Creates an iterable of strings that represent the writable XML node of the scene file for an object's IPO curve
     animation data specification.
@@ -226,6 +285,8 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
                     (kp.co[0], kp.co[1]),
                 ))
 
+        # As we do not operate on this array this is not really necessary, we just keep consistency
+        # The performance hit of the NumPy overhead is tolerable for this case though
         packed_kp = np.array(keyframes, dtype=stk_utils.keyframe2d)
         node_curves.append(f"{'  ' * indent}<curve channel=\"{channel}\" interpolation=\"{interpolation}\" "
                            f"extend=\"{extrapolation}\">")
@@ -920,6 +981,113 @@ def xml_start_positions_data(placeables: np.ndarray, indent=1, report=print):
            [nodes_ctf_start[key] for key in sorted(nodes_ctf_start.keys())]
 
 
+def xml_check_structures_data(main_driveline: tu.track_driveline, checklines: np.ndarray, cannons: np.ndarray,
+                              goals: np.ndarray, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML node of the scene file for check structures. This
+    includes check/lap-lines, cannons and goal triggers.
+
+    Parameters
+    ----------
+    main_driveline : tu.track_driveline
+        The driveline structure of the race track
+    checklines : np.ndarray
+        All the check and lap lines gathered in the scene for this race track
+    cannons : np.ndarray
+        All the cannons gathered in the scene for this track
+    goals : np.ndarray
+        All the goal lines gathered in the scene for this soccer arena
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    checks_node = [f"{'  ' * indent}<!-- check structures -->", f"{'  ' * indent}<checks>"]
+    indent += 1
+
+    # Process checklines of track driveline
+    if main_driveline and np.size(checklines) > 0:
+        # 'groups' dictionary has following structure:
+        # key:      group index (the one set in the Blender object panel)
+        # value:    tuple where [0] are the XML node element indicies of the checkline and [1] the group indicies to
+        #           activate
+        groups = {0: {0}}
+
+        i = 1
+        for check in checklines:
+            index = check['index']
+
+            if index in groups:
+                groups[index].add(i)
+            else:
+                groups[index] = {i}
+
+            i += 1
+
+        # Write main driveline lap check
+        if main_driveline['activate'] in groups:
+            checks_node.append("{}<check-lap kind=\"lap\" same-group=\"{}\" other-ids=\"{}\"/>".format(
+                '  ' * indent,
+                ' '.join(map(str, groups[0])),
+                ' '.join(map(str, groups[main_driveline['activate']])),
+            ))
+        else:
+            report({'WARNING'}, "Main driveline activates a checkline index that does not exist "
+                   f"({main_driveline['activate']})! Lap counting might not work correctly.")
+
+        # Write activation checkline data
+        for check in checklines:
+            same = check['index']
+            other = check['activate']
+            attributes = []
+
+            # Points to a valid checkline?
+            if other in groups:
+                attributes.append(f"kind=\"{'lap' if same == 0 else 'activate'}\"")
+                attributes.append(stk_utils.line_to_str(check['line']))
+                attributes.append(f"same-group=\"{' '.join(map(str, groups[same]))}\"")
+                attributes.append(f"other-ids=\"{' '.join(map(str, groups[other]))}\"")
+
+                checks_node.append(f"{'  ' * indent}<check-line {' '.join(attributes)}/>")
+            else:
+                report({'WARNING'}, f"Checkline with identifier '{check['id']}' activates a checkline index that does "
+                       f"not exist ({check['activate']})! Lap counting might not work correctly.")
+
+    # Process all cannons on the track
+    for cannon in cannons:
+        checks_node.append("{}<cannon {} {}>".format(
+            '  ' * indent,
+            stk_utils.line_to_str(cannon['start']),
+            stk_utils.line_to_str(cannon['end'], 'target-p')
+        ))
+
+        checks_node.extend(xml_curve_data(
+            cannon['curve'].data,
+            cannon['curve'].matrix_world,
+            'const',
+            cannon['speed'],
+            indent + 1,
+            report
+        ))
+        checks_node.append(f"{'  ' * indent}</cannon>")
+
+    # Process all soccer goals
+    for goal in goals:
+        if goal['team']:
+            checks_node.append(f"{'  ' * indent}<goal {stk_utils.line_to_str(goal['line'])} first_goal=\"y\"/>")
+        else:
+            checks_node.append(f"{'  ' * indent}<goal {stk_utils.line_to_str(goal['line'])}/>")
+
+    indent -= 1
+    checks_node.append(f"{'  ' * indent}</checks>")
+
+    return checks_node
+
+
 def xml_sky_data(sky, sh=None, indent=1, report=print):
     """Creates a string that represent the writable XML node of the scene file for the sky data.
 
@@ -1157,6 +1325,16 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     elif stk_scene.track_type == 'arena' or stk_scene.track_type == 'soccer':
         xml_start_positions.append(xml_start_positions_data(collection.placeables, 1, report))
 
+    # Prepare check structures
+    xml_check_structures = xml_check_structures_data(
+        collection.drivelines[0] if collection.drivelines else None,
+        collection.checklines,
+        collection.cannons,
+        collection.goals,
+        1,
+        report
+    )
+
     # Prepare scene lighting and weather effects
     xml_light_weather = ["  <!-- scene lighting and weather effects -->"]
 
@@ -1251,6 +1429,9 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
             f.write("\n")
 
         f.write("\n".join(xml_start_positions))
+        f.write("\n")
+
+        f.write("\n".join(xml_check_structures))
         f.write("\n")
 
         f.write("\n".join(xml_light_weather))

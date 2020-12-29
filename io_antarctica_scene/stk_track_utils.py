@@ -223,13 +223,14 @@ track_driveline = np.dtype([
     ('invisible', np.bool_),
     ('ignore', np.bool_),
     ('direction', np.bool_),
+    ('activate', np.int32),
 ])
 
 track_checkline = np.dtype([
     ('id', 'U127'),
     ('line', stk_utils.line),
     ('index', np.int32),
-    ('active', np.int32),
+    ('activate', np.int32),
 ])
 
 track_cannon = np.dtype([
@@ -577,14 +578,15 @@ def collect_scene(context: bpy.context, report=print):
                     continue
 
                 drivelines.append((
-                    obj.name,                                   # ID
-                    parse_driveline(obj, report),               # Create driveline data
-                    driveline_type[t],                          # Driveline type
-                    props.driveline_lower,                      # Lower driveline check
-                    props.driveline_upper,                      # Upper driveline check
-                    props.driveline_invisible,                  # Driveline not visible on
-                    props.driveline_ignore,                     # Driveline AI ignore
-                    props.driveline_direction == 'reverse',     # Driveline direction
+                    obj.name,                                                   # ID
+                    parse_driveline(obj, report),                               # Create driveline data
+                    driveline_type[t],                                          # Driveline type
+                    props.driveline_lower,                                      # Lower driveline check
+                    props.driveline_upper,                                      # Upper driveline check
+                    props.driveline_invisible,                                  # Driveline not visible on
+                    props.driveline_ignore,                                     # Driveline AI ignore
+                    props.driveline_direction == 'reverse',                     # Driveline direction
+                    props.checkline_activate if t == 'driveline_main' else -1,  # Main driveline activation index
                 ))
 
                 used_identifiers.append(obj.name)
@@ -597,17 +599,14 @@ def collect_scene(context: bpy.context, report=print):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                line_v1 = obj.matrix_world @ obj.data.vertices[0].co
-                line_v2 = obj.matrix_world @ obj.data.vertices[1].co
-
-                line = ((line_v1[0], line_v1[2], line_v1[1]),
-                        (line_v2[0], line_v2[2], line_v2[1]))
+                line = (stk_utils.translation_stk_axis_conversion(obj.data.vertices[0].co, obj.matrix_world),
+                        stk_utils.translation_stk_axis_conversion(obj.data.vertices[1].co, obj.matrix_world))
 
                 checklines.append((
-                    obj.name,                   # ID
-                    line,                       # Line data
-                    props.checkline_index,      # Checkline index
-                    props.checkline_activate,   # Activation index
+                    obj.name,                                           # ID
+                    line,                                               # Line data
+                    props.checkline_index if t == 'checkline' else 0,   # Checkline index
+                    props.checkline_activate,                           # Activation index
                 ))
 
                 used_identifiers.append(obj.name)
@@ -642,14 +641,18 @@ def collect_scene(context: bpy.context, report=print):
                     report({'WARNING'}, f"The cannon '{obj.name}' has invalid start or end lines and will be ignored!")
                     continue
 
-                line_start_v1 = obj.matrix_world @ obj.data.vertices[0].co
-                line_start_v2 = obj.matrix_world @ obj.data.vertices[1].co
-                line_end_v1 = props.cannon_end_trigger.matrix_world @ props.cannon_end_trigger.data.vertices[1].co
-                line_end_v2 = props.cannon_end_trigger.matrix_world @ props.cannon_end_trigger.data.vertices[1].co
-                line_start = ((line_start_v1[0], line_start_v1[2], line_start_v1[1]),
-                              (line_start_v2[0], line_start_v2[2], line_start_v2[1]))
-                line_end = ((line_end_v1[0], line_end_v1[2], line_end_v1[1]),
-                            (line_end_v2[0], line_end_v2[2], line_end_v2[1]))
+                line_start = (stk_utils.translation_stk_axis_conversion(obj.data.vertices[0].co, obj.matrix_world),
+                              stk_utils.translation_stk_axis_conversion(obj.data.vertices[1].co, obj.matrix_world))
+                line_end = (
+                    stk_utils.translation_stk_axis_conversion(
+                        props.cannon_end_trigger.data.vertices[0].co,
+                        props.cannon_end_trigger.matrix_world
+                    ),
+                    stk_utils.translation_stk_axis_conversion(
+                        props.cannon_end_trigger.data.vertices[1].co,
+                        props.cannon_end_trigger.matrix_world
+                    )
+                )
 
                 cannons.append((
                     obj.name,               # ID
@@ -669,11 +672,8 @@ def collect_scene(context: bpy.context, report=print):
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
 
-                line_v1 = obj.matrix_world @ obj.data.vertices[0].co
-                line_v2 = obj.matrix_world @ obj.data.vertices[1].co
-
-                line = ((line_v1[0], line_v1[2], line_v1[1]),
-                        (line_v2[0], line_v2[2], line_v2[1]))
+                line = (stk_utils.translation_stk_axis_conversion(obj.data.vertices[0].co, obj.matrix_world),
+                        stk_utils.translation_stk_axis_conversion(obj.data.vertices[1].co, obj.matrix_world))
 
                 goals.append((
                     obj.name,                   # ID
