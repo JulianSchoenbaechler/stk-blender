@@ -142,7 +142,7 @@ def object_get_transform(obj: bpy.types.Object, local=False):
     rot_euler = mathutils.Vector(loc_rot_scale[1].to_euler('XZY')) * -57.2957795131  # rad2deg
     return (
         (loc_rot_scale[0].x, loc_rot_scale[0].z, loc_rot_scale[0].y),
-        (rot_euler.z, rot_euler.y, rot_euler.x),
+        (rot_euler.x, rot_euler.z, rot_euler.y),
         (loc_rot_scale[2].x, loc_rot_scale[2].z, loc_rot_scale[2].y)
     )
 
@@ -152,8 +152,16 @@ def translation_stk_axis_conversion(vec: mathutils.Vector, space=mathutils.Matri
     return (vec.x, vec.z, vec.y)
 
 
-def parse_bezier(obj: bpy.types.Object):
-    assert (obj.type == 'CURVE')
+def is_skeletal_animation_looped(animation_data: bpy.types.AnimData):
+    if not animation_data or not animation_data.action:
+        return False
+
+    for curve in animation_data.action.fcurves:
+        # If one armature bone curve has the cycles modifiers applied
+        if 'pose.bones' in curve.data_path and [m for m in curve.modifiers if m.type == 'CYCLES']:
+            return True
+
+    return False
 
 
 # ------------------------------------------------------------------------------

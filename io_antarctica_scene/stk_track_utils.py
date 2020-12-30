@@ -148,6 +148,7 @@ track_object = np.dtype([
     ('interaction', np.int8),               # Interaction type (object_interaction)
     ('shape', np.int8),                     # Physics shape (object_physics_shape)
     ('flags', np.int8),                     # Object flags (object_flags)
+    ('mass', np.float32),                   # Mass in kg (if movable physics object)
     ('glow', stk_utils.vec3),               # Glow color (if glow flag set)
     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
@@ -407,6 +408,7 @@ def collect_scene(context: bpy.context, report=print):
                 else:
                     is_static = False
                 staged.append(flags)
+                staged.append(props.mass)
                 staged.append(tuple(props.glow_color))
 
                 # Scripting and output related

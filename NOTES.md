@@ -13,6 +13,8 @@
   will be messed up -> meaning the output in STK will be different than in Blender
 - There is a minor bug that affects exported checklines: only the left edge of the line is considered for the height
   testing of the driveline
+- The 'sfx-emitter' and 'action-trigger' object type in the scene.xml file must be processed after the check structures
+  (XML node placed after checks) otherwise lap counting will be messed up. It seems it has something to do with conditional scripting functions that interfere with checkline action triggers.
 
 
 Write without fear, and refactor without mercy!

@@ -23,6 +23,7 @@
 import bpy
 import collections
 import mathutils
+import math
 import os
 import numpy as np
 from . import stk_track_utils as tu
@@ -251,7 +252,7 @@ def xml_ipo_data(obj_id: str, animation_data: bpy.types.AnimData, rotation_mode:
             continue
 
         # Extrapolation of the curve (constant or cyclic)
-        extrapolation = 'const' if len([m for m in curve.modifiers if m == 'CYCLES']) == 0 else 'cyclic'
+        extrapolation = 'const' if len([m for m in curve.modifiers if m.type == 'CYCLES']) == 0 else 'cyclic'
         interpolation = 'const'
         changed_interpolation = False
         keyframes = []
@@ -384,13 +385,17 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
             anim = 'y' if obj['object'].find_armature() else 'n'
             attributes.append(f"model=\"{obj['id']}.spm\" skeletal-animation=\"{anim}\"")
 
+            # Check if skeletal animation is looped
+            if stk_utils.is_skeletal_animation_looped(animation_data):
+                attributes.append("looped=\"y\"")
+
         # Geometry level visibility
         if obj['visibility'] != tu.object_geo_detail_level['off']:
             attributes.append(f"geometry-level=\"{obj['visibility']}\"")
 
         # Object interaction
         if obj['interaction'] == tu.object_interaction['movable']:
-            attributes.append("interaction=\"movable\"")
+            attributes.append(f"interaction=\"movable\" mass=\"{obj['mass']:.1f}\"")
         elif obj['interaction'] == tu.object_interaction['ghost']:
             attributes.append("interaction=\"ghost\"")
         elif obj['interaction'] == tu.object_interaction['physics']:
@@ -810,7 +815,7 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
 
         # Particle emitter clipping distance
         if emitter['distance'] != 0.0:
-            attributes.append(f"clip_distance=\"{emitter['distance']:.2f}\"")
+            attributes.append(f"clip_distance=\"{int(math.ceil(emitter['distance']))}\"")
 
         # Particles emitter auto-emit
         attributes.append(f"auto_emit=\"{'y' if emitter['emit'] else 'n'}\"")
@@ -1481,6 +1486,15 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
         f.write("\n".join(xml_track))
         f.write("\n")
 
+        f.write("\n".join(xml_start_positions))
+        f.write("\n")
+
+        # Write check structures early on (before object and special objects tags) as objects that utilize scripting
+        # functions (action triggers, sfx emitters as well as conditional objects 'if') mess up lap counting if defined
+        # before the checklines
+        f.write("\n".join(xml_check_structures))
+        f.write("\n")
+
         if xml_library_objects:
             f.write("\n".join(xml_library_objects))
             f.write("\n")
@@ -1520,12 +1534,6 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
         if xml_placeables:
             f.write("\n".join(xml_placeables))
             f.write("\n")
-
-        f.write("\n".join(xml_start_positions))
-        f.write("\n")
-
-        f.write("\n".join(xml_check_structures))
-        f.write("\n")
 
         f.write("\n".join(xml_light_weather))
         f.write("\n")

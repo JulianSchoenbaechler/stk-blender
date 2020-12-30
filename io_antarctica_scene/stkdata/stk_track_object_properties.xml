@@ -158,6 +158,9 @@
         </enum>
 
         <!-- object specific -->
+        <float id="mass" label="Mass" default="100.0" min="0.0" max="10000.0"
+               bind="type interaction" condition="lambda t, p: (t == 'object' or t == 'lod_instance') and p == 'movable'"
+               doc="The mass used by the physics engine for this object"/>
         <bool id="driveable" label="Driveable" default="false"
               bind="type interaction" condition="lambda t, p: t == 'object' and p == 'static'"
               doc="Karts can drive on this object"/>
