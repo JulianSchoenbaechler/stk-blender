@@ -502,6 +502,48 @@ def xml_object_data(objects: np.ndarray, static=False, fps=25.0, indent=1, repor
     return nodes
 
 
+def xml_library_data(library_objects: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for library objects.
+
+    Parameters
+    ----------
+    library_objects : np.ndarray
+        An array of library object data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(library_objects) == 0:
+        return []
+
+    # Library nodes
+    nodes = [f"{'  ' * indent}<!-- library nodes -->"]
+
+    for obj in library_objects:
+        # Identifier, transform and library node name/id
+        attributes = [f"id=\"{obj['id']}\"", stk_utils.transform_to_str(obj['transform']), f"name=\"{obj['name']}\""]
+
+        # Build library node
+        if not obj['animation']:
+            nodes.append(f"{'  ' * indent}<library {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<library {' '.join(attributes)} fps=\"{fps:.2f}\">")
+
+            # IPO animation
+            nodes.extend(xml_ipo_data(obj['id'], obj['animation'], obj['rotation_mode'], indent + 1, report))
+            nodes.append(f"{'  ' * indent}</library>")
+
+    return nodes
+
+
 def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print):
     """Creates an iterable of strings that represent the writable XML nodes of the scene file for billboard objects.
 
@@ -847,7 +889,7 @@ def xml_lights_data(lights: np.ndarray, fps=25.0, indent=1, report=print):
     if np.size(lights) == 0:
         return []
 
-    # Particle emitter nodes
+    # Light nodes
     nodes = [f"{'  ' * indent}<!-- dynamic lights -->"]
 
     for light in lights:
@@ -870,7 +912,7 @@ def xml_lights_data(lights: np.ndarray, fps=25.0, indent=1, report=print):
             nodes.append(f"{'  ' * indent}<light {' '.join(attributes)} fps=\"{fps:.2f}\">")
 
             # IPO animation
-            # Set to default rotation mode as rotation does not matter for dynamic light
+            # Set to default rotation mode as rotation does not matter for dynamic lights
             nodes.extend(xml_ipo_data(light['id'], light['animation'], 'XYZ', indent + 1, report))
             nodes.append(f"{'  ' * indent}</light>")
 
@@ -1323,6 +1365,9 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
         "  </track>"
     ]
 
+    # Prepare library objects
+    xml_library_objects = xml_library_data(collection.library_objects, collection.fps, 1, report)
+
     # Prepare dynamic objects
     xml_objects = ["  <!-- dynamic/animated and non-static objects -->"]
     xml_objects.extend(xml_object_data(collection.dynamic_objects, False, collection.fps, 1, report))
@@ -1435,6 +1480,10 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
 
         f.write("\n".join(xml_track))
         f.write("\n")
+
+        if xml_library_objects:
+            f.write("\n".join(xml_library_objects))
+            f.write("\n")
 
         if xml_objects:
             f.write("\n".join(xml_objects))

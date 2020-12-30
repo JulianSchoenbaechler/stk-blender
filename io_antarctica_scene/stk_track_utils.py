@@ -29,12 +29,12 @@ import numpy as np
 from . import stk_utils, stk_props
 
 # TODO: Particle system object placement
-# TODO: Library nodes collecting
 SceneCollection = collections.namedtuple('SceneCollection', [
     'lod_groups',           # set of bpy.types.Collection (LOD group) and/or bpy.types.Object (LOD standalones)
     'track_objects',        # NumPy array of unspecified static track object data (dtype=track_object)
     'static_objects',       # NumPy array of static track object data (dtype=track_object)
     'dynamic_objects',      # NumPy array of dynamic track object data (dtype=track_object)
+    'library_objects',      # NumPy array of track library node data (dtype=track_library_object)
     'placeables',           # NumPy array of placeables (dtype=track_placeable)
     'billboards',           # NumPy array of billboards (dtype=track_billboard)
     'particles',            # NumPy array of particle emitters (dtype=track_particles)
@@ -152,6 +152,14 @@ track_object = np.dtype([
     ('visible_if', 'U127'),                 # Scripting: only enabled if (poll function)
     ('on_collision', 'U127'),               # Scripting: on collision scripting callback
     ('custom_xml', 'U127'),                 # Additional custom XML
+])
+
+track_library_object = np.dtype([
+    ('id', 'U127'),
+    ('name', 'U127'),
+    ('transform', stk_utils.transform),
+    ('animation', 'O'),
+    ('rotation_mode', 'U10'),
 ])
 
 track_placeable = np.dtype([
@@ -274,6 +282,7 @@ def collect_scene(context: bpy.context, report=print):
     track_objects = []
     static_objects = []
     dynamic_objects = []
+    library_objects = []
     placeables = []
     billboards = []
     particles = []
@@ -298,7 +307,7 @@ def collect_scene(context: bpy.context, report=print):
 
     # Categorize all objects that need to get exported
     for obj in objects:
-        # Ignore disabled
+        # Ignore disabled or direct library references (only accept proxies)
         if obj.hide_viewport or obj.hide_render:
             continue
 
@@ -307,8 +316,26 @@ def collect_scene(context: bpy.context, report=print):
             props = obj.stk_track
             t = props.type
 
+            # Library object proxies
+            if obj.proxy and obj.proxy.name.endswith('_main'):
+                # Skip if already an object with this identifier
+                if obj.name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and will "
+                           "be ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                library_objects.append((
+                    obj.name,                               # ID
+                    obj.proxy.name[:-5],                    # Library node name identifier
+                    stk_utils.object_get_transform(obj),    # Transform
+                    stk_utils.object_is_ipo_animated(obj),  # Get IPO animation
+                    obj.rotation_mode,                      # Object's rotation mode
+                ))
+
+                used_identifiers.append(obj.name)
+
             # Unassigned model (defaults to static track scenery)
-            if obj.type != 'EMPTY' and t == 'none':
+            elif obj.type != 'EMPTY' and t == 'none':
                 track_objects.append(obj)
 
             # Object (including LOD) with specified properties
@@ -759,6 +786,7 @@ def collect_scene(context: bpy.context, report=print):
         track_objects=np.array(track_objects, dtype=object),
         static_objects=np.array(static_objects, dtype=track_object),
         dynamic_objects=np.array(dynamic_objects, dtype=track_object),
+        library_objects=np.array(library_objects, dtype=track_library_object),
         placeables=np.array(placeables, dtype=track_placeable),
         billboards=np.array(billboards, dtype=track_billboard),
         particles=np.array(particles, dtype=track_particles),
