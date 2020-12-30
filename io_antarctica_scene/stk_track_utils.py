@@ -250,6 +250,7 @@ track_goal = np.dtype([
 track_light = np.dtype([
     ('id', 'U127'),
     ('transform', stk_utils.transform),
+    ('animation', 'O'),
     ('distance', np.float32),
     ('energy', np.float32),
     ('color', stk_utils.vec3),
@@ -713,6 +714,7 @@ def collect_scene(context: bpy.context, report=print):
                 lights.append((
                     obj.name,                                   # ID
                     stk_utils.object_get_transform(obj),        # Transform
+                    stk_utils.object_is_ipo_animated(obj),      # Get IPO animation
                     props.point_distance,                       # Light distance
                     light.energy if light.energy else 100.0,    # Light energy
                     tuple(light.color),                         # Light color

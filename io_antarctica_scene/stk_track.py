@@ -554,13 +554,10 @@ def xml_billboard_data(billboards: np.ndarray, fps=25.0, indent=1, report=print)
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
-            indent += 1
 
             # IPO animation
             # Set to default rotation mode as rotation does not matter for billboards
-            nodes.extend(xml_ipo_data(billboard['id'], billboard['animation'], 'XYZ', report=report))
-
-            indent -= 1
+            nodes.extend(xml_ipo_data(billboard['id'], billboard['animation'], 'XYZ', indent + 1, report))
             nodes.append(f"{'  ' * indent}</object>")
 
     return nodes
@@ -616,13 +613,10 @@ def xml_action_trigger_data(actions: np.ndarray, fps=25.0, indent=1, report=prin
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
-            indent += 1
 
             # IPO animation
             # Set to default rotation mode as rotation does not matter for action triggers (point & cylinder)
-            nodes.extend(xml_ipo_data(action['id'], action['animation'], 'XYZ', report=report))
-
-            indent -= 1
+            nodes.extend(xml_ipo_data(action['id'], action['animation'], 'XYZ', indent + 1, report))
             nodes.append(f"{'  ' * indent}</object>")
 
     return nodes
@@ -670,12 +664,9 @@ def xml_cutscene_camera_data(cameras: np.ndarray, fps=25.0, indent=1, report=pri
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
-            indent += 1
 
             # IPO animation
-            nodes.extend(xml_ipo_data(camera['id'], camera['animation'], camera['rotation_mode'], report=report))
-
-            indent -= 1
+            nodes.extend(xml_ipo_data(camera['id'], camera['animation'], camera['rotation_mode'], indent + 1, report))
             nodes.append(f"{'  ' * indent}</object>")
 
     # Return empty array if no cutscene cameras in scene
@@ -734,13 +725,10 @@ def xml_sfx_data(audio_sources: np.ndarray, fps=25.0, indent=1, report=print):
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<object {' '.join(attributes)} fps=\"{fps:.2f}\">")
-            indent += 1
 
             # IPO animation
             # Set to default rotation mode as rotation does not matter for SFX emitters
-            nodes.extend(xml_ipo_data(sfx['id'], sfx['animation'], 'XYZ', report=report))
-
-            indent -= 1
+            nodes.extend(xml_ipo_data(sfx['id'], sfx['animation'], 'XYZ', indent + 1, report))
             nodes.append(f"{'  ' * indent}</object>")
 
     return nodes
@@ -794,13 +782,10 @@ def xml_particles_data(particles: np.ndarray, fps=25.0, indent=1, report=print):
             nodes.append(f"{'  ' * indent}<particle-emitter {' '.join(attributes)}/>")
         else:
             nodes.append(f"{'  ' * indent}<particle-emitter {' '.join(attributes)} fps=\"{fps:.2f}\">")
-            indent += 1
 
             # IPO animation
             # Set to default rotation mode as rotation does not matter for particle emitters
-            nodes.extend(xml_ipo_data(emitter['id'], emitter['animation'], 'XYZ', report=report))
-
-            indent -= 1
+            nodes.extend(xml_ipo_data(emitter['id'], emitter['animation'], 'XYZ', indent + 1, report))
             nodes.append(f"{'  ' * indent}</particle-emitter>")
 
     return nodes
@@ -836,6 +821,58 @@ def xml_godrays_data(godrays: np.ndarray, indent=1):
 
         # Build godrays emitter node
         nodes.append(f"{'  ' * indent}<lightshaft {' '.join(attributes)}/>")
+
+    return nodes
+
+
+def xml_lights_data(lights: np.ndarray, fps=25.0, indent=1, report=print):
+    """Creates an iterable of strings that represent the writable XML nodes of the scene file for dynamic lights.
+
+    Parameters
+    ----------
+    lights : np.ndarray
+        An array of dynamic light data that should be processed
+    fps : float, optional
+        The frames-per-second value the animation should run on, by default 25.0
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if np.size(lights) == 0:
+        return []
+
+    # Particle emitter nodes
+    nodes = [f"{'  ' * indent}<!-- dynamic lights -->"]
+
+    for light in lights:
+        # Identifier and transform
+        attributes = [f"id=\"{light['id']}\"", stk_utils.transform_to_xyzh_str(light['transform'])]
+
+        # Light properties
+        attributes.append(f"distance=\"{light['distance']:.2f}\"")
+        attributes.append(f"energy=\"{(light['energy'] * 0.01):.2f}\"")
+        attributes.append(f"color=\"{stk_utils.color_to_str(light['color'])}\"")
+
+        # Scripting
+        if light['visible_if'] and len(light['visible_if']):
+            attributes.append(f"if=\"{light['visible_if']}\"")
+
+        # Build light node
+        if not light['animation']:
+            nodes.append(f"{'  ' * indent}<light {' '.join(attributes)}/>")
+        else:
+            nodes.append(f"{'  ' * indent}<light {' '.join(attributes)} fps=\"{fps:.2f}\">")
+
+            # IPO animation
+            # Set to default rotation mode as rotation does not matter for dynamic light
+            nodes.extend(xml_ipo_data(light['id'], light['animation'], 'XYZ', indent + 1, report))
+            nodes.append(f"{'  ' * indent}</light>")
 
     return nodes
 
@@ -1308,6 +1345,9 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     # Prepare godrays emitters
     xml_godrays = xml_godrays_data(collection.godrays, 1)
 
+    # Prepare dynamic lights
+    xml_lights = xml_lights_data(collection.lights, collection.fps, 1)
+
     # Prepare placeables/items emitters
     xml_placeables = xml_placeables_data(collection.placeables, 1)
 
@@ -1327,7 +1367,7 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
 
     # Prepare check structures
     xml_check_structures = xml_check_structures_data(
-        collection.drivelines[0] if collection.drivelines else None,
+        collection.drivelines[0] if np.size(collection.drivelines) > 0 else None,
         collection.checklines,
         collection.cannons,
         collection.goals,
@@ -1422,6 +1462,10 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
 
         if xml_godrays:
             f.write("\n".join(xml_godrays))
+            f.write("\n")
+
+        if xml_lights:
+            f.write("\n".join(xml_lights))
             f.write("\n")
 
         if xml_placeables:
