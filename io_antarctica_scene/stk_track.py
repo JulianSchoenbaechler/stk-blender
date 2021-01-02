@@ -1354,6 +1354,19 @@ def xml_end_cameras_data(cameras: np.ndarray, indent=1):
 
 
 def write_scene_file(context: bpy.context, collection: tu.SceneCollection, output_dir: str, report=print):
+    """Writes the scene.xml file for the SuperTuxKart track to disk.
+
+    Parameters
+    ----------
+    context : bpy.context
+        The Blender context object
+    collection : tu.SceneCollection tuple
+        A scene collection tuple containing all the gathered scene data staged for export
+    output_dir : str
+        The output folder path where the XML file should be written to
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+    """
     stk_scene = stk_utils.get_stk_context(context, 'scene')
     world = context.scene.world
 
@@ -1475,6 +1488,7 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
+            f"<!-- scene.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
             "<scene>\n"
         ])
@@ -1543,3 +1557,123 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
 
         # all the things...
         f.write("</scene>\n")
+
+
+def write_driveline_files(context: bpy.context, collection: tu.SceneCollection, output_dir: str, report=print):
+    """Writes the quads.xml and graph.xml file for the SuperTuxKart track drivelines to disk.
+
+    Parameters
+    ----------
+    context : bpy.context
+        The Blender context object
+    collection : tu.SceneCollection tuple
+        A scene collection tuple containing all the gathered scene data staged for export
+    output_dir : str
+        The output folder path where the XML file should be written to
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+    """
+    if np.size(collection.drivelines) == 0:
+        return
+
+    quads_path = os.path.join(output_dir, 'quads.xml')
+    graph_path = os.path.join(output_dir, 'graph.xml')
+    quads_data = []
+    graph_data = []
+
+    dir_values = tu.driveline_direction
+    main_data = collection.drivelines[0]['data']
+    main_size = np.size(main_data.mid, axis=0)
+    # A reshaping of the view is necessary as NumPy does not like custom dtypes for operations between arrays
+    main_loop = main_data.mid.view(dtype=np.float32).reshape(main_size, 3)
+
+    is_main = True
+    quad_count = 0
+
+    for driveline in collection.drivelines:
+        data = driveline['data']
+        size = np.size(data.mid, axis=0)
+        attr_vis_ai = []
+        attr_dir = []
+
+        # Visibility and AI behavior
+        if not is_main and driveline['invisible']:
+            attr_vis_ai.append("invisible=\"y\"")
+
+        if not is_main and driveline['ignore']:
+            attr_vis_ai.append("ai-ignore=\"y\"")
+
+        # Drivable direction
+        if driveline['direction'] != dir_values['none'] and driveline['direction'] != dir_values['both']:
+            attr_dir.append("direction=\"{}\"".format(
+                'forward' if driveline['direction'] == dir_values['forward'] else 'reverse'
+            ))
+
+        # Height testing
+        if is_main:
+            quads_data.append(f"  <height-testing max=\"{driveline['higher']}\" min=\"{driveline['lower']}\"/>")
+
+        quads_data.append(f"  <!-- driveline: {driveline['id']} -->")
+
+        # Iterate through quad data
+        for i in np.arange(size):
+            p = []
+
+            if i == 0:
+                p.append(f"p0=\"{data.left[i][0]:.2f} {data.left[i][1]:.2f} {data.left[i][2]:.2f}\"")
+                p.append(f"p1=\"{data.right[i][0]:.2f} {data.right[i][1]:.2f} {data.right[i][2]:.2f}\"")
+                p.append(f"p2=\"{data.right[i + 1][0]:.2f} {data.right[i + 1][1]:.2f} {data.right[i + 1][2]:.2f}\"")
+                p.append(f"p3=\"{data.left[i + 1][0]:.2f} {data.left[i + 1][1]:.2f} {data.left[i + 1][2]:.2f}\"")
+                quads_data.append(f"  <quad {' '.join(attr_vis_ai + attr_dir + p)}/>")
+            else:
+                p.append(f"p0=\"{quad_count - 1}:3\"")
+                p.append(f"p1=\"{quad_count - 1}:2\"")
+                p.append(f"p2=\"{data.right[i + 1][0]:.2f} {data.right[i + 1][1]:.2f} {data.right[i + 1][2]:.2f}\"")
+                p.append(f"p3=\"{data.left[i + 1][0]:.2f} {data.left[i + 1][1]:.2f} {data.left[i + 1][2]:.2f}\"")
+
+                if i != size - 1:
+                    quads_data.append(f"  <quad {' '.join(attr_dir + p)}/>")
+                else:
+                    quads_data.append(f"  <quad {' '.join(attr_vis_ai + attr_dir + p)}/>")
+
+            quad_count += 1
+
+        # Closing quad for main driveline
+        if is_main:
+            p = [f"p0=\"{quad_count - 1}:3\"", f"p1=\"{quad_count - 1}:2\"", "p2=\"0:1\"", "p3=\"0:0\""]
+            quads_data.append(f"  <quad {' '.join(attr_dir + p)}/>")
+            graph_data.append(f"  <!-- main loop: {driveline['id']} -->")
+            graph_data.append(f"  <edge-loop from=\"0\" to=\"{quad_count}\"/>")
+            quad_count += 1
+            is_main = False  # Only first driveline in collection is the main
+        else:
+            # Calculate entry and exit points of this driveline
+            dl_from = np.repeat([data.access_point], main_size, axis=0)
+            dl_to = np.repeat([data.end_point], main_size, axis=0)
+            graph_from = np.argmin(np.linalg.norm(dl_from - main_loop, axis=1))
+            graph_to = np.argmin(np.linalg.norm(dl_to - main_loop, axis=1))
+            graph_data.append(f"  <!-- additional loop: {driveline['id']} -->")
+            graph_data.append(f"  <edge from=\"{graph_from}\" to=\"{quad_count - size}\"/>")
+            graph_data.append(f"  <edge-loop from=\"{quad_count - size}\" to=\"{quad_count - 1}\"/>")
+            graph_data.append(f"  <edge from=\"{quad_count - 1}\" to=\"{graph_to}\"/>")
+
+    graph_data.insert(0, f"  <node-list from-quad=\"0\" to-quad=\"{quad_count - 1}\"/>")
+
+    # Write quads and graph file
+    with open(quads_path, 'w', encoding='utf8', newline="\n") as f:
+        f.writelines([
+            f"<!-- quads.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            "<quads>\n"
+        ])
+        f.write("\n".join(quads_data))
+        f.write("\n</quads>\n")
+
+    with open(graph_path, 'w', encoding='utf8', newline="\n") as f:
+        f.writelines([
+            f"<!-- graph.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            "<graph>\n"
+        ])
+        f.write("\n".join(graph_data))
+        f.write("\n</graph>\n")

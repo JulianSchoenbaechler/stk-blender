@@ -96,7 +96,13 @@ class STK_OT_TrackExport(bpy.types.Operator):
         # Gather and stage all scene objects that should be exported
         scene = stk_track_utils.collect_scene(context, self.report)
 
+        # Files staged for copying to destination
+        cpy_files = ['scripting.as']
+        cpy_files += [p['file'] for p in scene.particles]       # Get all assigned particle definition files
+        cpy_files += [a['file'] for a in scene.audio_sources]   # Get all assigned audio files
+
         stk_track.write_scene_file(context, scene, output_dir, self.report)
+        stk_track.write_driveline_files(context, scene, output_dir, self.report)
 
         # Demo: export materials
         for mat in bpy.data.materials:
@@ -119,6 +125,16 @@ class STK_OT_TrackExport(bpy.types.Operator):
             # Save image
             image.save()
             image.filepath_raw = original_path
+
+        # Copy staged files if they exist in the working directory
+        import shutil
+
+        for f in cpy_files:
+            p_input = bpy.path.abspath(os.path.join('//', f))
+
+            if os.path.isfile(p_input):
+                p_output = os.path.join(output_dir, f)
+                shutil.copy2(p_input, p_output)
 
         print("EXPORT!!!!")
 

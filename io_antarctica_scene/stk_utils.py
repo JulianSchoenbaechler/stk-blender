@@ -35,6 +35,9 @@ CONTEXT_OBJECT = 0
 CONTEXT_SCENE = 1
 CONTEXT_MATERIAL = 2
 
+ADDON_VERSION = ()
+FILE_FORMAT_VERSION = 7
+
 # Packed data containers
 vec2 = np.dtype([('x', np.float32), ('y', np.float32)])
 vec3 = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32)])
@@ -59,6 +62,10 @@ def getObject(context, contextLevel):
         #        return bpy.data.images[selected_image]
 
     return None
+
+
+def get_addon_version():
+    return '.'.join(map(str, ADDON_VERSION))
 
 
 def get_stk_scene_type(context: bpy.context):

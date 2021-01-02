@@ -26,7 +26,7 @@ bl_info = {
     'name': "SuperTuxKart Exporter Tools",
     'description': "Export various items to SuperTuxKart objects (karts, tracks, and materials)",
     'author': "Jean-Manuel Clemencon, Joerg Henrichs, Marianne Gagnon, Richard Qian",
-    'version': (4, 0),
+    'version': (2, 0, 0),
     'blender': (2, 80, 0),
     'location': "File > Import-Export",
     'warning': "",  # used for warning icon and text in addons panel
@@ -126,6 +126,9 @@ classes = (
 def register():
     from bpy.utils import register_class
     from bpy.app.handlers import load_post
+    from . import stk_utils
+
+    stk_utils.ADDON_VERSION = bl_info['version']
 
     for cls in classes:
         register_class(cls)

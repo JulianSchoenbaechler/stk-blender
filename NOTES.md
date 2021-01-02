@@ -6,6 +6,7 @@
 
 
 ## General
+### Tracks
 - Billboards are messed up in Worldblenders 2.8 upgrade
 - Blender's particle distribution for objects will crash Worldblenders 2.8 upgrade
 - Animation fcurves are treated as if they always use Euler coordinates ordered XYZ (which is Blender's default);
@@ -15,6 +16,13 @@
   testing of the driveline
 - The 'sfx-emitter' and 'action-trigger' object type in the scene.xml file must be processed after the check structures
   (XML node placed after checks) otherwise lap counting will be messed up. It seems it has something to do with conditional scripting functions that interfere with checkline action triggers.
+- Unused properties in track.xml:
+  - bloom (deprecated)
+  - bloom-threshold (deprecated)
+  - push-back (unused in physics config -> 'impulse-type' must be 'driveline' to take any effect)
+  - clouds (deprecated)
+  - friction (not implemented, as the physical effects are very specific and hardly controllable)
+  - gravity (not implemented, as the physical effects are very specific and hardly controllable)
 
 
 Write without fear, and refactor without mercy!

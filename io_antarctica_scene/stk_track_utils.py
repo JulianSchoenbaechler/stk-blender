@@ -127,6 +127,13 @@ driveline_type = {
     'navmesh': 0x02,
 }
 
+driveline_direction = {
+    'none': 0x00,
+    'forward': 0x01,
+    'reverse': 0x02,
+    'both': 0x03,
+}
+
 camera_type = {
     'end_fixed': 0x00,
     'end_kart': 0x01,
@@ -231,7 +238,7 @@ track_driveline = np.dtype([
     ('higher', np.float32),
     ('invisible', np.bool_),
     ('ignore', np.bool_),
-    ('direction', np.bool_),
+    ('direction', np.int8),
     ('activate', np.int32),
 ])
 
@@ -607,6 +614,11 @@ def collect_scene(context: bpy.context, report=print):
                            "already a main driveline defined in the scene!")
                     continue
 
+                # Evaluate direction flags
+                direction = 0x00
+                for d in props.driveline_direction:
+                    direction &= driveline_direction[d]
+
                 drivelines.append((
                     obj.name,                                                   # ID
                     parse_driveline(obj, report),                               # Create driveline data
@@ -615,7 +627,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.driveline_upper,                                      # Upper driveline check
                     props.driveline_invisible,                                  # Driveline not visible on
                     props.driveline_ignore,                                     # Driveline AI ignore
-                    props.driveline_direction == 'reverse',                     # Driveline direction
+                    direction,                                                  # Driveline direction
                     props.checkline_activate if t == 'driveline_main' else -1,  # Main driveline activation index
                 ))
 
