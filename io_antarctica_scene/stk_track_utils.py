@@ -847,10 +847,32 @@ def parse_driveline(obj: bpy.types.Object, report=print):
             ()
         )
 
-    l_prev_edge = antennas[0]
-    r_prev_edge = antennas[1]
-    l_verts = [start_verts[0]]
-    r_verts = [start_verts[1]]
+    # Detect driveline orientation
+    if len(start_verts[0].link_faces) > 0:
+        # The driveline contains faces; the normal of the start vertices can be used
+        swap = start_verts[0].normal.z >= 0.0
+    else:
+        # Calculate th cross product between the left antenna and the edge that connects the both sides; if resulting
+        # vector points downwards, the side have to be swapped
+        vec1 = antennas[0].other_vert(start_verts[0]).co - start_verts[0].co
+        vec2 = start_verts[1].co - start_verts[0].co
+        swap = vec1.cross(vec2).z < 0.0
+    print(swap)
+
+    # Swap left with right side
+    if not swap:
+        l_prev_edge = antennas[0]
+        r_prev_edge = antennas[1]
+        l_verts = [start_verts[0]]
+        r_verts = [start_verts[1]]
+    else:
+        l_prev_edge = antennas[1]
+        r_prev_edge = antennas[0]
+        l_verts = [start_verts[1]]
+        r_verts = [start_verts[0]]
+        start_verts[0] = l_verts[0]
+        start_verts[1] = r_verts[0]
+
     mids = []
 
     # Walk the edges

@@ -1611,7 +1611,7 @@ def write_driveline_files(context: bpy.context, collection: tu.SceneCollection, 
 
         # Height testing
         if is_main:
-            quads_data.append(f"  <height-testing max=\"{driveline['higher']}\" min=\"{driveline['lower']}\"/>")
+            quads_data.append(f"  <height-testing max=\"{driveline['higher']:.2f}\" min=\"{driveline['lower']:.2f}\"/>")
 
         quads_data.append(f"  <!-- driveline: {driveline['id']} -->")
 
@@ -1654,7 +1654,7 @@ def write_driveline_files(context: bpy.context, collection: tu.SceneCollection, 
             graph_to = np.argmin(np.linalg.norm(dl_to - main_loop, axis=1))
             graph_data.append(f"  <!-- additional loop: {driveline['id']} -->")
             graph_data.append(f"  <edge from=\"{graph_from}\" to=\"{quad_count - size}\"/>")
-            graph_data.append(f"  <edge-loop from=\"{quad_count - size}\" to=\"{quad_count - 1}\"/>")
+            graph_data.append(f"  <edge-line from=\"{quad_count - size}\" to=\"{quad_count - 1}\"/>")
             graph_data.append(f"  <edge from=\"{quad_count - 1}\" to=\"{graph_to}\"/>")
 
     graph_data.insert(0, f"  <node-list from-quad=\"0\" to-quad=\"{quad_count - 1}\"/>")
