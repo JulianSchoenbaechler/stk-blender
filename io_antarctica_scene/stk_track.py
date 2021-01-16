@@ -1488,8 +1488,8 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     # Write scene file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
-            f"<!-- scene.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            f"<!-- scene.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<scene>\n"
         ])
 
@@ -1662,8 +1662,8 @@ def write_driveline_files(context: bpy.context, collection: tu.SceneCollection, 
     # Write quads and graph file
     with open(quads_path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
-            f"<!-- quads.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            f"<!-- quads.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<quads>\n"
         ])
         f.write("\n".join(quads_data))
@@ -1671,9 +1671,78 @@ def write_driveline_files(context: bpy.context, collection: tu.SceneCollection, 
 
     with open(graph_path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
-            f"<!-- graph.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            f"<!-- graph.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
             "<graph>\n"
         ])
         f.write("\n".join(graph_data))
         f.write("\n</graph>\n")
+
+
+def write_track_file(context: bpy.context, collection: tu.SceneCollection, output_dir: str, report=print):
+    """Writes the track.xml file for the SuperTuxKart track to disk.
+
+    Parameters
+    ----------
+    context : bpy.context
+        The Blender context object
+    collection : tu.SceneCollection tuple
+        A scene collection tuple containing all the gathered scene data staged for export
+    output_dir : str
+        The output folder path where the XML file should be written to
+    report : callable, optional
+        A function used for reporting warnings or errors for the submitted data, by default 'print()'
+    """
+    stk_scene = stk_utils.get_stk_context(context, 'scene')
+    path = os.path.join(output_dir, 'track.xml')
+
+    def str_sanitize(val: str):
+        from xml.sax.saxutils import escape
+        return escape(val).encode('ascii', 'xmlcharrefreplace').decode('ascii')
+
+    # Special cases for group names
+    if stk_scene.category == 'add-ons':
+        group_name = 'Add-Ons'
+    elif stk_scene.category == 'wip':
+        group_name = 'wip-track'
+    else:
+        group_name = stk_scene.category
+
+    # Write scene file
+    with open(path, 'w', encoding='utf8', newline="\n") as f:
+        f.writelines([
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
+            f"<!-- track.xml generated with SuperTuxKart Exporter Tools v{stk_utils.get_addon_version()} -->\n"
+        ])
+
+        # Meta information
+        f.write(f"<track name                    = \"{stk_scene.name}\"")
+        f.write(f"\n       groups                  = \"{group_name}\"")
+        f.write(f"\n       version                 = \"{stk_utils.FILE_FORMAT_VERSION}\"")
+        f.write(f"\n       designer                = \"{str_sanitize(stk_scene.designer)}\"")
+
+        if stk_scene.screenshot:
+            f.write(f"\n       screenshot              = \"{os.path.basename(stk_scene.screenshot.filepath_raw)}\"")
+
+        if stk_scene.music:
+            f.write(f"\n       music                   = \"{stk_scene.music}\"")
+
+        # Track type specific
+        if stk_scene.track_type == 'arena':
+            f.write(f"\n       arena                   = \"y\"")
+            f.write(f"\n       ctf                     = \"{'y' if stk_scene.ctf_active else 'n'}\"")
+
+        f.write(f"\n       soccer                  = \"{'y' if stk_scene.track_type == 'soccer' else 'n'}\"")
+        f.write(f"\n       cutscene                = \"{'y' if stk_scene.track_type == 'cutscene' else 'n'}\"")
+        f.write(f"\n       internal                = \"{'y' if stk_scene.track_type == 'cutscene' else 'n'}\"")
+
+        if stk_scene.track_type == 'race':
+            f.write(f"\n       reverse                 = \"{'y' if stk_scene.reverse else 'n'}\"")
+            f.write(f"\n       default-number-of-laps  = \"{stk_scene.lap_count}\"")
+
+        # General track properties
+        f.write(f"\n       smooth-normals          = \"{'y' if stk_scene.smooth_normals else 'n'}\"")
+        f.write(f"\n       auto-rescue             = \"{'y' if stk_scene.auto_reset else 'n'}\"")
+        f.write(f"\n       shadows                 = \"{'y' if stk_scene.shadows else 'n'}\"")
+        f.write(f"\n       is-during-day           = \"{'y' if stk_scene.daytime == 'day' else 'n'}\"")
+        f.write("/>\n")

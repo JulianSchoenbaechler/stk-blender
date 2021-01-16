@@ -77,6 +77,9 @@
         <!-- track specific -->
         <image id="screenshot" label="In-Game Screenshot" bind="type" condition="lambda t: t == 'track'"
                doc="A screenshot of this track that will be displayed in the selection screen"/>
+        <string id="music" label="Track Music" default="kart_grand_prix.music"
+                bind="type" condition="lambda t: t == 'track'"
+                doc="The definition file (.music) for the music that is played on this track"/>
         <separator id="__separator2" bind="type" condition="lambda t: t == 'track'"/>
 
         <!-- track type -->
@@ -94,11 +97,9 @@
         <bool id="ctf_active" label="Is 'Capture The Flag' Arena" default="false"
               bind="type track_type" condition="lambda t, p: p == 'arena' and t == 'track'"
               doc="Checked if possible to play 'Capture The Flag' in this arena"/>
-
         <bool id="smooth_normals" label="Normals Smoothing" default="false"
               bind="type" condition="lambda t: t == 'track'"
               doc="Whether to interpolate the normals; results in smoother driving but requires that floors and walls need to be separate objects or split"/>
-
         <bool id="auto_reset" label="Auto Rescue" default="true"
               bind="type" condition="lambda t: t == 'track'"
               doc="Whether to automatically rescue (reset) the player if they tuple over or find themselves upside down"/>
