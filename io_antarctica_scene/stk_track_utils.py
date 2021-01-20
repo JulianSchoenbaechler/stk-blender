@@ -285,6 +285,24 @@ track_camera = np.dtype([
 
 
 def collect_scene(context: bpy.context, report=print):
+    """Collect all relevant objects from the Blender scene relevant for track exporting. The objects get grouped
+    together into NumPy arrays which is more cumbersome, but provides better iteration speeds on larger scenes.
+    Precosciously filtering and grouping objects reduces the iteration amount necessary for writing track data. All
+    relevant data for STK is already collected in this first iteration.
+
+    Parameters
+    ----------
+    context : bpy.context
+        The Blender context object
+    report : callable, optional
+        A function used for reporting warnings or errors for this operation, by default 'print()'
+
+    Returns
+    -------
+    SceneCollection
+        A (named) tuple that describes the scene collection; it consists of all relevant data (or references) necessary
+        for the export
+    """
     used_identifiers = []
     lod_groups = set()
     track_objects = []
@@ -820,6 +838,21 @@ def collect_scene(context: bpy.context, report=print):
 
 
 def parse_driveline(obj: bpy.types.Object, report=print):
+    """Parses a driveline object/mesh and efficiently packs the data necessary that describes an STK driveline.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The driveline object
+    report : callable, optional
+        A function used for reporting warnings or errors for this operation, by default 'print()'
+
+    Returns
+    -------
+    DrivelineData
+        A (named) tuple that describes the driveline layout; it consists of all relevant data necessary for the export
+        of a specific driveline
+    """
     space = obj.matrix_world
     bm = bmesh.new(use_operators=False)  # pylint: disable=assignment-from-no-return
     bm.from_mesh(obj.data)
@@ -914,6 +947,20 @@ def parse_driveline(obj: bpy.types.Object, report=print):
 
 
 def merge_drivelines(driveline1: DrivelineData, driveline2: DrivelineData):
+    """Merges drivelines by providing their data tuples. This operation is quite memory intensive.
+
+    Parameters
+    ----------
+    driveline1 : DrivelineData
+        First driveline (base)
+    driveline2 : DrivelineData
+        Second driveline (append)
+
+    Returns
+    -------
+    DrivelineData
+        A new tuple describing the merged driveline
+    """
     connect_mid = (mathutils.Vector(driveline1.left[-1]) + mathutils.Vector(driveline1.right[-1]) +
                    mathutils.Vector(driveline2.left[0]) + mathutils.Vector(driveline2.right[0])) * 0.25
 
@@ -928,6 +975,21 @@ def merge_drivelines(driveline1: DrivelineData, driveline2: DrivelineData):
 
 
 def parse_navmesh(obj: bpy.types.Object, report=print):
+    """Parses a navmesh object/mesh and efficiently packs the data necessary that describes an STK navmesh.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The navmesh object
+    report : callable, optional
+        A function used for reporting warnings or errors for this operation, by default 'print()'
+
+    Returns
+    -------
+    NavmeshData
+        A (named) tuple that describes the navmesh layout; it consists of all relevant data necessary for the export
+        of a specific navmesh
+    """
     space = obj.matrix_world
     bm = bmesh.new(use_operators=False)  # pylint: disable=assignment-from-no-return
     bm.from_mesh(obj.data)
@@ -973,6 +1035,19 @@ def parse_navmesh(obj: bpy.types.Object, report=print):
 
 
 def order_drivelines(drivelines: list):
+    """Orders a list of drivelines. Guarantees that the main driveline will be indexed at position [0]. This function
+    expects the data to be formatted as iterable that follows the format of the 'track_driveline' type.
+
+    Parameters
+    ----------
+    drivelines : list of tuples
+        A list of drivelines
+
+    Returns
+    -------
+    list of tuples
+        The ordered list of drivelines
+    """
     ordered = []
 
     # Move main driveline to position (index) 0
@@ -986,11 +1061,39 @@ def order_drivelines(drivelines: list):
 
 
 def order_checklines(checklines: list):
+    """Orders a list of checklines. This function expects the data to be formatted as iterable that follows the format
+    of the 'track_checkline' type. Utilizes standard ordering functions in Python, reasonably efficient.
+
+    Parameters
+    ----------
+    checklines : list of tuples
+        A list of checklines
+
+    Returns
+    -------
+    list of tuples
+        The ordered list of checklines
+    """
     # [2] is the checkline index (lap line is 0)
     return sorted(checklines, key=lambda c: c[2])
 
 
 def order_cameras(cameras: list, main_driveline: DrivelineData):
+    """Orders a list of end cameras. Order is defined by the distance of the camera to the tracks main driveline. This
+    function expects the data to be formatted as iterable that follows the format of the 'track_camera' type.
+
+    Parameters
+    ----------
+    cameras : list of tuples
+        A list of cameras
+
+    Returns
+    -------
+    list of tuples
+        The ordered list of cameras
+    """
+    # TODO: Propose another logic for end cameras in STK. Why not just switching to the correct camera by distance or
+    # index?
     auto_sorted = []
     fix_sorted = []
 

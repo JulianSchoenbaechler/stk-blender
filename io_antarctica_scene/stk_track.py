@@ -21,7 +21,6 @@
 # SOFTWARE.
 
 import bpy
-import collections
 import mathutils
 import math
 import os
