@@ -19,8 +19,6 @@
                   doc="A flat quad that will always face the camera"/>
             <item value="particle_emitter" label="Particle Emitter"
                   doc="Particles can be emitted at this position"/>
-            <item value="lightshaft_emitter" label="God Rays (Light Shaft)"
-                  doc="God rays will be emitted at this position"/>
             <item value="sfx_emitter" label="Sound Emitter"
                   doc="A sound can be triggered at this position"/>
         </category>
@@ -44,7 +42,7 @@
                bind="type" condition="lambda t: t == 'lod_model' or t == 'lod_standalone'"
                doc="Distance from the camera at which this level of detail starts being used"/>
         <collection id="lod_collection" label="LOD Collection"
-                    filter="lambda c: len([o for o in c.objects if o.supertuxkart.type == 'lod_model']) > 0"
+                    filter="lambda c: len([o for o in c.objects if o.stk_library.type == 'lod_model']) > 0"
                     doc="The collection from which the LOD models get loaded"
                     bind="type" condition="lambda t: t == 'lod_instance'"/>
         <bool id="lod_modifiers" label="Use Object Modifiers Model" default="false"
@@ -122,6 +120,9 @@
         </enum>
 
         <!-- object specific -->
+        <float id="mass" label="Mass" default="100.0" min="0.0" max="10000.0"
+               bind="type interaction" condition="lambda t, p: (t == 'object' or t == 'lod_instance') and p == 'movable'"
+               doc="The mass used by the physics engine for this object"/>
         <bool id="driveable" label="Driveable" default="false"
               bind="type interaction" condition="lambda t, p: t == 'object' and p == 'static'"
               doc="Karts can drive on this object"/>
@@ -210,7 +211,7 @@
                bind="type" condition="lambda t: t == 'action_trigger'"
                doc="Timeout before this action can be re-triggered; 0.0 to make it always re-triggerable, >=999999 to make it only once"/>
         <object id="action_object" label="Triggered Object"
-                filter="lambda o: o.supertuxkart.type == 'object' or o.supertuxkart.type == 'lod_instance' or o.supertuxkart.type == 'lod_standalone'"
+                filter="lambda o: o.stk_library.type == 'object' or o.stk_library.type == 'lod_instance' or o.stk_library.type == 'lod_standalone'"
                 bind="type" condition="lambda t: t == 'action_trigger'"
                 doc="Name of the object for being triggered"/>
 

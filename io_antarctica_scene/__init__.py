@@ -110,6 +110,7 @@ classes = (
 
     stk_operators.STK_MT_ExportMenu,
     stk_operators.STK_OT_TrackExport,
+    stk_operators.STK_OT_LibraryExport,
     stk_operators.STK_OT_DemoOperator,
 
     stk_shaders.AntarcticaSolidPBR,

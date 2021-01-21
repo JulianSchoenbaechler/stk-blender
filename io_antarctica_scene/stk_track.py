@@ -31,7 +31,7 @@ from . import stk_props, stk_shaders, stk_utils
 STANDALONE_LOD_PREFIX = '_standalone_'
 
 
-def xml_lod_data(lod_groups: set, indent=1):
+def xml_lod_data(lod_groups: set, is_library=False, indent=1):
     """Creates an iterable of strings that represent the writable XML node for the level-of-detail specification of the
     scene file.
 
@@ -39,6 +39,8 @@ def xml_lod_data(lod_groups: set, indent=1):
     ----------
     lod_groups : set
         A set containing Blender collections and/or objects that define a LOD group or singleton
+    is_library : bool
+        Indicator if this STK scene is a library node
     indent : int, optional
         The tab indent for writing the XML node, by default 1
 
@@ -62,7 +64,7 @@ def xml_lod_data(lod_groups: set, indent=1):
 
             # Iterate the whole LOD collection
             for lod_model in lod_group.objects:
-                model_props = lod_model.stk_track
+                model_props = lod_model.stk_track if not is_library else lod_model.stk_library
 
                 # Skip non-LOD models
                 if model_props.type != 'lod_model':
@@ -85,7 +87,7 @@ def xml_lod_data(lod_groups: set, indent=1):
         # LOD standalone
         else:
             # 'lod_group' is not a collection but a standalone LOD object ('bpy.types.Object')
-            model_props = lod_group.stk_track
+            model_props = lod_group.stk_track if not is_library else lod_group.stk_library
             model_id = model_props.name if len(model_props.name) > 0 else lod_group.name
             model_group = f'{STANDALONE_LOD_PREFIX}{model_id}'
             model_skeletal = 'y' if lod_group.find_armature() else 'n'
