@@ -303,7 +303,7 @@ def collect_scene(context: bpy.context, report=print):
         A (named) tuple that describes the scene collection; it consists of all relevant data (or references) necessary
         for the export
     """
-    used_identifiers = []
+    used_identifiers = set()
     lod_groups = set()
     track_objects = []
     static_objects = []
@@ -358,7 +358,7 @@ def collect_scene(context: bpy.context, report=print):
                     obj.rotation_mode,                      # Object's rotation mode
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Unassigned model (defaults to static track scenery)
             elif obj.type != 'EMPTY' and t == 'none':
@@ -367,10 +367,10 @@ def collect_scene(context: bpy.context, report=print):
             # Object (including LOD) with specified properties
             elif obj.type != 'EMPTY' and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone'):
                 # Name identifier
-                staged = [props.name if len(props.name) > 0 else obj.name]
+                staged = [props.name if len(props.name) > 0 else obj.data.name]
 
                 # Skip if already an object with this identifier
-                if staged[0] in used_identifiers:
+                if obj.data.users < 2 and staged[0] in used_identifiers:
                     report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
                            "will be ignored! Check if different objects have the same name identifier.")
                     continue
@@ -457,7 +457,7 @@ def collect_scene(context: bpy.context, report=print):
                 else:
                     dynamic_objects.append(tuple(staged))
 
-                used_identifiers.append(staged[0])
+                used_identifiers.add(staged[0])
 
             # Placeables
             elif t == 'start_position' or t.startswith('item'):
@@ -486,7 +486,7 @@ def collect_scene(context: bpy.context, report=print):
                     visibility,                             # Item visibility (only used in easter-egg mode)
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Billboards
             elif obj.type != 'EMPTY' and t == 'billboard':
@@ -536,7 +536,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.fadeout_end if props.fadeout else -1.0,       # Fadeout end
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Particles
             elif t == 'particle_emitter':
@@ -556,7 +556,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.particles_condition,              # Particles cutscene condition
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Godrays / light shaft
             elif t == 'lightshaft_emitter':
@@ -573,7 +573,7 @@ def collect_scene(context: bpy.context, report=print):
                     tuple(props.lightshaft_color),          # Light shaft color
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # SFX emitter
             elif t == 'sfx_emitter':
@@ -595,7 +595,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.sfx_condition,                                        # Sound cutscene condition
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Scripting action emitter
             elif t == 'action_trigger':
@@ -616,7 +616,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.action_trigger == 'cylinder',     # Trigger shape (point or cylinder)
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Drivelines
             elif obj.type != 'EMPTY' and (t == 'driveline_main' or t == 'driveline_additional'):
@@ -649,7 +649,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.checkline_activate if t == 'driveline_main' else -1,  # Main driveline activation index
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Checkline / lapline data
             elif obj.type != 'EMPTY' and (t == 'checkline' or t == 'lapline'):
@@ -669,7 +669,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.checkline_activate,                           # Activation index
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Navmesh data
             elif obj.type != 'EMPTY' and t == 'navmesh':
@@ -722,7 +722,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.cannon_speed,     # Cannon speed
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
             # Goal line data
             elif obj.type != 'EMPTY' and t == 'goal':
@@ -741,7 +741,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.goal_team == 'ally',  # Goal team (true: ally, false: enemy)
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
         elif obj.type == 'LIGHT' and hasattr(obj.data, 'stk'):
             # Categorize light
@@ -780,7 +780,7 @@ def collect_scene(context: bpy.context, report=print):
                     props.visible_if,                           # Scripting
                 ))
 
-                used_identifiers.append(obj.name)
+                used_identifiers.add(obj.name)
 
         elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
             # Categorize light
@@ -804,6 +804,8 @@ def collect_scene(context: bpy.context, report=print):
                     props.distance,                                 # End-camera distance
                     props.order if not props.auto_order else -1,    # End-camera distance
                 ))
+
+                used_identifiers.add(obj.name)
         else:
             continue
 

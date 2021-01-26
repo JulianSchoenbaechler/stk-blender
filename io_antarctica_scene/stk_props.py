@@ -89,7 +89,7 @@ class STKPropertyGroup:
         return parse(path)
 
     @classmethod
-    def initialize(cls):
+    def initialize(cls, update=None):
         cls.ui_definitions = OrderedDict()
         props = {}
         node = cls._load_data()
@@ -139,6 +139,9 @@ class STKPropertyGroup:
                     if node.hasAttribute('max'):
                         prop_args['max'] = int(node.getAttribute('max'))
 
+                    if update:
+                        prop_args['update'] = update
+
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = IntProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
@@ -166,6 +169,9 @@ class STKPropertyGroup:
                     if node.hasAttribute('max'):
                         prop_args['max'] = float(node.getAttribute('max'))
 
+                    if update:
+                        prop_args['update'] = update
+
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = FloatProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
@@ -187,6 +193,9 @@ class STKPropertyGroup:
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
 
+                    if update:
+                        prop_args['update'] = update
+
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = BoolProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
@@ -207,6 +216,9 @@ class STKPropertyGroup:
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    if update:
+                        prop_args['update'] = update
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = StringProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -231,6 +243,9 @@ class STKPropertyGroup:
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    if update:
+                        prop_args['update'] = update
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = FloatVectorProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -259,6 +274,9 @@ class STKPropertyGroup:
 
                     if node.hasAttribute('max'):
                         prop_args['max'] = float(node.getAttribute('max'))
+
+                    if update:
+                        prop_args['update'] = update
 
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = FloatVectorProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -333,6 +351,9 @@ class STKPropertyGroup:
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
 
+                    if update:
+                        prop_args['update'] = update
+
                     p[n_id] = cls.PropertyInfo(**info_args)
                     props[n_id] = EnumProperty(**prop_args)  # pylint: disable=assignment-from-no-return
 
@@ -360,6 +381,9 @@ class STKPropertyGroup:
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    if update:
+                        prop_args['update'] = update
 
                     n_filter = node.getAttribute('filter') if node.hasAttribute('filter') else ""
 
@@ -391,6 +415,9 @@ class STKPropertyGroup:
                         n_doc = node.getAttribute('doc')
                         info_args['doc'] = n_doc
                         prop_args['description'] = n_doc
+
+                    if update:
+                        prop_args['update'] = update
 
                     p[n_id] = cls.IDPropertyInfo(**info_args)
                     props[n_id] = PointerProperty(**prop_args)  # pylint: disable=assignment-from-no-return
@@ -505,6 +532,28 @@ class STKScenePropertyGroup(PropertyGroup, STKPropertyGroup):
 class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     PROP_SOURCE = 'stk_kart_object_properties.xml'
 
+    def sync_linked(self, context):
+        obj = context.object
+        mesh = obj.data
+
+        # Are there objects that share the same mesh data?
+        if obj.type != 'MESH' or mesh.users < 2:
+            return
+
+        # Find linked objects
+        for scene_obj in context.scene.objects:
+            if scene_obj == obj or scene_obj.type != 'MESH':
+                continue
+
+            if scene_obj.data == mesh:
+                # Apply data of the property group to other data users
+                for key, value in obj.stk_kart.items():
+                    scene_obj.stk_track[key] = value
+
+    @classmethod
+    def initialize(cls):
+        super(STKKartObjectPropertyGroup, cls).initialize(update=cls.sync_linked)
+
     @classmethod
     def register(cls):
         # Create an RNA property specifically for karts (not just a general object property) to prevent false-sharing
@@ -523,6 +572,28 @@ class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
 class STKTrackObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     PROP_SOURCE = 'stk_track_object_properties.xml'
 
+    def sync_linked(self, context):
+        obj = context.object
+        mesh = obj.data
+
+        # Are there objects that share the same mesh data?
+        if obj.type != 'MESH' or mesh.users < 2:
+            return
+
+        # Find linked objects
+        for scene_obj in context.scene.objects:
+            if scene_obj == obj or scene_obj.type != 'MESH':
+                continue
+
+            if scene_obj.data == mesh:
+                # Apply data of the property group to other data users
+                for key, value in obj.stk_track.items():
+                    scene_obj.stk_track[key] = value
+
+    @classmethod
+    def initialize(cls):
+        super(STKTrackObjectPropertyGroup, cls).initialize(update=cls.sync_linked)
+
     @classmethod
     def register(cls):
         # Create an RNA property specifically for tracks (not just a general object property) to prevent false-sharing
@@ -540,6 +611,28 @@ class STKTrackObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
 
 class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
     PROP_SOURCE = 'stk_library_object_properties.xml'
+
+    def sync_linked(self, context):
+        obj = context.object
+        mesh = obj.data
+
+        # Are there objects that share the same mesh data?
+        if obj.type != 'MESH' or mesh.users < 2:
+            return
+
+        # Find linked objects
+        for scene_obj in context.scene.objects:
+            if scene_obj == obj or scene_obj.type != 'MESH':
+                continue
+
+            if scene_obj.data == mesh:
+                # Apply data of the property group to other data users
+                for key, value in obj.stk_library.items():
+                    scene_obj.stk_track[key] = value
+
+    @classmethod
+    def initialize(cls):
+        super(STKLibraryObjectPropertyGroup, cls).initialize(update=cls.sync_linked)
 
     @classmethod
     def register(cls):
