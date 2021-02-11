@@ -88,11 +88,11 @@ def load_handler(arg):
 classes = (
     stk_panel.STK_TypeUnset,
     stk_panel.STK_MissingProps_Object,
-    stk_panel.STK_MissingProps_Scene,
+    #stk_panel.STK_MissingProps_Scene,
     stk_panel.STK_MissingProps_Material,
     # stk_panel.StkPanelAddonPreferences,
     stk_panel.STK_PT_Object_Panel,
-    stk_panel.STK_PT_Scene_Panel,
+    #stk_panel.STK_PT_Scene_Panel,
     stk_panel.STK_OT_Add_Object,
     stk_panel.STK_FolderPicker_Operator,
     stk_panel.STK_PT_Quick_Export_Panel,

@@ -41,11 +41,6 @@ STK_MATERIAL_PROPERTIES = []
 if os.path.exists(datapath):
     print("(STK) Loading XML files from ", datapath)
 
-    panel_params_path = os.path.join(datapath, "stk_panel_parameters.xml")
-    print("(STK) Loading scene properties from ", panel_params_path)
-
-    SCENE_PROPS = stk_utils.getPropertiesFromXML(panel_params_path, contextLevel=CONTEXT_SCENE)
-
     object_params_path = os.path.join(datapath, "stk_object_parameters.xml")
     print("(STK) Loading object properties from ", object_params_path)
 
@@ -99,20 +94,6 @@ class STK_MissingProps_Object(bpy.types.Operator):
             stk_utils.createProperties(obj, properties)
 
         return {'FINISHED'}
-
-
-class STK_MissingProps_Scene(bpy.types.Operator):
-    bl_idname = ("screen.stk_missing_props_" + str(CONTEXT_SCENE))
-    bl_label = ("Create missing properties")
-
-    def execute(self, context):
-        scene = context.scene
-        properties = OrderedDict([])
-        for curr in SCENE_PROPS[1]:
-            properties[curr.id] = curr
-        stk_utils.createProperties(scene, properties)
-        return {'FINISHED'}
-
 
 class STK_MissingProps_Material(bpy.types.Operator):
     bl_idname = ("screen.stk_missing_props_" + str(CONTEXT_MATERIAL))
@@ -290,24 +271,6 @@ class STK_PT_Object_Panel(bpy.types.Panel, PanelBase):
                 self.recursivelyAddProperties(properties, layout, obj, CONTEXT_OBJECT)
 
 
-# ==== SCENE PANEL ====
-class STK_PT_Scene_Panel(bpy.types.Panel, PanelBase):
-    bl_label = SCENE_PROPS[0]
-    bl_space_type = "PROPERTIES"
-    bl_region_type = "WINDOW"
-    bl_context = "scene"
-
-    def draw(self, context):
-        layout = self.layout
-        obj = context.scene
-
-        if obj is not None:
-
-            properties = OrderedDict([])
-            for curr in SCENE_PROPS[1]:
-                properties[curr.id] = curr
-
-            self.recursivelyAddProperties(properties, layout, obj, CONTEXT_SCENE)
 
 
 """
