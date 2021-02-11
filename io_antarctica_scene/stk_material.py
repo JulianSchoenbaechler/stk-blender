@@ -75,15 +75,12 @@ def is_stk_shader(node):
 
 # We make sure we get the root of the node tree (we start from the output and build up)
 def get_root_shader(node_network):
+    print("We found: nodes", len(node_network))
     for node in node_network:
         # We check if it's a material output
         if node.bl_static_type == "OUTPUT_MATERIAL":
-            # The surface should be linked
-            if node.inputs["Surface"].is_linked:
-                # and the surface should be linked to a stk shader
-                child = node.inputs["Surface"].links[0].from_node
-                if is_stk_shader(child):
-                    return child
+            child = node.inputs["Surface"].links[0].from_node
+            return child
 
     return None
 
@@ -355,5 +352,16 @@ class STK_Material_Export_Operator(bpy.types.Operator, ExportHelper):
     filepath: bpy.props.StringProperty()
 
     def execute(self, context):
-        writeMaterialsFile(self, self.filepath)
+        #writeMaterialsFile(self, self.filepath)
+        for mat in bpy.data.materials:
+            print("Exporting mat:", mat.name)
+            if mat.name != "Dots Stroke":
+                root = get_root_shader(mat.node_tree.nodes)
+                print("Root identified: ", root.name)
+                # For now we only support Antarctica Solid PBR
+
+                print("--", root.node_tree.nodes["Data Map"].image.name)
+
+        print("== Material Exported ==")
         return {'FINISHED'}
+#node_tree.nodes["Antarctica Solid PBR"].prop_colorizationFactor
