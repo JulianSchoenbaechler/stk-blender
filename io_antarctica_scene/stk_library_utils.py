@@ -28,6 +28,10 @@ import os
 import numpy as np
 from . import stk_utils, stk_props, stk_track_utils
 
+MaterialNode = collections.namedtuple('MaterialNode', [
+    'AntarcticaSolidPBR',   # NumPy array of materials using Solid PBR shader
+])
+
 LibraryNode = collections.namedtuple('LibraryNode', [
     'lod_groups',           # set of bpy.types.Collection (LOD group) and/or bpy.types.Object (LOD standalones)
     'objects',              # NumPy array of library object data (dtype=track_object)
