@@ -239,11 +239,18 @@ class STK_OT_LibraryExport(bpy.types.Operator):
                 p_output = os.path.join(output_dir, f)
                 shutil.copy2(p_input, p_output)
                 count += 1
-        self.report({'INFO'}, f"We copied {count} staged file(s)")
+        self.report({'INFO'}, f"We copied {count} additional file(s)")
         
         # Copy images (textures) TODO: Maybe we can use the stagging process. To investigate
         count = 0
+        are_tangent_needed = False
         for i,curr in enumerate(bpy.data.images):
+            if ("_nm" in curr.filepath.lower() or "_normal" in curr.filepath.lower()):
+                # We do not allow jpg for normal maps. It destroy the normal mapping.
+                # Do not remove this error, make sure to always use PNG or TGA for normal maps
+                if (".jpg" in curr.filepath.lower() or ".jpeg" in curr.filepath.lower()):
+                    self.report({'ERROR'}, "DO NOT USE JPG FOR NORMAL MAPS. Always use PNG or TGA for normal maps")
+                are_tangent_needed = True
             try:
                 if curr.filepath is None or len(curr.filepath) == 0:
                     continue
@@ -252,19 +259,30 @@ class STK_OT_LibraryExport(bpy.types.Operator):
                 shutil.copy(abs_texture_path, output_dir)
                 count += 1
             except:
-                self.report({'ERROR'}, "We cannot copy the image")
+                self.report({'WARNING'}, f"Maybe the image {curr.filepath} was renamed or changed")
+                self.report({'ERROR'}, f"We cannot copy the image {curr.name}")
         
         self.report({'INFO'}, f"We copied {count} image(s)")
+
+        if are_tangent_needed:
+            self.report({'INFO'}, "One or more normal map(s) have been detected")
+            self.report({'INFO'}, "Precomputed tangents enabled")
+        else:
+            self.report({'INFO'}, "No normal maps detected")
+            self.report({'INFO'}, "If you are using normal maps make sure to add the prefix '_normal' to your texture names")
 
         # Reset frames
         context.scene.frame_set(context.scene.frame_start)
 
         # Export SPM meshes
+        count = 0
         for o in node.objects:
             o["object"].select_set(True)
             bpy.ops.screen.spm_export(localsp=True, filepath=f"{output_dir}/{o['id']}.spm", selected=True, \
-                                      export_tangent=True)
+                                      export_tangent=are_tangent_needed)
             o["object"].select_set(False)
+            count += 1
+        self.report({'INFO'}, f"We exported {count} spm meshe(s)")
 
         return {'FINISHED'}
 
