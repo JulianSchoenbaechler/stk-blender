@@ -32,11 +32,6 @@
     <panel id="type_properties" label="Properties"
            bind="type" condition="lambda t: t != 'ignore'" expanded="expanded">
 
-        <!-- object file name -->
-        <string id="name" label="Object Name" default="some_model"
-                bind="type" condition="lambda t: t == 'object' or t == 'lod_instance' or t == 'lod_standalone'"
-                doc="Name of this object (file name); objects with the same name are exported as a single file"/>
-
         <!-- level of detail -->
         <float id="lod_distance" label="LOD Distance" default="100.0" min="0.0" max="5000.0"
                bind="type" condition="lambda t: t == 'lod_model' or t == 'lod_standalone'"

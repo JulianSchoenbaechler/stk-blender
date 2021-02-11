@@ -108,13 +108,7 @@ def collect_node(context: bpy.context, report=print):
             # Object (including LOD) with specified properties
             elif obj.type != 'EMPTY' and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone'):
                 # Name identifier
-                staged = [props.name if len(props.name) > 0 else obj.data.name]
-
-                # Skip if already an object with this identifier
-                if obj.data.users < 2 and staged[0] in used_identifiers:
-                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
-                           "will be ignored! Check if different objects have the same name identifier.")
-                    continue
+                staged = [obj.data.name]
 
                 staged.append(obj)
                 staged.append(stk_utils.object_get_transform(obj))

@@ -84,6 +84,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
 
         # Create track folder if non-existent
+        print("We will export to:", output_dir)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
@@ -239,6 +240,14 @@ class STK_OT_LibraryExport(bpy.types.Operator):
 
         # Reset frames
         context.scene.frame_set(context.scene.frame_start)
+
+        # Export SPM meshes
+        for o in node.objects:
+            o["object"].select_set(True)
+            bpy.ops.screen.spm_export(localsp=True, filepath=f"{output_dir}/{o['id']}.spm", selected=True, \
+                                      export_tangent=True)
+            o["object"].select_set(False)
+
         return {'FINISHED'}
 
     @ classmethod
