@@ -284,6 +284,8 @@ class STK_OT_LibraryExport(bpy.types.Operator):
             count += 1
         self.report({'INFO'}, f"We exported {count} spm meshe(s)")
 
+        bpy.ops.screen.stk_material_export()
+
         return {'FINISHED'}
 
     @ classmethod
