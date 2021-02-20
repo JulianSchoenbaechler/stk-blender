@@ -52,6 +52,35 @@ library_action = np.dtype([
 ])
 
 
+def compute_output_path(context):
+    # Generate output path
+    stk_prefs = context.preferences.addons[__package__].preferences
+
+    assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
+
+    # Non-existent assets path
+    if not stk_prefs.assets_path or not os.path.isdir(assets_path):
+        self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
+                               "the path to the assets directory in the add-on's preferences.")
+    
+    output_path = os.path.join(assets_path, 'library')
+
+    # Invalid assets path
+    if not os.path.isdir(output_path):
+        self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
+                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
+
+    stk_scene = stk_utils.get_stk_context(context, 'scene')
+    output_dir = bpy.path.abspath(os.path.join(output_path, stk_scene.identifier))
+
+    # Create track/library folder if non-existent
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+    return output_dir
+    
+
+
+
 def collect_node(context: bpy.context, report=print):
     """Collect all relevant objects from the Blender scene relevant for library node exporting. The objects get grouped
     together into NumPy arrays which is more cumbersome, but provides better iteration speeds on larger scenes.
@@ -108,13 +137,7 @@ def collect_node(context: bpy.context, report=print):
             # Object (including LOD) with specified properties
             elif obj.type != 'EMPTY' and (t == 'object' or t == 'lod_instance' or t == 'lod_standalone'):
                 # Name identifier
-                staged = [props.name if len(props.name) > 0 else obj.data.name]
-
-                # Skip if already an object with this identifier
-                if obj.data.users < 2 and staged[0] in used_identifiers:
-                    report({'WARNING'}, f"The object with the name '{obj.name}' is already staged for export and "
-                           "will be ignored! Check if different objects have the same name identifier.")
-                    continue
+                staged = [obj.data.name]
 
                 staged.append(obj)
                 staged.append(stk_utils.object_get_transform(obj))

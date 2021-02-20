@@ -22,6 +22,8 @@
 
 # <pep8 compliant>
 
+# For now you can launch it by using: bpy.ops.stk.export_library() and bpy.ops.screen.stk_material_export()
+
 bl_info = {
     'name': "SuperTuxKart Exporter Tools",
     'description': "Export various items to SuperTuxKart objects (karts, tracks, and materials)",
@@ -88,15 +90,8 @@ def load_handler(arg):
 classes = (
     stk_panel.STK_TypeUnset,
     stk_panel.STK_MissingProps_Object,
-    stk_panel.STK_MissingProps_Scene,
-    stk_panel.STK_MissingProps_Material,
-    # stk_panel.StkPanelAddonPreferences,
-    stk_panel.STK_PT_Object_Panel,
-    stk_panel.STK_PT_Scene_Panel,
-    stk_panel.STK_OT_Add_Object,
     stk_panel.STK_FolderPicker_Operator,
     stk_panel.STK_PT_Quick_Export_Panel,
-    stk_material.ANTARCTICA_PT_properties,
     stk_material.STK_Material_Export_Operator,
     stk_kart.STK_Kart_Export_Operator,
 

@@ -84,6 +84,7 @@ class STK_OT_TrackExport(bpy.types.Operator):
         output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
 
         # Create track folder if non-existent
+        print("We will export to:", output_dir)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
 
@@ -178,38 +179,11 @@ class STK_OT_LibraryExport(bpy.types.Operator):
     )
 
     def invoke(self, context, event):
-        # Generate output path
-        stk_prefs = context.preferences.addons[__package__].preferences
-
-        # pylint: disable=assignment-from-no-return
-        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
-
-        # Non-existent assets path
-        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
-            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
-                                   "the path to the assets directory in the add-on's preferences.")
-            return {'CANCELLED'}
-
-        output_path = os.path.join(assets_path, 'library')
-
-        # Invalid assets path
-        if not os.path.isdir(output_path):
-            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
-                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
-            return {'CANCELLED'}
-
-        self.output_path = output_path
-
         return self.execute(context)
 
     def execute(self, context):
-        stk_scene = stk_utils.get_stk_context(context, 'scene')
-        # pylint: disable=assignment-from-no-return
-        output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
 
-        # Create track folder if non-existent
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
+        output_dir = stk_library_utils.compute_output_path(context)
 
         # Ensure the object properties have been loaded
         bpy.ops.stk.reload_object_properties()  # pylint: disable=no-member
@@ -230,15 +204,61 @@ class STK_OT_LibraryExport(bpy.types.Operator):
         # Copy staged files if they exist in the working directory
         import shutil
 
+        count = 0
         for f in cpy_files:
             p_input = bpy.path.abspath(os.path.join('//', f))
 
             if os.path.isfile(p_input):
                 p_output = os.path.join(output_dir, f)
                 shutil.copy2(p_input, p_output)
+                count += 1
+        self.report({'INFO'}, f"We copied {count} additional file(s)")
+        
+        # Copy images (textures) TODO: Maybe we can use the stagging process. To investigate
+        count = 0
+        are_tangent_needed = False
+        for i,curr in enumerate(bpy.data.images):
+            if ("_nm" in curr.filepath.lower() or "_normal" in curr.filepath.lower()):
+                # We do not allow jpg for normal maps. It destroy the normal mapping.
+                # Do not remove this error, make sure to always use PNG or TGA for normal maps
+                if (".jpg" in curr.filepath.lower() or ".jpeg" in curr.filepath.lower()):
+                    self.report({'ERROR'}, "DO NOT USE JPG FOR NORMAL MAPS. Always use PNG or TGA for normal maps")
+                are_tangent_needed = True
+            try:
+                if curr.filepath is None or len(curr.filepath) == 0:
+                    continue
+
+                abs_texture_path = bpy.path.abspath(curr.filepath)
+                shutil.copy(abs_texture_path, output_dir)
+                count += 1
+            except:
+                self.report({'WARNING'}, f"Maybe the image {curr.filepath} was renamed or changed")
+                self.report({'ERROR'}, f"We cannot copy the image {curr.name}")
+        
+        self.report({'INFO'}, f"We copied {count} image(s)")
+
+        if are_tangent_needed:
+            self.report({'INFO'}, "One or more normal map(s) have been detected")
+            self.report({'INFO'}, "Precomputed tangents enabled")
+        else:
+            self.report({'INFO'}, "No normal maps detected")
+            self.report({'INFO'}, "If you are using normal maps make sure to add the prefix '_normal' to your texture names")
 
         # Reset frames
         context.scene.frame_set(context.scene.frame_start)
+
+        # Export SPM meshes
+        count = 0
+        for o in node.objects:
+            o["object"].select_set(True)
+            bpy.ops.screen.spm_export(localsp=True, filepath=f"{output_dir}/{o['id']}.spm", selected=True, \
+                                      export_tangent=are_tangent_needed)
+            o["object"].select_set(False)
+            count += 1
+        self.report({'INFO'}, f"We exported {count} spm meshe(s)")
+
+        bpy.ops.screen.stk_material_export()
+
         return {'FINISHED'}
 
     @ classmethod
