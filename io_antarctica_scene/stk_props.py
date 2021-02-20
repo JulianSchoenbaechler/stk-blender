@@ -548,7 +548,7 @@ class STKKartObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
             if scene_obj.data == mesh:
                 # Apply data of the property group to other data users
                 for key, value in obj.stk_kart.items():
-                    scene_obj.stk_track[key] = value
+                    scene_obj.stk_kart[key] = value
 
     @classmethod
     def initialize(cls):
@@ -628,7 +628,7 @@ class STKLibraryObjectPropertyGroup(PropertyGroup, STKPropertyGroup):
             if scene_obj.data == mesh:
                 # Apply data of the property group to other data users
                 for key, value in obj.stk_library.items():
-                    scene_obj.stk_track[key] = value
+                    scene_obj.stk_library[key] = value
 
     @classmethod
     def initialize(cls):
