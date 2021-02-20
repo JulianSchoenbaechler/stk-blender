@@ -36,7 +36,8 @@ CONTEXT_SCENE = 1
 CONTEXT_MATERIAL = 2
 
 ADDON_VERSION = ()
-FILE_FORMAT_VERSION = 7
+KART_FILE_FORMAT_VERSION = 3
+TRACK_FILE_FORMAT_VERSION = 7
 
 # Packed data containers
 vec2 = np.dtype([('x', np.float32), ('y', np.float32)])

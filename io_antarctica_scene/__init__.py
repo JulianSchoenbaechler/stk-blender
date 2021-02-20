@@ -25,7 +25,7 @@
 bl_info = {
     'name': "SuperTuxKart Exporter Tools",
     'description': "Export various items to SuperTuxKart objects (karts, tracks, and materials)",
-    'author': "Jean-Manuel Clemencon, Joerg Henrichs, Marianne Gagnon, Richard Qian",
+    'author': "Julian Schönbächler, Jean-Manuel Clemençon, Joerg Henrichs, Marianne Gagnon, Richard Qian",
     'version': (2, 0, 0),
     'blender': (2, 80, 0),
     'location': "File > Import-Export",
@@ -49,8 +49,6 @@ if 'bpy' in locals():
         importlib.reload(stk_shaders)  # pylint: disable=used-before-assignment
     if 'stk_material' in locals():
         importlib.reload(stk_material)  # pylint: disable=used-before-assignment
-    if 'stk_kart' in locals():
-        importlib.reload(stk_kart)  # pylint: disable=used-before-assignment
 
 import bpy  # noqa: E402
 from bpy.app.handlers import persistent  # noqa: E402
@@ -66,8 +64,7 @@ from . import stk_prefs, \
               stk_panel, \
               stk_operators, \
               stk_shaders, \
-              stk_material, \
-              stk_kart  # noqa: E402
+              stk_material  # noqa: E402
 
 
 def menu_func_export(self, context):
@@ -98,7 +95,6 @@ classes = (
     stk_panel.STK_PT_Quick_Export_Panel,
     # stk_material.ANTARCTICA_PT_properties,
     # stk_material.STK_Material_Export_Operator,
-    stk_kart.STK_Kart_Export_Operator,
 
     stk_prefs.STKAddonPreferences,
 
@@ -109,6 +105,7 @@ classes = (
     stk_panel.STK_PT_MaterialProperties,
 
     stk_operators.STK_MT_ExportMenu,
+    stk_operators.STK_OT_KartExport,
     stk_operators.STK_OT_TrackExport,
     stk_operators.STK_OT_LibraryExport,
     stk_operators.STK_OT_DemoOperator,

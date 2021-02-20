@@ -24,7 +24,7 @@ import bpy
 import io
 import os
 import numpy as np
-from . import stk_utils, stk_track, stk_track_utils, stk_library, stk_library_utils
+from . import stk_utils, stk_kart, stk_track, stk_track_utils, stk_library, stk_library_utils
 from bpy.props import (
     IntProperty,
     FloatProperty,
@@ -34,6 +34,103 @@ from bpy.props import (
     EnumProperty,
     PointerProperty
 )
+
+
+class STK_OT_KartExport(bpy.types.Operator):
+    """Export the current scene as a SuperTuxKart kart."""
+    bl_idname = 'stk.export_kart'
+    bl_label = "Export STK Kart"
+    bl_description = "Exports the current scene from the context as a SuperTuxKart kart"
+
+    output_path: StringProperty(
+        name="Output Path",
+        description="The output path for the exported kart",
+        default='//',
+        subtype='DIR_PATH'
+    )
+
+    def invoke(self, context, event):
+        # Generate output path
+        stk_prefs = context.preferences.addons[__package__].preferences
+        stk_scene = stk_utils.get_stk_context(context, 'scene')
+
+        # pylint: disable=assignment-from-no-return
+        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
+
+        # Non-existent assets path
+        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
+            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
+                                   "the path to the assets directory in the add-on's preferences.")
+            return {'CANCELLED'}
+
+        output_path = os.path.join(
+            assets_path,
+            'karts' if stk_scene.category != 'wip' else 'wip-karts'
+        )
+
+        # Invalid assets path
+        if not os.path.isdir(output_path):
+            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
+                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
+            return {'CANCELLED'}
+
+        self.output_path = output_path
+
+        return self.execute(context)
+
+    def execute(self, context):
+        stk_scene = stk_utils.get_stk_context(context, 'scene')
+        # pylint: disable=assignment-from-no-return
+        output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
+
+        # Create track folder if non-existent
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+
+        # Ensure the object properties have been loaded
+        bpy.ops.stk.reload_object_properties()  # pylint: disable=no-member
+
+        # Get evaluated gependency-graph
+        dg = context.evaluated_depsgraph_get()
+
+        # Files staged for copying to destination
+        cpy_files = []
+
+        stk_kart.collect_and_write_kart_file(context, output_dir, self.report)
+
+        # Copy staged files if they exist in the working directory
+        import shutil
+
+        for f in cpy_files:
+            p_input = bpy.path.abspath(os.path.join('//', f))
+
+            if os.path.isfile(p_input):
+                p_output = os.path.join(output_dir, f)
+                shutil.copy2(p_input, p_output)
+
+        # Reset frames
+        context.scene.frame_set(context.scene.frame_start)
+        return {'FINISHED'}
+
+    @ classmethod
+    def poll(self, context):
+        """Operator poll method.
+        Only execute this operator when scene is a SuperTuxKart kart.
+
+        Parameters
+        ----------
+        context : bpy.context
+            The Blender context object
+
+        Returns
+        -------
+        AnyType
+            Value indicating if this panel should be rendered or not
+        """
+        if not context.scene or not context.scene.stk:
+            return False
+
+        return stk_utils.get_stk_scene_type(context) == 'kart'
 
 
 class STK_OT_TrackExport(bpy.types.Operator):
@@ -172,7 +269,7 @@ class STK_OT_LibraryExport(bpy.types.Operator):
 
     output_path: StringProperty(
         name="Output Path",
-        description="The output path for the exported track",
+        description="The output path for the exported library node",
         default='//',
         subtype='DIR_PATH'
     )

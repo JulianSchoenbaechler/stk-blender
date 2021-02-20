@@ -1719,7 +1719,7 @@ def write_track_file(context: bpy.context, collection: tu.SceneCollection, outpu
         # Meta information
         f.write(f"<track name                    = \"{stk_scene.name}\"")
         f.write(f"\n       groups                  = \"{group_name}\"")
-        f.write(f"\n       version                 = \"{stk_utils.FILE_FORMAT_VERSION}\"")
+        f.write(f"\n       version                 = \"{stk_utils.TRACK_FILE_FORMAT_VERSION}\"")
         f.write(f"\n       designer                = \"{str_sanitize(stk_scene.designer)}\"")
 
         if stk_scene.screenshot:
