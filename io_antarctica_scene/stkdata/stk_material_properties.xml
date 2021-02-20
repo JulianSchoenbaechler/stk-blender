@@ -1,12 +1,20 @@
 <?xml version="1.0"?>
 <properties>
+    <!-- clamp texture -->
+    <enum id="clamp" label="Clamp Texture" default="" flags="flags"
+          doc="Per default, textures repeat when overflowing the UV boundaries; this can be prevented by clamping them">
+        <item value="u" label="U" doc="Clamp on the horizontal axis (u axis)"/>
+        <item value="v" label="V" doc="Clamp on the vertical axis (v axis)"/>
+    </enum>
+
     <!-- mirror texture -->
     <enum id="mirror" label="Mirror Texture In Reverse" default="none"
           doc="Mirror texture if the racetrack is driven in reverse">
         <item value="none" label="Off" doc="No mirroring"/>
         <item value="u" label="Horizontally (U)" doc="Mirror over the horizontal axis (u axis)"/>
-        <item value="v" label="Vertically (V)" doc="Mirror over the vertical axis (u axis)"/>
+        <item value="v" label="Vertically (V)" doc="Mirror over the vertical axis (v axis)"/>
     </enum>
+
     <bool id="ignore" label="No Collision (Ignore)" default="false"
           doc="If checked, this material will have no colliders in the physics engine; karts can drive through"/>
 
