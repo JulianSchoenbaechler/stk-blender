@@ -36,6 +36,7 @@ import bpy, re
 import os
 from bpy_extras.io_utils import ExportHelper
 from collections import OrderedDict
+from . import stk_library_utils
 
 from bpy.props import (StringProperty,
                    BoolProperty,
@@ -147,14 +148,9 @@ class STK_Material_Export_Operator(bpy.types.Operator, ExportHelper):
     )
 
     def execute(self, context):
-        #writeMaterialsFile(self, self.filepath)
 
-        stk_scene = stk_utils.get_stk_context(context, 'scene')
-        # pylint: disable=assignment-from-no-return
-        output_dir = bpy.path.abspath(os.path.join(self.output_path, stk_scene.identifier))
-        
-        print("export_materials")
-        print(output_dir)
+        output_dir = stk_library_utils.compute_output_path(context)        
+        write_material_file(output_dir)
 
         return {'FINISHED'}
 
