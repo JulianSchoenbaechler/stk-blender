@@ -22,10 +22,10 @@
 
 import bpy
 import mathutils
-import math
+import collections
 import os
 import numpy as np
-from . import stk_track_utils as tu
+from . import stk_kart_utils as ku
 from . import stk_props, stk_shaders, stk_utils
 
 ANIM_IDENTIFIERS = [
@@ -36,6 +36,11 @@ ANIM_IDENTIFIERS = [
     'start-jump', 'start-jump-loop', 'end-jump',
     'backpedal', 'backpedal-right', 'backpedal-left',
     'selection-start', 'selection-end'
+]
+
+WHEEL_ORDER = [
+    'front-left', 'front-right',
+    'rear-left', 'rear-right'
 ]
 
 
@@ -63,20 +68,112 @@ def xml_animation_data(timeline_markers: bpy.types.TimelineMarkers, fps=25.0, in
         if marker.name in ANIM_IDENTIFIERS:
             attributes.append(f"{marker.name.ljust(22)}= \"{marker.frame}\"")
 
-    frames = f"\n{'  ' * indent}            ".join(attributes)
-    return f"{'  ' * indent}<animations {frames}/>\n"
+    # No animations
+    if len(attributes) == 1:
+        return []
+
+    # Build XML node
+    node = [f"{'  ' * indent}<animations {attributes.pop(0)}"]
+    node.extend([f"{'  ' * indent}            {attr}" for attr in attributes])
+    node[len(node) - 1] += "/>"
+
+    return node
 
 
-def collect_and_write_kart_file(context: bpy.context, output_dir: str, report=print):
-    """Collect kart specific scene data and writes the kart.xml file for the SuperTuxKart track to disk.
-    This method of parsing the Blender scene is straightforward and simple. Much overhead is not really necessary as
-    kart data is (for historic reasons) fundamentally different. So there is no benefit in using e.g. NumPy structures.
-    The scenes are not that complex (it's a kart after all) and code from track/library export cannot really be reused.
+def xml_wheel_data(wheels: list, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing the kart wheels.
+
+    Parameters
+    ----------
+    wheels : list
+        A list with exactly 4 objects
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if len(wheels) != 4:
+        return []
+
+    ordered = {}
+
+    # Order wheels
+    for wheel in wheels:
+        pos = wheel.location
+
+        if pos.x < 0.0:  # left
+            if pos.y > 0.0:  # front
+                ordered[WHEEL_ORDER[0]] = wheel
+            else:  # rear
+                ordered[WHEEL_ORDER[2]] = wheel
+        else:  # right
+            if pos.y > 0.0:  # front
+                ordered[WHEEL_ORDER[1]] = wheel
+            else:  # rear
+                ordered[WHEEL_ORDER[3]] = wheel
+
+    # Build XML node
+    node = [f"{'  ' * indent}<wheels>"]
+    indent += 1
+
+    for n in WHEEL_ORDER:
+        transform = stk_utils.object_get_transform(ordered[n])
+        node.append("{indent}<{name} {position} {model}/>".format(
+            indent='  ' * indent, name=n,
+            position=stk_utils.btransform_to_xyz_str(transform, 'position'),
+            model=f'model="wheel-{n}.spm"'
+        ))
+
+    indent -= 1
+    node.append(f"{'  ' * indent}</wheels>")
+
+    return node
+
+
+def xml_nitro_emitter_data(emitters: list, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing the kart nitro emitters.
+
+    Parameters
+    ----------
+    emitters : list
+        A list of object transforms (does not contain more than 2 items)
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if not emitters:
+        return []
+
+    if len(emitters) == 1:
+        emitters.append(emitters[0])
+
+    # Build XML node
+    node = [f"{'  ' * indent}<nitro-emitter>"]
+    indent += 1
+    node.append(f"{'  ' * indent}<nitro-emitter-a {stk_utils.btransform_to_xyz_str(emitters[0], 'position')}/>")
+    node.append(f"{'  ' * indent}<nitro-emitter-b {stk_utils.btransform_to_xyz_str(emitters[1], 'position')}/>")
+    indent -= 1
+    node.append(f"{'  ' * indent}</nitro-emitter>")
+
+    return node
+
+
+def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output_dir: str, report=print):
+    """Writes the kart.xml file for the SuperTuxKart kart to disk.
 
     Parameters
     ----------
     context : bpy.context
         The Blender context object
+    collection : ku.SceneCollection tuple
+        A scene collection tuple containing all the gathered scene data staged for export
     output_dir : str
         The output folder path where the XML file should be written to
     report : callable, optional
@@ -84,28 +181,13 @@ def collect_and_write_kart_file(context: bpy.context, output_dir: str, report=pr
     """
     stk_scene = stk_utils.get_stk_context(context, 'scene')
     path = os.path.join(output_dir, 'kart.xml')
+    origin_frame = context.scene.timeline_markers.get('straight')
 
-    # Gather all objects from enabled collections
-    # If collections are hidden in viewport or render, all their objects should get ignored
-    objects = []
-
-    for col in stk_utils.iter_enabled_collections(context.scene.collection):
-        objects.extend(col.objects)
-
-    # Categorize all objects that need to get exported
-    for obj in objects:
-        # Ignore disabled or direct library references (only accept proxies)
-        if obj.hide_viewport or obj.hide_render:
-            continue
-
-        if (obj.type == 'MESH' or obj.type == 'EMPTY') and hasattr(obj, 'stk_kart'):
-            # Categorize objects
-            props = obj.stk_kart
-            t = props.type
-
-            # Library object proxies
-            if obj.proxy:
-                continue
+    # Set kart to initial transformation state (straight, no steering)
+    if origin_frame:
+        context.scene.frame_set(origin_frame.frame)
+    else:
+        context.scene.frame_set(context.scene.frame_start)
 
     # Special cases for group names
     if stk_scene.category == 'add-ons':
@@ -115,10 +197,17 @@ def collect_and_write_kart_file(context: bpy.context, output_dir: str, report=pr
     else:
         group_name = stk_scene.category
 
+    # Prepare animations
     xml_animations = xml_animation_data(context.scene.timeline_markers,
                                         context.scene.render.fps / context.scene.render.fps_base)
 
-    # Write scene file
+    # Prepare animations
+    xml_wheels = xml_wheel_data(collection.wheels)
+
+    # Prepare animations
+    xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
+
+    # Write kart file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
             "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",
@@ -145,10 +234,19 @@ def collect_and_write_kart_file(context: bpy.context, output_dir: str, report=pr
         f.write(">\n")
 
         # Animation tree
-        f.write(xml_animations)
+        f.write("\n".join(xml_animations))
+        f.write("\n")
 
         # Engine sound
         f.write(f"  <sounds engine=\"{stk_scene.sfx_engine}\"/>\n")
+
+        # Wheels
+        f.write("\n".join(xml_wheels))
+        f.write("\n")
+
+        # Nitro emitters
+        f.write("\n".join(xml_nitro_emitters))
+        f.write("\n")
 
         f.write("</kart>\n")
 

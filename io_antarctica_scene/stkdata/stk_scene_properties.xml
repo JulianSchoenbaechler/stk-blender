@@ -74,6 +74,15 @@
                     doc="The particles definition file (XML) to use"/>
         </box>
 
+        <!-- kart leaning properties -->
+        <bool id="lean" label="Specify Leaning Behaviour" default="false"
+              bind="type" condition="lambda t: t == 'kart'"
+              doc="The applied visual leaning behaviour for the kart can be manipulated manually; in most cases, there is no need to adjust this"/>
+        <box id="lean_box" bind="type lean" condition="lambda t, p: p and t == 'kart'">
+            <string id="lean_max" label="Formula" default="*0-10"
+                    doc="The formula applied to the leaning calculations for the kart; care needs to be taken when specifying this value, an understanding of its interpretation is strongly recommended"/>
+        </box>
+
         <!-- track specific -->
         <image id="screenshot" label="In-Game Screenshot" bind="type" condition="lambda t: t == 'track'"
                doc="A screenshot of this track that will be displayed in the selection screen"/>

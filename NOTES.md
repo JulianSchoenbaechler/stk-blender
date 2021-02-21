@@ -24,5 +24,8 @@
   - friction (not implemented, as the physical effects are very specific and hardly controllable)
   - gravity (not implemented, as the physical effects are very specific and hardly controllable)
 
+### Karts
+- Added possibility to export a single nitro-emitter (gets automatically duplicated in the background)
+
 
 Write without fear, and refactor without mercy!

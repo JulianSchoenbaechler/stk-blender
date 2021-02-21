@@ -4,7 +4,7 @@
     <enum id="type" label="Type" default="none" doc="SuperTuxKart object type">
         <category label="Objects">
             <item value="none" label="Unassigned"
-                  doc="Standard static scenery object"/>
+                  doc="Standard static kart object"/>
             <item value="ignore" label="Ignored"
                   doc="Ignored on export and will not appear in-game"/>
             <item value="wheel" label="Wheel"
@@ -26,6 +26,10 @@
     <panel id="type_properties" label="Properties"
            bind="type" condition="lambda t: t == 'speed_weighted' or t == 'headlight'" expanded="expanded">
 
+        <!-- object file name -->
+        <string id="name" label="Object Name" default="some_model"
+                bind="type" condition="lambda t: t == 'speed_weighted'"
+                doc="Name of this object (file name)"/>
         <!-- speed weighted -->
         <enum id="strength" label="Strength Factor" default="default"
               bind="type" condition="lambda t: t == 'speed_weighted'"

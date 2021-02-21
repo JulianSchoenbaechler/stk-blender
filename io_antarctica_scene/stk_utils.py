@@ -297,9 +297,22 @@ def transform_to_str(val: transform):
     )
 
 
+def btransform_to_str(val: tuple, labels=('xyz', 'hpr', 'scale')):
+    assert (len(labels) == 3)
+    return '{}="{:.3f} {:.3f} {:.3f}" {}="{:.3f} {:.3f} {:.3f}" {}="{:.3f} {:.3f} {:.3f}"'.format(
+        labels[0], val[0][0], val[0][1], val[0][2],
+        labels[1], val[1][0], val[1][1], val[1][2],
+        labels[2], val[2][0], val[2][1], val[2][2],
+    )
+
+
 def transform_to_xyz_str(val: transform, explode=False):
     output = 'xyz="{:.2f} {:.2f} {:.2f}"' if not explode else 'x="{:.2f}" y="{:.2f}" z="{:.2f}"'
     return output.format(val['xyz'][0], val['xyz'][1], val['xyz'][2])
+
+
+def btransform_to_xyz_str(val: tuple, label='xyz'):
+    return '{}="{:.3f} {:.3f} {:.3f}"'.format(label, val[0][0], val[0][1], val[0][2])
 
 
 def transform_to_xyzh_str(val: transform, explode=False):

@@ -24,7 +24,7 @@ import bpy
 import io
 import os
 import numpy as np
-from . import stk_utils, stk_kart, stk_track, stk_track_utils, stk_library, stk_library_utils
+from . import stk_utils, stk_kart, stk_kart_utils, stk_track, stk_track_utils, stk_library, stk_library_utils
 from bpy.props import (
     IntProperty,
     FloatProperty,
@@ -93,10 +93,13 @@ class STK_OT_KartExport(bpy.types.Operator):
         # Get evaluated gependency-graph
         dg = context.evaluated_depsgraph_get()
 
+        # Gather and stage all scene objects that should be exported
+        scene = stk_kart_utils.collect_scene(context, self.report)
+
         # Files staged for copying to destination
         cpy_files = []
 
-        stk_kart.collect_and_write_kart_file(context, output_dir, self.report)
+        stk_kart.write_kart_file(context, scene, output_dir, self.report)
 
         # Copy staged files if they exist in the working directory
         import shutil
@@ -109,7 +112,7 @@ class STK_OT_KartExport(bpy.types.Operator):
                 shutil.copy2(p_input, p_output)
 
         # Reset frames
-        context.scene.frame_set(context.scene.frame_start)
+        # context.scene.frame_set(context.scene.frame_start)
         return {'FINISHED'}
 
     @ classmethod
