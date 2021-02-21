@@ -27,9 +27,8 @@
            bind="type" condition="lambda t: t == 'speed_weighted' or t == 'headlight'" expanded="expanded">
 
         <!-- object file name -->
-        <string id="name" label="Object Name" default="some_model"
-                bind="type" condition="lambda t: t == 'speed_weighted'"
-                doc="Name of this object (file name)"/>
+        <string id="name" label="Object Name" default="some_model" doc="Name of this object (file name)"/>
+
         <!-- speed weighted -->
         <enum id="strength" label="Strength Factor" default="default"
               bind="type" condition="lambda t: t == 'speed_weighted'"

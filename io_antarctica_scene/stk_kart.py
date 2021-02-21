@@ -139,7 +139,7 @@ def xml_speed_weighted_data(objects: list, indent=1):
 
     Parameters
     ----------
-    objects : list
+    objects : list of ku.SpeedWeighted
         A list of speed-weighted objects
     indent : int, optional
         The tab indent for writing the XML node, by default 1
@@ -176,6 +176,74 @@ def xml_speed_weighted_data(objects: list, indent=1):
     node.append(f"{'  ' * indent}</speed-weighted-objects>")
 
     return node
+
+
+def xml_headlights_data(objects: list, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing headlight objects of the kart.
+
+    Parameters
+    ----------
+    objects : list of ku.Instanced
+        A list of instanced objects
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if not objects:
+        return []
+
+    # Build XML node
+    node = [f"{'  ' * indent}<headlights>"]
+    indent += 1
+
+    # Instanced object data
+    for i in objects:
+        transform = stk_utils.object_get_transform(i.object)
+        attributes = [stk_utils.btransform_to_str(transform, ('position', 'rotation', 'scale'))]
+
+        if i.object.parent and i.object.parent_type == 'BONE':
+            attributes.append(f"bone=\"{i.object.parent_bone}\"")
+
+        attributes.append(f"model=\"{i.name}.spm\"")
+
+        node.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+
+    indent -= 1
+    node.append(f"{'  ' * indent}</headlights>")
+
+    return node
+
+
+def xml_hat_data(obj: bpy.types.Object, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing the hat position of the kart.
+
+    Parameters
+    ----------
+    obj : bpy.types.Object
+        The hat positioner object
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if not obj:
+        return []
+
+    transform = stk_utils.object_get_transform(obj)
+    attributes = [stk_utils.btransform_to_str(transform, ('position', 'rotation', 'scale'))]
+
+    if obj.parent and obj.parent_type == 'BONE':
+        attributes.append(f"bone=\"{obj.parent_bone}\"")
+
+    # Build XML node
+    return [f"{'  ' * indent}<hat {' '.join(attributes)}/>"]
 
 
 def xml_nitro_emitter_data(emitters: list, indent=1):
@@ -255,6 +323,15 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
     # Prepare animations
     xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
 
+    # Prepare animations
+    xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
+
+    # Prepare headlight objects
+    xml_headlights = xml_headlights_data(collection.headlights)
+
+    # Prepare animations
+    xml_hat = xml_hat_data(collection.hat)
+
     # Write kart file
     with open(path, 'w', encoding='utf8', newline="\n") as f:
         f.writelines([
@@ -281,13 +358,18 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
 
         f.write(">\n")
 
+        # Maximum lean formula
+        if stk_scene.lean:
+            f.write(f"  <lean max=\"{stk_scene.lean_max}\"/>\n")
+
         # Animation tree
         if xml_animations:
             f.write("\n".join(xml_animations))
             f.write("\n")
 
-        # Engine sound
+        # Engine sound and exhaust particles
         f.write(f"  <sounds engine=\"{stk_scene.sfx_engine}\"/>\n")
+        f.write(f"  <exhaust file=\"{stk_scene.exhaust_particles if stk_scene.exhaust else 'kart_exhaust.xml'}\"/>\n")
 
         # Wheels
         f.write("\n".join(xml_wheels))
@@ -303,36 +385,14 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
             f.write("\n".join(xml_nitro_emitters))
             f.write("\n")
 
-        f.write("</kart>\n")
+        # Headlight objects
+        if xml_headlights:
+            f.write("\n".join(xml_headlights))
+            f.write("\n")
 
-        # Meta information
-        #f.write(f"<track name                    = \"{stk_scene.name}\"")
-        #f.write(f"\n       groups                  = \"{group_name}\"")
-        #f.write(f"\n       version                 = \"{stk_utils.FILE_FORMAT_VERSION}\"")
-        #f.write(f"\n       designer                = \"{str_sanitize(stk_scene.designer)}\"")
-#
-        # if stk_scene.screenshot:
-        #    f.write(f"\n       screenshot              = \"{os.path.basename(stk_scene.screenshot.filepath_raw)}\"")
-#
-        # if stk_scene.music:
-        #    f.write(f"\n       music                   = \"{stk_scene.music}\"")
-#
-        # Track type specific
-        # if stk_scene.track_type == 'arena':
-        #    f.write(f"\n       arena                   = \"y\"")
-        #    f.write(f"\n       ctf                     = \"{'y' if stk_scene.ctf_active else 'n'}\"")
-#
-        #f.write(f"\n       soccer                  = \"{'y' if stk_scene.track_type == 'soccer' else 'n'}\"")
-        #f.write(f"\n       cutscene                = \"{'y' if stk_scene.track_type == 'cutscene' else 'n'}\"")
-        #f.write(f"\n       internal                = \"{'y' if stk_scene.track_type == 'cutscene' else 'n'}\"")
-#
-        # if stk_scene.track_type == 'race':
-        #    f.write(f"\n       reverse                 = \"{'y' if stk_scene.reverse else 'n'}\"")
-        #    f.write(f"\n       default-number-of-laps  = \"{stk_scene.lap_count}\"")
-#
-        # General track properties
-        #f.write(f"\n       smooth-normals          = \"{'y' if stk_scene.smooth_normals else 'n'}\"")
-        #f.write(f"\n       auto-rescue             = \"{'y' if stk_scene.auto_reset else 'n'}\"")
-        #f.write(f"\n       shadows                 = \"{'y' if stk_scene.shadows else 'n'}\"")
-        #f.write(f"\n       is-during-day           = \"{'y' if stk_scene.daytime == 'day' else 'n'}\"")
-        # f.write("/>\n")
+        # Hat position
+        if xml_hat:
+            f.write("\n".join(xml_hat))
+            f.write("\n")
+
+        f.write("</kart>\n")

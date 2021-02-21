@@ -29,8 +29,8 @@ SceneCollection = collections.namedtuple('SceneCollection', [
     'wheels',               # List of 4 wheel objects
     'speed_weighted',       # List of speed weighted objects
     'nitro_emitters',       # List of nitro emitter transforms (max 2)
-    'headlights',           # List of objects that represents the headlights
-    'hat'                   # The karts hat positioner transform
+    'headlights',           # List of objects that represents the headlights (bpy.types.Object)
+    'hat'                   # The karts hat positioner object (bpy.types.Object)
 ])
 
 SpeedWeighted = collections.namedtuple('SpeedWeighted', [
@@ -40,6 +40,11 @@ SpeedWeighted = collections.namedtuple('SpeedWeighted', [
     'speed',                # The factor that controls the speed of the animation (multiplier)
     'uv_speed_u',           # UV texture speed u
     'uv_speed_v'            # UV texture speed v
+])
+
+Instanced = collections.namedtuple('Instanced', [
+    'name',                 # Name identifier of the object
+    'object',               # The object (bpy.types.Object)
 ])
 
 
@@ -63,13 +68,14 @@ def collect_scene(context: bpy.context, report=print):
         A (named) tuple that describes the scene collection; it consists of all relevant data (or references) necessary
         for the export
     """
-    # Gather all objects from enabled collections
-    # If collections are hidden in viewport or render, all their objects should get ignored
     objects = []
 
+    # Gather all objects from enabled collections
+    # If collections are hidden in viewport or render, all their objects should get ignored
     for col in stk_utils.iter_enabled_collections(context.scene.collection):
         objects.extend(col.objects)
 
+    used_identifiers = set()
     kart_objects = []
     wheels = []
     speed_weighted = []
@@ -108,13 +114,17 @@ def collect_scene(context: bpy.context, report=print):
 
             # Speed weighted objects
             elif obj.type != 'EMPTY' and t == 'speed_weighted':
-                parent_bone = None
+                # Name identifier
+                name = props.name if len(props.name) > 0 else obj.data.name
+
+                # Skip if already an object with this identifier
+                if obj.data.users < 2 and name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{name}' is already staged for export and will be "
+                           "ignored! Check if different objects have the same name identifier.")
+                    continue
+
                 strength = 0.05
                 speed = 1.0
-
-                # Get parent armature bone
-                if obj.parent and obj.parent_type == 'BONE':
-                    parent_bone = obj.parent_bone
 
                 # Get strength value (this is the calculated speed-weight strength based on the animation
                 # -> only used on older devices)
@@ -126,13 +136,15 @@ def collect_scene(context: bpy.context, report=print):
                     strength = -1.0 if props.speed == 'disable' else props.speed_factor
 
                 speed_weighted.append(SpeedWeighted(
-                    name=props.name if len(props.name) > 0 else obj.data.name,
+                    name=name,
                     object=obj,
                     strength=strength,
                     speed=speed,
                     uv_speed_u=props.uv_speed_u,
                     uv_speed_v=props.uv_speed_v
                 ))
+
+                used_identifiers.add(name)
 
             # Nitro emitters
             elif t == 'nitro_emitter':
@@ -146,7 +158,17 @@ def collect_scene(context: bpy.context, report=print):
 
             # Headlight fx object
             elif obj.type != 'EMPTY' and t == 'headlight':
-                headlights.append(obj)
+                # Name identifier
+                name = props.name if len(props.name) > 0 else obj.data.name
+
+                # Skip if already an object with this identifier
+                if obj.data.users < 2 and name in used_identifiers:
+                    report({'WARNING'}, f"The object with the name '{name}' is already staged for export and will be "
+                           "ignored! Check if different objects have the same name identifier.")
+                    continue
+
+                headlights.append(Instanced(name, obj))
+                used_identifiers.add(name)
 
             # Hat positioner
             elif t == 'hat':
@@ -156,7 +178,7 @@ def collect_scene(context: bpy.context, report=print):
                            "ignored!")
                     continue
 
-                hat = stk_utils.object_get_transform(obj)
+                hat = obj
 
     # Check if the scene has 4 wheels specified for the kart
     if len(wheels) != 4:
