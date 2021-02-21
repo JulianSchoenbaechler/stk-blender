@@ -38,7 +38,7 @@
             <item value="custom" label="Custom"/>
             <item value="disable" label="Disable"/>
         </enum>
-        <box id="strength_box" bind="type strength" condition="lambda t, p: t == 'speed_weighted' and t == 'custom'">
+        <box id="strength_box" bind="type strength" condition="lambda t, p: t == 'speed_weighted' and p == 'custom'">
             <float id="strength_factor" label="Factor" default="0.05" min="0.0" max="1.0"
                    doc="A bigger value leads to the speed of the kart more quickly affecting the strength of the animation (up to a maximum value that corresponds to the original animation)"/>
         </box>
@@ -49,9 +49,9 @@
             <item value="custom" label="Custom"/>
             <item value="disable" label="Disable"/>
         </enum>
-        <box id="speed_box" bind="type speed" condition="lambda t, p: t == 'speed_weighted'">
+        <box id="speed_box" bind="type" condition="lambda t: t == 'speed_weighted'">
             <float id="speed_factor" label="Factor" default="1.0" min="0.0" max="100.0"
-                   bind="type" condition="lambda t: t == 'custom'"
+                   bind="speed" condition="lambda p: p == 'custom'"
                    doc="A bigger value will speed up the animation, while a lower one will slow it down"/>
             <float id="uv_speed_u" label="Texture Speed X" default="0.0" min="-100.0" max="100.0"/>
             <float id="uv_speed_v" label="Texture Speed Y" default="0.0" min="-100.0" max="100.0"/>
