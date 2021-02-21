@@ -133,6 +133,51 @@ def xml_wheel_data(wheels: list, indent=1):
     return node
 
 
+def xml_speed_weighted_data(objects: list, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing speed-weighted objects of the
+    kart.
+
+    Parameters
+    ----------
+    objects : list
+        A list of speed-weighted objects
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if not objects:
+        return []
+
+    # Build XML node
+    node = [f"{'  ' * indent}<speed-weighted-objects>"]
+    indent += 1
+
+    # Speed-weighted object data
+    for sw in objects:
+        transform = stk_utils.object_get_transform(sw.object)
+        attributes = [stk_utils.btransform_to_str(transform, ('position', 'rotation', 'scale'))]
+
+        if sw.object.parent and sw.object.parent_type == 'BONE':
+            attributes.append(f"bone=\"{sw.object.parent_bone}\"")
+
+        attributes.append(f"model=\"{sw.name}.spm\"\n")
+        attributes.append(f"{'  ' * indent}       strength-factor=\"{sw.strength:.2f}\"")
+        attributes.append(f"speed-factor=\"{sw.speed:.2f}\"")
+        attributes.append(f"texture-speed-x=\"{sw.uv_speed_u:.3f}\"")
+        attributes.append(f"texture-speed-y=\"{sw.uv_speed_v:.3f}\"")
+
+        node.append(f"{'  ' * indent}<object {' '.join(attributes)}/>")
+
+    indent -= 1
+    node.append(f"{'  ' * indent}</speed-weighted-objects>")
+
+    return node
+
+
 def xml_nitro_emitter_data(emitters: list, indent=1):
     """Creates an iterable of strings that represent the writable XML node describing the kart nitro emitters.
 
@@ -204,6 +249,9 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
     # Prepare animations
     xml_wheels = xml_wheel_data(collection.wheels)
 
+    # Prepare speed-weighted objects
+    xml_speed_weighted = xml_speed_weighted_data(collection.speed_weighted)
+
     # Prepare animations
     xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
 
@@ -234,8 +282,9 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
         f.write(">\n")
 
         # Animation tree
-        f.write("\n".join(xml_animations))
-        f.write("\n")
+        if xml_animations:
+            f.write("\n".join(xml_animations))
+            f.write("\n")
 
         # Engine sound
         f.write(f"  <sounds engine=\"{stk_scene.sfx_engine}\"/>\n")
@@ -244,9 +293,15 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
         f.write("\n".join(xml_wheels))
         f.write("\n")
 
+        # Speed-weighted objects
+        if xml_speed_weighted:
+            f.write("\n".join(xml_speed_weighted))
+            f.write("\n")
+
         # Nitro emitters
-        f.write("\n".join(xml_nitro_emitters))
-        f.write("\n")
+        if xml_nitro_emitters:
+            f.write("\n".join(xml_nitro_emitters))
+            f.write("\n")
 
         f.write("</kart>\n")
 

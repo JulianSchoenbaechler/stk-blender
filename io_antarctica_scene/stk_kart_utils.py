@@ -35,8 +35,7 @@ SceneCollection = collections.namedtuple('SceneCollection', [
 
 SpeedWeighted = collections.namedtuple('SpeedWeighted', [
     'name',                 # Name identifier of the speed-weighted object
-    'bone',                 # Parent armature bone of the speed-weighted object
-    'transform',            # The transform of the speed-weighted object
+    'object',               # The speed-weighted object (bpy.types.Object)
     'strength',             # How much the kart speed affects the distance from the animation to the static pose
     'speed',                # The factor that controls the speed of the animation (multiplier)
     'uv_speed_u',           # UV texture speed u
@@ -64,8 +63,6 @@ def collect_scene(context: bpy.context, report=print):
         A (named) tuple that describes the scene collection; it consists of all relevant data (or references) necessary
         for the export
     """
-    stk_scene = stk_utils.get_stk_context(context, 'scene')
-
     # Gather all objects from enabled collections
     # If collections are hidden in viewport or render, all their objects should get ignored
     objects = []
@@ -130,8 +127,7 @@ def collect_scene(context: bpy.context, report=print):
 
                 speed_weighted.append(SpeedWeighted(
                     name=props.name if len(props.name) > 0 else obj.data.name,
-                    bone=parent_bone,
-                    transform=stk_utils.object_get_transform(obj),
+                    object=obj,
                     strength=strength,
                     speed=speed,
                     uv_speed_u=props.uv_speed_u,
