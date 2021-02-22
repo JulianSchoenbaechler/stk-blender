@@ -310,6 +310,12 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
     else:
         group_name = stk_scene.category
 
+    # Highlight color
+    # For some freakin reason the RGB values in kart exports are float-ranges from 0-1. That's nice, but why the hell
+    # are tracks and library objects not handled the same way? We need to serialize to byte-range in Blender and
+    # deserialize in STKs codebase back to 0-1. Only because someone thought that's great.
+    color = stk_scene.highlight_color
+
     # Prepare animations
     xml_animations = xml_animation_data(context.scene.timeline_markers,
                                         context.scene.render.fps / context.scene.render.fps_base)
@@ -344,7 +350,7 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
         f.write(f"\n      groups                  = \"{group_name}\"")
         f.write(f"\n      version                 = \"{stk_utils.KART_FILE_FORMAT_VERSION}\"")
         f.write(f"\n      type                    = \"{stk_scene.kart_type}\"")
-        f.write(f"\n      rgb                     = \"{stk_utils.bcolor_to_str(stk_scene.highlight_color)}\"")
+        f.write(f"\n      rgb                     = \"{color.r} {color.g} {color.b}\"")
         f.write(f"\n      model-file              = \"{stk_scene.identifier}.spm\"")
 
         if stk_scene.icon:
