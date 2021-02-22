@@ -350,7 +350,7 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
         f.write(f"\n      groups                  = \"{group_name}\"")
         f.write(f"\n      version                 = \"{stk_utils.KART_FILE_FORMAT_VERSION}\"")
         f.write(f"\n      type                    = \"{stk_scene.kart_type}\"")
-        f.write(f"\n      rgb                     = \"{color.r} {color.g} {color.b}\"")
+        f.write(f"\n      rgb                     = \"{color.r:.2f} {color.g:.2f} {color.b:.2f}\"")
         f.write(f"\n      model-file              = \"{stk_scene.identifier}.spm\"")
 
         if stk_scene.icon:
