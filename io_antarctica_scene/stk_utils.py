@@ -89,6 +89,36 @@ def get_stk_context(context: bpy.context, context_level: str):
         return getattr(context.scene, 'stk')
 
 
+def get_output_path(context: bpy.context, wip=False, report=print):
+    # Generate output path
+    stk_prefs = context.preferences.addons[__package__].preferences
+    stk_scene = get_stk_context(context, 'scene')
+
+    # pylint: disable=assignment-from-no-return
+    assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
+
+    # Non-existent assets path
+    if not stk_prefs.assets_path or not os.path.isdir(assets_path):
+        report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check the path to "
+               "the assets directory in the add-on's preferences.")
+        return None
+
+    if stk_scene.type == 'kart':
+        output_path = os.path.join(assets_path, 'karts' if not wip else 'wip-karts')
+    elif stk_scene.type == 'track':
+        output_path = os.path.join(assets_path, 'tracks' if not wip else 'wip-tracks')
+    else:
+        output_path = os.path.join(assets_path, 'library' if not wip else 'wip-library')
+
+    # Invalid assets path
+    if not os.path.isdir(output_path):
+        report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is invalid! Check "
+               "the path to the assets directory in the add-on's preferences.")
+        return None
+
+    return output_path
+
+
 def is_stk_material(node_tree: bpy.types.NodeTree):
     for node in node_tree.nodes:
         if isinstance(node, bpy.types.ShaderNodeOutputMaterial) or isinstance(node, bpy.types.ShaderNodeOutputWorld):
@@ -104,6 +134,7 @@ def is_stk_material(node_tree: bpy.types.NodeTree):
     return None
 
 
+# TODO(julian): Use 'get_texture()' from shader mixin as soon as available
 def get_main_texture_stk_material(mat: bpy.types.Material):
     if not mat or not mat.use_nodes:
         return None

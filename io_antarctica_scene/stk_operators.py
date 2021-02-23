@@ -50,31 +50,13 @@ class STK_OT_KartExport(bpy.types.Operator):
     )
 
     def invoke(self, context, event):
-        # Generate output path
-        stk_prefs = context.preferences.addons[__package__].preferences
-        stk_scene = stk_utils.get_stk_context(context, 'scene')
+        # Get output path
+        output_path = stk_utils.get_output_path(context, stk_scene.category == 'wip', self.report)
 
-        # pylint: disable=assignment-from-no-return
-        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
-
-        # Non-existent assets path
-        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
-            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
-                                   "the path to the assets directory in the add-on's preferences.")
+        if output_path:
+            self.output_path = output_path
+        else:
             return {'CANCELLED'}
-
-        output_path = os.path.join(
-            assets_path,
-            'karts' if stk_scene.category != 'wip' else 'wip-karts'
-        )
-
-        # Invalid assets path
-        if not os.path.isdir(output_path):
-            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
-                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
-            return {'CANCELLED'}
-
-        self.output_path = output_path
 
         return self.execute(context)
 
@@ -150,31 +132,13 @@ class STK_OT_TrackExport(bpy.types.Operator):
     )
 
     def invoke(self, context, event):
-        # Generate output path
-        stk_prefs = context.preferences.addons[__package__].preferences
-        stk_scene = stk_utils.get_stk_context(context, 'scene')
+        # Get output path
+        output_path = stk_utils.get_output_path(context, stk_scene.category == 'wip', self.report)
 
-        # pylint: disable=assignment-from-no-return
-        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
-
-        # Non-existent assets path
-        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
-            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
-                                   "the path to the assets directory in the add-on's preferences.")
+        if output_path:
+            self.output_path = output_path
+        else:
             return {'CANCELLED'}
-
-        output_path = os.path.join(
-            assets_path,
-            'tracks' if stk_scene.category != 'wip' else 'wip-tracks'
-        )
-
-        # Invalid assets path
-        if not os.path.isdir(output_path):
-            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
-                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
-            return {'CANCELLED'}
-
-        self.output_path = output_path
 
         return self.execute(context)
 
@@ -278,27 +242,13 @@ class STK_OT_LibraryExport(bpy.types.Operator):
     )
 
     def invoke(self, context, event):
-        # Generate output path
-        stk_prefs = context.preferences.addons[__package__].preferences
+        # Get output path
+        output_path = stk_utils.get_output_path(context, False, self.report)
 
-        # pylint: disable=assignment-from-no-return
-        assets_path = os.path.abspath(bpy.path.abspath(stk_prefs.assets_path))
-
-        # Non-existent assets path
-        if not stk_prefs.assets_path or not os.path.isdir(assets_path):
-            self.report({'ERROR'}, "No asset (data) directory specified for exporting the SuperTuxKart scene! Check "
-                                   "the path to the assets directory in the add-on's preferences.")
+        if output_path:
+            self.output_path = output_path
+        else:
             return {'CANCELLED'}
-
-        output_path = os.path.join(assets_path, 'library')
-
-        # Invalid assets path
-        if not os.path.isdir(output_path):
-            self.report({'ERROR'}, "The specified asset (data) directory for exporting the SuperTuxKart scene is "
-                                   "invalid! Check the path to the assets directory in the add-on's preferences.")
-            return {'CANCELLED'}
-
-        self.output_path = output_path
 
         return self.execute(context)
 
@@ -406,7 +356,7 @@ class STK_OT_DemoOperator(bpy.types.Operator):
         if not context.scene or not context.scene.stk:
             return False
 
-        return stk_utils.get_stk_scene_type(context) == 'track'
+        return True
 
 
 class STK_MT_ExportMenu(bpy.types.Menu):
