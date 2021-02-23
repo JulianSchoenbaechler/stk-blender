@@ -23,7 +23,19 @@
 import bpy
 
 
-class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaMixin:
+    def get_texture(self, name):
+        image_node = self.node_tree.nodes.get(name)
+        return image_node.image if node_image else None
+
+    def set_texture(self, name, image: bpy.types.Image):
+        image_node = self.node_tree.nodes.get(name)
+
+        if image_node:
+            image_node.image = image
+
+
+class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """Represents a shader node that simulates the solid physical based shader in the 'Antarctica' render pipeline of
     SuperTuxKart. This class also stores shader specific properties for export.
     """
@@ -332,7 +344,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup):
             prop_layout.prop(self, 'prop_hueSelect', text="")
 
 
-class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """
     Represents a shader node that simulates the cutout (alpha-test) physical based shader in the 'Antarctica' render
     pipeline of SuperTuxKart. This class also stores shader specific properties for export.
@@ -531,7 +543,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup):
             prop_layout.prop(self, 'prop_hueSelect', text="")
 
 
-class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """
     Represents a shader node that simulates the transparent (alpha-blend) shader in the 'Antarctica' render pipeline of
     SuperTuxKart. This class also stores shader specific properties for export.
@@ -690,7 +702,7 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup):
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
 
-class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """
     Represents a shader node that simulates the transparent additive (alpha-additive) shader in the 'Antarctica' render
     pipeline of SuperTuxKart. This class also stores shader specific properties for export.
@@ -818,7 +830,7 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup):
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
 
-class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """
     Represents a shader node that simulates the unlit shader in the 'Antarctica' render pipeline of SuperTuxKart. This
     class also stores shader specific properties for export.
@@ -879,7 +891,7 @@ class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup):
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
 
-class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """Represents a shader node that offers options for accessing a custom shader for the 'Antarctica' render pipeline
     of SuperTuxKart. This class also stores shader specific properties for export.
     """
@@ -1091,7 +1103,7 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup):
             prop_layout.prop(self, 'prop_hueSelect', text="")
 
 
-class AntarcticaBackground(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaBackground(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """Represents a shader node for the worlds environment that simulates the plain color background in the 'Antarctica'
     render pipeline of SuperTuxKart. This class also stores shader specific properties for export.
     """
@@ -1189,7 +1201,7 @@ class AntarcticaBackground(bpy.types.ShaderNodeCustomGroup):
         prop_layout.prop(self, 'prop_ambient', text="")
 
 
-class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
+class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """Represents a shader node for the worlds environment that simulates the skybox background in the 'Antarctica'
     render pipeline of SuperTuxKart. This class also stores shader specific properties for export.
     """
@@ -1235,9 +1247,6 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup):
         get=__get_ambient,
         set=__set_ambient
     )
-
-    def get_texture(self, name):
-        return getattr(self.node_tree.nodes[name], 'image', None) if self.node_tree.nodes[name] else None
 
     @staticmethod
     def setup_skybox(nt, nd_northTex, nd_eastTex, nd_southTex, nd_westTex, nd_topTex, nd_bottomTex):
