@@ -26,7 +26,7 @@ import bpy
 class AntarcticaMixin:
     def get_texture(self, name):
         image_node = self.node_tree.nodes.get(name)
-        return image_node.image if node_image else None
+        return image_node.image if image_node else None
 
     def set_texture(self, name, image: bpy.types.Image):
         image_node = self.node_tree.nodes.get(name)
