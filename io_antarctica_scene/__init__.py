@@ -37,8 +37,11 @@ bl_info = {
 
 if 'bpy' in locals():
     import importlib
+
     if 'stk_prefs' in locals():
         importlib.reload(stk_prefs)  # pylint: disable=used-before-assignment
+    if 'stk_utils' in locals():
+        importlib.reload(stk_utils)  # pylint: disable=used-before-assignment
     if 'stk_props' in locals():
         importlib.reload(stk_props)  # pylint: disable=used-before-assignment
     if 'stk_panel' in locals():
@@ -47,8 +50,21 @@ if 'bpy' in locals():
         importlib.reload(stk_operators)  # pylint: disable=used-before-assignment
     if 'stk_shaders' in locals():
         importlib.reload(stk_shaders)  # pylint: disable=used-before-assignment
-    if 'stk_material' in locals():
-        importlib.reload(stk_material)  # pylint: disable=used-before-assignment
+
+    if 'stk_kart' in locals():
+        importlib.reload(stk_kart)  # pylint: disable=used-before-assignment
+    if 'stk_kart_utils' in locals():
+        importlib.reload(stk_kart_utils)  # pylint: disable=used-before-assignment
+
+    if 'stk_library' in locals():
+        importlib.reload(stk_library)  # pylint: disable=used-before-assignment
+    if 'stk_library_utils' in locals():
+        importlib.reload(stk_library_utils)  # pylint: disable=used-before-assignment
+
+    if 'stk_track' in locals():
+        importlib.reload(stk_track)  # pylint: disable=used-before-assignment
+    if 'stk_track_utils' in locals():
+        importlib.reload(stk_track_utils)  # pylint: disable=used-before-assignment
 
 import bpy  # noqa: E402
 from bpy.app.handlers import persistent  # noqa: E402
@@ -60,11 +76,17 @@ from nodeitems_utils import NodeItem, \
                             unregister_node_categories  # noqa: E402
 
 from . import stk_prefs, \
+              stk_utils, \
               stk_props, \
               stk_panel, \
               stk_operators, \
               stk_shaders, \
-              stk_material  # noqa: E402
+              stk_kart, \
+              stk_kart_utils, \
+              stk_library, \
+              stk_library_utils, \
+              stk_track, \
+              stk_track_utils  # noqa: E402
 
 
 def menu_func_export(self, context):
@@ -83,19 +105,6 @@ def load_handler(arg):
 
 
 classes = (
-    stk_panel.STK_TypeUnset,
-    stk_panel.STK_MissingProps_Object,
-    stk_panel.STK_MissingProps_Scene,
-    stk_panel.STK_MissingProps_Material,
-    # stk_panel.StkPanelAddonPreferences,
-    stk_panel.STK_PT_Object_Panel,
-    stk_panel.STK_PT_Scene_Panel,
-    stk_panel.STK_OT_Add_Object,
-    stk_panel.STK_FolderPicker_Operator,
-    stk_panel.STK_PT_Quick_Export_Panel,
-    # stk_material.ANTARCTICA_PT_properties,
-    # stk_material.STK_Material_Export_Operator,
-
     stk_prefs.STKAddonPreferences,
 
     stk_panel.STK_PT_SceneProperties,

@@ -147,7 +147,7 @@ def get_main_texture_stk_material(mat: bpy.types.Material):
                 shader_node = socket.links[0].from_node
 
                 # Use simple string comparison to make it work for future shaders
-                if shader_node.__class__.__name__.startswith('Antarctica')\
+                if shader_node.__class__.__name__.startswith('Antarctica') \
                    and shader_node.node_tree.nodes['Main Texture']:
                     return shader_node.node_tree.nodes['Main Texture'].image
 
