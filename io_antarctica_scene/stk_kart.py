@@ -80,6 +80,40 @@ def xml_animation_data(timeline_markers: bpy.types.TimelineMarkers, fps=25.0, in
     return node
 
 
+def xml_sfx_data(stk_scene: stk_props.STKScenePropertyGroup, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing the kart sfx.
+
+    Parameters
+    ----------
+    stk_scene : stk_props.STKScenePropertyGroup
+        The STK scene properties used for accessing sfx data
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    node = []
+
+    if stk_scene.sfx_skid == 'custom':
+        # Skid sfx audio settings
+        attributes = [f"name=\"{stk_scene.sfx_skid_file}\""]
+        attributes.append(f"volume=\"{stk_scene.sfx_volume:.2f}\"")
+        attributes.append(f"rolloff=\"{stk_scene.sfx_rolloff:.2f}\"")
+        attributes.append(f"max_dist=\"{stk_scene.sfx_distance:.2f}\"")
+
+        # Add skid to sound node
+        node.append(f"{'  ' * indent}<sounds engine=\"{stk_scene.sfx_engine}\">")
+        node.append(f"{'  ' * (indent + 1)}<skid {' '.join(attributes)}/>")
+        node.append(f"{'  ' * indent}</sounds>")
+    else:
+        node.append(f"{'  ' * indent}<sounds engine=\"{stk_scene.sfx_engine}\"/>")
+
+    return node
+
+
 def xml_wheel_data(wheels: list, indent=1):
     """Creates an iterable of strings that represent the writable XML node describing the kart wheels.
 
@@ -178,6 +212,38 @@ def xml_speed_weighted_data(objects: list, indent=1):
     return node
 
 
+def xml_nitro_emitter_data(emitters: list, indent=1):
+    """Creates an iterable of strings that represent the writable XML node describing the kart nitro emitters.
+
+    Parameters
+    ----------
+    emitters : list
+        A list of object transforms (does not contain more than 2 items)
+    indent : int, optional
+        The tab indent for writing the XML node, by default 1
+
+    Returns
+    -------
+    list of str
+        Each element represents a line for writing the formatted XML data
+    """
+    if not emitters:
+        return []
+
+    if len(emitters) == 1:
+        emitters.append(emitters[0])
+
+    # Build XML node
+    node = [f"{'  ' * indent}<nitro-emitter>"]
+    indent += 1
+    node.append(f"{'  ' * indent}<nitro-emitter-a {stk_utils.btransform_to_xyz_str(emitters[0], 'position')}/>")
+    node.append(f"{'  ' * indent}<nitro-emitter-b {stk_utils.btransform_to_xyz_str(emitters[1], 'position')}/>")
+    indent -= 1
+    node.append(f"{'  ' * indent}</nitro-emitter>")
+
+    return node
+
+
 def xml_headlights_data(objects: list, indent=1):
     """Creates an iterable of strings that represent the writable XML node describing headlight objects of the kart.
 
@@ -246,38 +312,6 @@ def xml_hat_data(obj: bpy.types.Object, indent=1):
     return [f"{'  ' * indent}<hat {' '.join(attributes)}/>"]
 
 
-def xml_nitro_emitter_data(emitters: list, indent=1):
-    """Creates an iterable of strings that represent the writable XML node describing the kart nitro emitters.
-
-    Parameters
-    ----------
-    emitters : list
-        A list of object transforms (does not contain more than 2 items)
-    indent : int, optional
-        The tab indent for writing the XML node, by default 1
-
-    Returns
-    -------
-    list of str
-        Each element represents a line for writing the formatted XML data
-    """
-    if not emitters:
-        return []
-
-    if len(emitters) == 1:
-        emitters.append(emitters[0])
-
-    # Build XML node
-    node = [f"{'  ' * indent}<nitro-emitter>"]
-    indent += 1
-    node.append(f"{'  ' * indent}<nitro-emitter-a {stk_utils.btransform_to_xyz_str(emitters[0], 'position')}/>")
-    node.append(f"{'  ' * indent}<nitro-emitter-b {stk_utils.btransform_to_xyz_str(emitters[1], 'position')}/>")
-    indent -= 1
-    node.append(f"{'  ' * indent}</nitro-emitter>")
-
-    return node
-
-
 def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output_dir: str, report=print):
     """Writes the kart.xml file for the SuperTuxKart kart to disk.
 
@@ -320,16 +354,16 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
     xml_animations = xml_animation_data(context.scene.timeline_markers,
                                         context.scene.render.fps / context.scene.render.fps_base)
 
-    # Prepare animations
+    # Prepare sounds
+    xml_sfx = xml_sfx_data(stk_scene)
+
+    # Prepare wheels
     xml_wheels = xml_wheel_data(collection.wheels)
 
     # Prepare speed-weighted objects
     xml_speed_weighted = xml_speed_weighted_data(collection.speed_weighted)
 
-    # Prepare animations
-    xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
-
-    # Prepare animations
+    # Prepare nitro emitters
     xml_nitro_emitters = xml_nitro_emitter_data(collection.nitro_emitters)
 
     # Prepare headlight objects
@@ -373,8 +407,11 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
             f.write("\n".join(xml_animations))
             f.write("\n")
 
-        # Engine sound and exhaust particles
-        f.write(f"  <sounds engine=\"{stk_scene.sfx_engine}\"/>\n")
+        # Engine and skid sounds
+        f.write("\n".join(xml_sfx))
+        f.write("\n")
+
+        # Exhaust particles
         f.write(f"  <exhaust file=\"{stk_scene.exhaust_particles if stk_scene.exhaust else 'kart_exhaust.xml'}\"/>\n")
 
         # Wheels

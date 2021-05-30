@@ -59,6 +59,22 @@
             <item value="large" label="Large"/>
             <item value="small" label="Small"/>
         </enum>
+        <enum id="sfx_skid" label="Skidding Sound" default="default" bind="type" condition="lambda t: t == 'kart'"
+              doc="The karts skidding sound to use">
+            <item value="none" label="None"/>
+            <item value="default" label="Default"/>
+            <item value="custom" label="Custom"/>
+        </enum>
+        <box id="sfx_skid_box" bind="type sfx_skid" condition="lambda t, p: p == 'custom' and t == 'kart'">
+            <string id="sfx_skid_file" label="Sound File" default="some_file.ogg"
+                    doc="File name of the sound to play for skidding"/>
+            <float id="sfx_volume" label="Volume" default="1.0" min="0.0" max="1.0"
+                   doc="The volume of the sound playback"/>
+            <float id="sfx_rolloff" label="Roll-Off Rate" default="0.5" min="0.0" max="2.5"
+                   doc="How fast this sound decays when going farther from the emission point"/>
+            <float id="sfx_distance" label="Maximum Distance" default="300.0" min="0.0" max="5000.0"
+                   doc="The distance from the source at which to cut the sound (stop hearing it)"/>
+        </box>
 
         <!-- kart gravity shift -->
         <coordinates id="gravity_shift" label="Gravity Center Shift  " default="0.0 0.0 0.0" min="-1.0" max="1.0"
