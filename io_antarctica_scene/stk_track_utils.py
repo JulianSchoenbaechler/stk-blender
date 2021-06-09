@@ -783,7 +783,7 @@ def collect_scene(context: bpy.context, report=print):
                 used_identifiers.add(obj.name)
 
         elif obj.type == 'CAMERA' and hasattr(obj.data, 'stk'):
-            # Categorize light
+            # Categorize camera
             props = obj.data.stk
             camera = obj.data
 

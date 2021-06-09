@@ -322,14 +322,26 @@ class STK_OT_DemoOperator(bpy.types.Operator):
 
     def execute(self, context):
         from timeit import default_timer as timer
-        # Ensure the object properties have been loaded
-        bpy.ops.stk.reload_object_properties()
 
-        # Get evaluated gependency-graph
-        dg = context.evaluated_depsgraph_get()
+        from . import stk_shaders
 
         # Gather and stage all scene objects that should be exported
-        scene = stk_track_utils.collect_scene(context, self.report)
+        #scene = stk_track_utils.collect_scene(context, self.report)
+
+        #print(isinstance(context.active_object.active_material, stk_shaders.AntarcticaMixin))
+        mat = context.active_object.active_material
+        for node in mat.node_tree.nodes:
+            if isinstance(node, bpy.types.ShaderNodeOutputMaterial):
+                socket = node.inputs['Surface']
+
+                if socket.is_linked:
+                    shader_node = socket.links[0].from_node
+
+                    # Use simple string comparison to make it work for future shaders
+                    print(isinstance(shader_node, stk_shaders.AntarcticaMixin))
+                    # if shader_node.__class__.__name__.startswith('Antarctica') \
+                    #   and shader_node.node_tree.nodes['Main Texture']:
+                    #    return shader_node.node_tree.nodes['Main Texture'].image
 
         #start = timer()
         # for _ in range(100):

@@ -21,12 +21,9 @@
 # SOFTWARE.
 
 import bpy
-import mathutils
-import collections
 import os
-import numpy as np
 from . import stk_kart_utils as ku
-from . import stk_props, stk_shaders, stk_utils
+from . import stk_props, stk_utils
 
 ANIM_IDENTIFIERS = [
     'straight', 'right', 'left',
@@ -369,7 +366,7 @@ def write_kart_file(context: bpy.context, collection: ku.SceneCollection, output
     # Prepare headlight objects
     xml_headlights = xml_headlights_data(collection.headlights)
 
-    # Prepare animations
+    # Prepare hat data
     xml_hat = xml_hat_data(collection.hat)
 
     # Write kart file
