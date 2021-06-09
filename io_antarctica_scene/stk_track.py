@@ -1452,22 +1452,23 @@ def write_scene_file(context: bpy.context, collection: tu.SceneCollection, outpu
     if world.use_nodes and world_material:
         if isinstance(world_material, stk_shaders.AntarcticaSkybox):
             world_ambient = world_material.prop_ambient if not world_material.prop_use_map else None
+            # TODO(julian): Replace '_get_texture' with properties
             xml_light_weather.append(xml_sky_data(
                 (
-                    world_material.get_texture('Texture North'),
-                    world_material.get_texture('Texture East'),
-                    world_material.get_texture('Texture South'),
-                    world_material.get_texture('Texture West'),
-                    world_material.get_texture('Texture Top'),
-                    world_material.get_texture('Texture Bottom'),
+                    world_material._get_texture('Texture North'),
+                    world_material._get_texture('Texture East'),
+                    world_material._get_texture('Texture South'),
+                    world_material._get_texture('Texture West'),
+                    world_material._get_texture('Texture Top'),
+                    world_material._get_texture('Texture Bottom'),
                 ),
                 (
-                    world_material.get_texture('Ambient North'),
-                    world_material.get_texture('Ambient East'),
-                    world_material.get_texture('Ambient South'),
-                    world_material.get_texture('Ambient West'),
-                    world_material.get_texture('Ambient Top'),
-                    world_material.get_texture('Ambient Bottom'),
+                    world_material._get_texture('Ambient North'),
+                    world_material._get_texture('Ambient East'),
+                    world_material._get_texture('Ambient South'),
+                    world_material._get_texture('Ambient West'),
+                    world_material._get_texture('Ambient Top'),
+                    world_material._get_texture('Ambient Bottom'),
                 ) if world_material.prop_use_map else None
             ))
         else:

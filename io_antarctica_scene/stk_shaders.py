@@ -21,77 +21,370 @@
 # SOFTWARE.
 
 import bpy
+from bpy.props import (BoolProperty,
+                       FloatProperty,
+                       FloatVectorProperty,
+                       StringProperty,
+                       PointerProperty)
+from bpy.types import (NodeTree,
+                       NodeSocket)
+
+# The specular value of the PBR calculations are hardcoded, see:
+# https://github.com/supertuxkart/stk-code/commit/dfed11c6a8e59b791f18f3b228f4527451b751a6
+# STK actually is not quite fully PBR yet
+PBR_SPECULAR_VALUE = 0.04
 
 
 class AntarcticaMixin:
-    def get_texture(self, name):
+    """A mixin that every Antarctica shader node must implement. It defines default getter/setter callbacks that can be
+    used. It also declares the main texture property: STK's material properties are always bound to one main texture.
+    """
+    bl_width_default = 340
+    bl_width_min = 250
+
+    def _get_colorizable(self):
+        """Internal getter of the colorizable toggle."""
+        return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
+
+    def _set_colorizable(self, value: bool):
+        """Internal setter of the colorizable toggle."""
+        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
+
+    def _get_colorization_factor(self):
+        """Internal getter of the colorization factor."""
+        return self.node_tree.nodes['Colorization Factor'].outputs[0].default_value
+
+    def _set_colorization_factor(self, value: bool):
+        """Internal setter of the colorization factor."""
+        self.node_tree.nodes['Colorization Factor'].outputs[0].default_value = value
+
+    def _get_hue(self):
+        """Internal getter of the currently displayed hue value."""
+        return self.node_tree.nodes['Hue'].outputs[0].default_value
+
+    def _set_hue(self, value: float):
+        """Internal setter of the currently displayed hue value."""
+        self.node_tree.nodes['Hue'].outputs[0].default_value = value
+
+    def _get_mask(self):
+        """Internal getter of the alpha mask toggle."""
+        return self.node_tree.nodes['Mask Influence'].outputs[0].default_value == 1.0
+
+    def _set_mask(self, value: bool):
+        """Internal setter of the alpha mask toggle."""
+        self.node_tree.nodes['Mask Influence'].outputs[0].default_value = 1.0 if value else 0.0
+
+    def _get_texture(self, name: str):
+        """Internal getter for texture images.
+
+        Parameters
+        ----------
+        name : str
+            The name of the image node to access
+
+        Returns
+        -------
+        bpy.types.Image
+            The image reference of the texture
+        """
         image_node = self.node_tree.nodes.get(name)
         return image_node.image if image_node else None
 
-    def set_texture(self, name, image: bpy.types.Image):
+    def _set_texture(self, name: str, image: bpy.types.Image):
+        """Internal setter for texture images.
+
+        Parameters
+        ----------
+        name : str
+            The name of the image node to access
+        image : bpy.types.Image
+            The image reference
+        """
         image_node = self.node_tree.nodes.get(name)
 
         if image_node:
             image_node.image = image
+
+    def __update_main(self, context):
+        """Update callback for main texture property."""
+        print(self.main_texture)
+        self._set_texture('Main Texture', self.main_texture)
+
+    # Every shader node always has a main texture
+    main_texture: PointerProperty(
+        type=bpy.types.Image,
+        name="Main Texture",
+        update=__update_main
+    )
+
+    def copy(self, node):
+        """Initialize a new instance of this node from an existing node."""
+        self.node_tree = node.node_tree.copy()
+
+    def free(self):
+        """Clean up node on removal"""
+        self.node_tree.nodes.clear()
+        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
 
 
 class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     """Represents a shader node that simulates the solid physical based shader in the 'Antarctica' render pipeline of
     SuperTuxKart. This class also stores shader specific properties for export.
     """
-
     bl_name = 'AntarcticaSolidPBR'
     bl_label = "Antarctica Solid PBR"
     bl_description = "Simulates the SuperTuxKart Solid PBR shader"
-    bl_width_default = 280
-    bl_width_min = 200
 
-    def __get_colorizable(self):
-        """Getter of the colorizable toggle."""
-        return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
+    def __update_data(self, context):
+        self._set_texture('Data Map', self.data_map)
 
-    def __set_colorizable(self, value):
-        """Setter of the colorizable toggle."""
-        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
+    def __update_normal(self, context):
+        self._set_texture('Normal Map', self.normal_map)
 
-    def __get_hue(self):
-        """Getter of the currently displayed hue value."""
-        return self.node_tree.nodes['Hue'].outputs[0].default_value
+    def __update_colorization(self, context):
+        self._set_texture('Colorization Mask', self.colorization_mask)
 
-    def __set_hue(self, value):
-        """Setter of the currently displayed hue value."""
-        self.node_tree.nodes['Hue'].outputs[0].default_value = value
+    # Texture properties
+    data_map: PointerProperty(
+        type=bpy.types.Image,
+        name="Data Map",
+        update=__update_data
+    )
+    normal_map: PointerProperty(
+        type=bpy.types.Image,
+        name="Normal Map",
+        update=__update_normal
+    )
+    colorization_mask: PointerProperty(
+        type=bpy.types.Image,
+        name="Colorization Mask",
+        update=__update_colorization
+    )
 
     # Colorization and hue properties
-
-    prop_colorizable: bpy.props.BoolProperty(
+    colorizable: BoolProperty(
         name="Colorizable",
         default=False,
-        get=__get_colorizable,
-        set=__set_colorizable
+        get=AntarcticaMixin._get_colorizable,
+        set=AntarcticaMixin._set_colorizable
     )
-    prop_colorizationFactor: bpy.props.FloatProperty(
+    colorization_factor: FloatProperty(
         name="Colorization Factor",
         default=0.0,
+        min=0.0,
+        max=2.5,
         soft_min=0.0,
-        precision=3
+        soft_max=1.2,
+        precision=3,
+        get=AntarcticaMixin._get_colorization_factor,
+        set=AntarcticaMixin._set_colorization_factor
     )
-    prop_hue: bpy.props.FloatProperty(
-        name="Hue",
+    hue: FloatProperty(
+        name="Hue Preview",
         default=0.0,
         soft_min=0.0,
         soft_max=1.0,
         precision=3,
-        get=__get_hue,
-        set=__set_hue
+        get=AntarcticaMixin._get_hue,
+        set=AntarcticaMixin._set_hue
     )
-    prop_hueSelect: bpy.props.StringProperty(
+    hue_select: StringProperty(
         name="Hue Selection",
         default=''
     )
 
     @staticmethod
-    def setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_colorizationMask, nd_hue):
+    def setup_vertexcolor(nt: NodeTree, nds_color: NodeSocket):
+        """Setup a node tree in a given node group object and return the node socket that represents the color output.
+        This is the texture color mixed with the vertex color data.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nds_color : bpy.types.NodeSocketColor
+            The color value that should be mixed with the vertex colors
+
+        Returns
+        -------
+        bpy.types.NodeSocketColor
+            An output node socket with the resulting color
+        """
+        nd_vertex = nt.nodes.new('ShaderNodeVertexColor')
+        nd_gt = nt.nodes.new('ShaderNodeMath')
+        nd_mix = nt.nodes.new('ShaderNodeMixRGB')
+
+        nd_gt.operation = 'GREATER_THAN'
+        nd_gt.use_clamp = True
+        nd_gt.inputs[1].default_value = 0.0
+        nd_mix.blend_type = 'MULTIPLY'
+        nd_mix.inputs['Fac'].default_value = 1.0
+
+        nt.links.new(nds_color, nd_mix.inputs['Color1'])
+        nt.links.new(nd_gt.outputs[0], nd_mix.inputs['Fac'])
+        nt.links.new(nd_vertex.outputs['Color'], nd_gt.inputs[0])
+        nt.links.new(nd_vertex.outputs['Color'], nd_mix.inputs['Color2'])
+
+        return nd_mix.outputs[0]
+
+    @staticmethod
+    def setup_colorization_mask(nt: NodeTree, nds_tex_alpha: NodeSocket, nds_mask_alpha: NodeSocket,
+                                nds_colorizable: NodeSocket, nds_colorization_factor: NodeSocket):
+        """Setup a node tree in a given node group object and return the node socket that represents the masking output.
+        This is the default colorization mask interpretation simulating the one from the Antarctica shaders.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nds_tex_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the main material texture
+        nds_mask_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the mask texture
+        nds_colorizable : bpy.types.NodeSocketFloat
+            A value used as multiplier for the colorization amount
+        nds_colorization_factor : bpy.types.NodeSocketFloat
+            A value representing the applied colorization factor
+
+        Returns
+        -------
+        bpy.types.NodeSocketFloat
+            An output node socket with the resulting alpha mask value
+        """
+        # For masking colorization (enable/disable)
+        nd_mask_lt = nt.nodes.new('ShaderNodeMath')
+        nd_mask_add = nt.nodes.new('ShaderNodeMath')
+
+        # For combining mask and texture alpha values
+        nd_combine_min = nt.nodes.new('ShaderNodeMath')
+        nd_combine_mul = nt.nodes.new('ShaderNodeMath')
+        nd_combine_lt = nt.nodes.new('ShaderNodeMath')
+        nd_combine_range = nt.nodes.new('ShaderNodeMapRange')
+
+        nd_mask_lt.operation = 'LESS_THAN'
+        nd_mask_lt.inputs[1].default_value = 1.0   # toggle on < 1.0
+        nd_mask_lt.use_clamp = True
+        nd_mask_add.operation = 'ADD'
+        nd_mask_add.use_clamp = True
+
+        nd_combine_min.operation = 'MINIMUM'
+        nd_combine_min.use_clamp = True
+        nd_combine_mul.operation = 'MULTIPLY'
+        nd_combine_mul.inputs[1].default_value = 0.4    # 102 / 255 (input ranging from 0.0 to 2.5)
+        nd_combine_mul.use_clamp = True
+        nd_combine_lt.operation = 'LESS_THAN'
+        nd_combine_lt.inputs[1].default_value = 0.5    # toggle on < 0.5
+        nd_combine_lt.use_clamp = True
+        nd_combine_range.interpolation_type = 'LINEAR'
+        nd_combine_range.inputs['From Min'].default_value = 0.0
+        nd_combine_range.inputs['From Max'].default_value = 1.0
+        nd_combine_range.clamp = True
+
+        # Masking colorization
+        nt.links.new(nds_colorizable, nd_mask_lt.inputs[0])
+        nt.links.new(nd_mask_lt.outputs[0], nd_mask_add.inputs[0])
+
+        # Masking colorization
+        nt.links.new(nds_tex_alpha, nd_combine_min.inputs[0])
+        nt.links.new(nds_mask_alpha, nd_combine_min.inputs[1])
+        nt.links.new(nds_colorization_factor, nd_combine_mul.inputs[0])
+        nt.links.new(nd_combine_min.outputs[0], nd_combine_lt.inputs[0])
+        nt.links.new(nd_combine_lt.outputs[0], nd_combine_range.inputs['Value'])
+        nt.links.new(nd_combine_min.outputs[0], nd_combine_range.inputs['To Min'])
+        nt.links.new(nd_combine_mul.outputs[0], nd_combine_range.inputs['To Max'])
+        nt.links.new(nd_combine_range.outputs[0], nd_mask_add.inputs[1])
+
+        return nd_mask_add.outputs[0]
+
+    @staticmethod
+    def setup_colorization(nt: NodeTree, nds_color: NodeSocket, nds_mask_alpha: NodeSocket, nds_hue: NodeSocket):
+        """Setup a node tree in a given node group object and return the node socket that represents the colorization
+        output. This is the default colorization interpretation simulating the one from the Antarctica shaders.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nds_color : bpy.types.NodeSocketColor
+            The color value that should be colorized
+        nds_mask_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the mask texture
+        nds_hue : bpy.types.NodeSocketFloat
+            A value used for colorization hue shift
+
+        Returns
+        -------
+        bpy.types.NodeSocketColor
+            An output node socket with the resulting color value
+        """
+        # For masking colorization (enable/disable)
+        nd_mask_value_gt = nt.nodes.new('ShaderNodeMath')
+        nd_mask_color_gt = nt.nodes.new('ShaderNodeMath')
+
+        # Split/combine hsv colors
+        nd_hsv_separate = nt.nodes.new('ShaderNodeSeparateHSV')
+        nd_hsv_combine = nt.nodes.new('ShaderNodeCombineHSV')
+
+        # Controlling the saturation (colorizatino factor can alter the mask alpha)
+        nd_saturation_mul = nt.nodes.new('ShaderNodeMath')
+        nd_saturation_max = nt.nodes.new('ShaderNodeMath')
+        nd_saturation_range = nt.nodes.new('ShaderNodeMapRange')
+
+        # Hue
+        nd_hue_range = nt.nodes.new('ShaderNodeMapRange')
+        nd_hue_mix = nt.nodes.new('ShaderNodeMixRGB')
+
+        nd_mask_value_gt.operation = 'GREATER_THAN'
+        nd_mask_value_gt.inputs[0].default_value = 0.5    # toggle on <= 0.5
+        nd_mask_value_gt.use_clamp = True
+        nd_mask_color_gt.operation = 'GREATER_THAN'
+        nd_mask_color_gt.inputs[1].default_value = 0.0    # toggle on > 0.0
+        nd_mask_color_gt.use_clamp = True
+
+        nd_saturation_mul.operation = 'MULTIPLY'
+        nd_saturation_mul.use_clamp = False
+        nd_saturation_mul.inputs[1].default_value = 2.5  # alpha * 0.4 * 2.5 = alpha
+        nd_saturation_max.operation = 'MAXIMUM'
+        nd_saturation_max.use_clamp = False
+        nd_saturation_range.interpolation_type = 'LINEAR'
+        nd_saturation_range.inputs['From Min'].default_value = 0.0
+        nd_saturation_range.inputs['From Max'].default_value = 1.0
+        nd_saturation_range.clamp = True
+
+        nd_hue_range.interpolation_type = 'LINEAR'
+        nd_hue_range.inputs['From Min'].default_value = 0.0
+        nd_hue_range.inputs['From Max'].default_value = 1.0
+        nd_hue_range.clamp = True
+        nd_hue_mix.blend_type = 'MIX'
+        nd_hue_mix.use_clamp = True
+
+        nt.links.new(nds_mask_alpha, nd_mask_value_gt.inputs[1])
+        nt.links.new(nd_mask_value_gt.outputs[0], nd_hue_range.inputs['Value'])
+        nt.links.new(nd_mask_value_gt.outputs[0], nd_saturation_range.inputs['Value'])
+        nt.links.new(nds_hue, nd_mask_color_gt.inputs[0])
+        nt.links.new(nd_mask_color_gt.outputs[0], nd_hue_mix.inputs['Fac'])
+
+        nt.links.new(nds_color, nd_hsv_separate.inputs[0])
+        nt.links.new(nd_hsv_separate.outputs['V'], nd_hsv_combine.inputs['V'])
+        nt.links.new(nds_color, nd_hue_mix.inputs['Color1'])
+        nt.links.new(nd_hsv_combine.outputs[0], nd_hue_mix.inputs['Color2'])
+
+        nt.links.new(nds_mask_alpha, nd_saturation_mul.inputs[0])
+        nt.links.new(nd_hsv_separate.outputs['S'], nd_saturation_max.inputs[0])
+        nt.links.new(nd_hsv_separate.outputs['S'], nd_saturation_range.inputs['To Min'])
+        nt.links.new(nd_saturation_mul.outputs[0], nd_saturation_max.inputs[1])
+        nt.links.new(nd_saturation_max.outputs[0], nd_saturation_range.inputs['To Max'])
+        nt.links.new(nd_saturation_range.outputs[0], nd_hsv_combine.inputs['S'])
+
+        nt.links.new(nd_hsv_separate.outputs['H'], nd_hue_range.inputs['To Min'])
+        nt.links.new(nds_hue, nd_hue_range.inputs['To Max'])
+        nt.links.new(nd_hue_range.outputs[0], nd_hsv_combine.inputs['H'])
+
+        return nd_hue_mix.outputs[0]
+
+    @staticmethod
+    def setup_basecolor(nt: NodeTree, nds_tex_color: NodeSocket, nds_tex_alpha: NodeSocket, nds_mask_alpha: NodeSocket,
+                        nds_colorizable: NodeSocket, nds_colorization_factor: NodeSocket, nds_hue: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
         This is the default base color for simulating the Antarctica PBR shader.
 
@@ -99,120 +392,147 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         ----------
         nt : bpy.types.ShaderNodeTree
             The node tree which should be populated
-        nd_mainTex : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the main material texture
-        nd_colorizable : bpy.types.ShaderNodeValue
-            A value node used as multiplier for the colorization amount
-        nd_colorizationMask : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the colorization
-        nd_hue : bpy.types.ShaderNodeValue
-            A value node used for colorization hue shift
+        nds_tex_color : bpy.types.NodeSocketColor
+            The image texture color of the main material texture
+        nds_tex_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the main material texture
+        nds_mask_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the mask texture
+        nds_colorizable : bpy.types.NodeSocketFloat
+            A value used as multiplier for the colorization amount
+        nds_colorization_factor : bpy.types.NodeSocketFloat
+            A value representing the applied colorization factor
+        nds_hue : bpy.types.NodeSocketFloat
+            A value used for colorization hue shift
 
         Returns
         -------
         bpy.types.NodeSocketColor
             An output node socket with the resulting color
         """
-        nd_saturation = nt.nodes.new('ShaderNodeHueSaturation')
-        nd_hue_add = nt.nodes.new('ShaderNodeMath')
-        nd_colorize_multiply = nt.nodes.new('ShaderNodeMath')
-        nd_colorize_add = nt.nodes.new('ShaderNodeMath')
-        nd_colorize_subtract = nt.nodes.new('ShaderNodeMath')
-        nd_vertex = nt.nodes.new('ShaderNodeVertexColor')
-        nd_vertex_gt = nt.nodes.new('ShaderNodeMath')
-        nd_vertex_mix = nt.nodes.new('ShaderNodeMixRGB')
-
-        nd_hue_add.operation = 'ADD'
-        nd_hue_add.inputs[1].default_value = 0.5
-
-        nd_colorize_multiply.operation = 'MULTIPLY'
-        nd_colorize_multiply.use_clamp = True
-        nd_colorize_add.operation = 'ADD'
-        nd_colorize_add.use_clamp = True
-        nd_colorize_subtract.operation = 'SUBTRACT'
-        nd_colorize_subtract.use_clamp = True
-        nd_colorize_subtract.inputs[0].default_value = 1.0
-
-        nd_vertex.outputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
-
-        nd_vertex_gt.operation = 'GREATER_THAN'
-        nd_vertex_gt.use_clamp = True
-        nd_vertex_gt.inputs[1].default_value = 0.0
-        nd_vertex_mix.blend_type = 'MULTIPLY'
-        nd_vertex_mix.inputs['Fac'].default_value = 1.0
-
-        # Hue/saturation hue input
-        nt.links.new(nd_hue_add.outputs[0], nd_saturation.inputs['Hue'])
-        nt.links.new(nd_hue.outputs[0], nd_hue_add.inputs[0])
-
-        # Hue/stauration factor input
-        nt.links.new(nd_colorize_multiply.outputs[0], nd_saturation.inputs['Fac'])
-        nt.links.new(nd_colorize_add.outputs[0], nd_colorize_multiply.inputs[0])
-        nt.links.new(nd_colorizable.outputs[0], nd_colorize_multiply.inputs[1])
-        nt.links.new(nd_colorize_subtract.outputs[0], nd_colorize_add.inputs[0])
-        nt.links.new(nd_colorizationMask.outputs['Color'], nd_colorize_add.inputs[1])
-        nt.links.new(nd_mainTex.outputs['Alpha'], nd_colorize_subtract.inputs[1])
-
-        # Hue/stauration color input
-        nt.links.new(nd_vertex_mix.outputs[0], nd_saturation.inputs['Color'])
-        nt.links.new(nd_mainTex.outputs['Color'], nd_vertex_mix.inputs['Color1'])
-        nt.links.new(nd_vertex_gt.outputs[0], nd_vertex_mix.inputs['Fac'])
-        nt.links.new(nd_vertex.outputs['Color'], nd_vertex_gt.inputs[0])
-        nt.links.new(nd_vertex.outputs['Color'], nd_vertex_mix.inputs['Color2'])
-
-        return nd_saturation.outputs[0]
+        nds_color = AntarcticaSolidPBR.setup_vertexcolor(nt, nds_tex_color)
+        nds_colorization_mask = AntarcticaSolidPBR.setup_colorization_mask(
+            nt,
+            nds_tex_alpha,
+            nds_mask_alpha,
+            nds_colorizable,
+            nds_colorization_factor
+        )
+        return AntarcticaSolidPBR.setup_colorization(nt, nds_color, nds_colorization_mask, nds_hue)
 
     @staticmethod
-    def setup_datamap(nt, nd_mainTex, nd_dataMap):
+    def setup_emission(nt: NodeTree, nds_color: NodeSocket, nds_glow: NodeSocket):
+        """Setup a node tree in a given node group object and return the node socket that represents the emission
+        output. This is the default emission implementation for simulating the one of the Antarctica shaders.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nds_color : bpy.types.NodeSocketColor
+            The color of the emission
+        nds_glow : bpy.types.NodeSocketFloat
+            The glow intensity value
+
+        Returns
+        -------
+        bpy.types.NodeSocketColor
+            An output node socket with the resulting emission color
+        """
+        # Emission color intensity
+        nd_emission_pow = nt.nodes.new('ShaderNodeMixRGB')
+        nd_emission_mul = nt.nodes.new('ShaderNodeMixRGB')
+        nd_emission_add = nt.nodes.new('ShaderNodeMixRGB')
+
+        # Glow intensity
+        nd_glow_pow = nt.nodes.new('ShaderNodeMath')
+        nd_glow_mul = nt.nodes.new('ShaderNodeMath')
+
+        # Mix (multiply) output
+        nd_mix_mul = nt.nodes.new('ShaderNodeMixRGB')
+
+        nd_emission_pow.blend_type = 'MULTIPLY'
+        nd_emission_pow.inputs['Fac'].default_value = 1.0
+        nd_emission_pow.use_clamp = False
+        nd_emission_mul.blend_type = 'MULTIPLY'
+        nd_emission_mul.inputs['Fac'].default_value = 1.0
+        nd_emission_mul.use_clamp = False
+        nd_emission_add.blend_type = 'ADD'
+        nd_emission_add.inputs['Fac'].default_value = 1.0
+        nd_emission_add.use_clamp = False
+
+        nd_glow_pow.operation = 'MULTIPLY'
+        nd_glow_pow.use_clamp = True
+        nd_glow_mul.operation = 'MULTIPLY'
+        nd_glow_mul.inputs[1].default_value = 10.0    # 10x
+        nd_glow_mul.use_clamp = False
+
+        nd_mix_mul.blend_type = 'MULTIPLY'
+        nd_mix_mul.inputs['Fac'].default_value = 1.0
+        nd_mix_mul.use_clamp = False
+
+        nt.links.new(nds_color, nd_emission_pow.inputs['Color1'])
+        nt.links.new(nds_color, nd_emission_pow.inputs['Color2'])
+        nt.links.new(nds_color, nd_emission_add.inputs['Color1'])
+        nt.links.new(nd_emission_pow.outputs[0], nd_emission_mul.inputs['Color1'])
+        nt.links.new(nd_emission_mul.outputs[0], nd_emission_add.inputs['Color2'])
+
+        nt.links.new(nds_glow, nd_glow_pow.inputs[0])
+        nt.links.new(nds_glow, nd_glow_pow.inputs[1])
+        nt.links.new(nd_glow_pow.outputs[0], nd_glow_mul.inputs[0])
+        nt.links.new(nd_glow_mul.outputs[0], nd_emission_mul.inputs['Color2'])
+
+        nt.links.new(nd_emission_add.outputs[0], nd_mix_mul.inputs['Color1'])
+        nt.links.new(nds_glow, nd_mix_mul.inputs['Color2'])
+
+        return nd_mix_mul.outputs[0]
+
+    @staticmethod
+    def setup_datamap(nt: NodeTree, nds_color: NodeSocket, nds_data: NodeSocket):
         """Setup a node tree in a given node group object and return a tuple containing the node sockets that represents
-        the data output values 'specular', 'diffuse' and 'emission'.
+        the data output values 'roughness', 'metallic' and 'emission'.
         This is the default data interpretation for simulating the Antarctica PBR shader.
 
         Parameters
         ----------
         nt : bpy.types.ShaderNodeTree
             The node tree which should be populated
-        nd_mainTex : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the main material texture
-        nd_dataMap : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the data map texture
+        nds_color : bpy.types.NodeSocketColor
+            The base color value of the material
+        nds_data : bpy.types.NodeSocketColor
+            The color of the data map
 
         Returns
         -------
         (bpy.types.NodeSocketFloat, bpy.types.NodeSocketFloat, bpy.types.NodeSocketColor)
-            The output node sockets for (specular, diffuse, emission)
+            The output node sockets for (roughness, metallic, emission)
         """
         nd_gloss_separate = nt.nodes.new('ShaderNodeSeparateRGB')
         nd_diffuse_invert = nt.nodes.new('ShaderNodeMath')
-        nd_emission_mix = nt.nodes.new('ShaderNodeMixRGB')
 
         nd_diffuse_invert.operation = 'SUBTRACT'
-        nd_diffuse_invert.use_clamp = True
         nd_diffuse_invert.inputs[0].default_value = 1.0
-        nd_emission_mix.blend_type = 'MIX'
-        nd_emission_mix.use_clamp = True
-        nd_emission_mix.inputs['Color1'].default_value = (0.0, 0.0, 0.0, 0.0)
+        nd_diffuse_invert.use_clamp = True
 
-        nt.links.new(nd_gloss_separate.outputs['G'], nd_diffuse_invert.inputs[1])
-        nt.links.new(nd_gloss_separate.outputs['B'], nd_emission_mix.inputs['Fac'])
-        nt.links.new(nd_dataMap.outputs['Color'], nd_gloss_separate.inputs[0])
-        nt.links.new(nd_mainTex.outputs['Color'], nd_emission_mix.inputs['Color2'])
+        nt.links.new(nds_data, nd_gloss_separate.inputs[0])
+        nt.links.new(nd_gloss_separate.outputs['R'], nd_diffuse_invert.inputs[1])
 
-        # Return (specular, diffuse, emission)
-        return (nd_gloss_separate.outputs['R'], nd_diffuse_invert.outputs[0], nd_emission_mix.outputs[0])
+        nds_emission = AntarcticaSolidPBR.setup_emission(nt, nds_color, nd_gloss_separate.outputs['B'])
+
+        # Return (roughness, metallic, emission)
+        return (nd_diffuse_invert.outputs[0], nd_gloss_separate.outputs['G'], nds_emission)
 
     @staticmethod
-    def setup_normal(nt, nd_normalMap):
+    def setup_normal(nt: NodeTree, nds_normal_color: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the materials
-        normal vector.
-        This is the default normals calculation for simulating the Antarctica PBR shader.
+        normal vector. This is the default normals calculation for simulating the Antarctica PBR shader.
 
         Parameters
         ----------
         nt : bpy.types.ShaderNodeTree
             The node tree which should be populated
-        nd_normalMap : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the normal map texture
+        nds_normal_color : bpy.types.ShaderNodeTexImage
+            The color of the normal map
 
         Returns
         -------
@@ -231,50 +551,56 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         nt.links.new(nd_normal_mix.outputs[0], nd_normal_mapping.inputs['Color'])
         nt.links.new(nd_normal_gt.outputs[0], nd_normal_mix.inputs['Fac'])
-        nt.links.new(nd_normalMap.outputs['Color'], nd_normal_gt.inputs[0])
-        nt.links.new(nd_normalMap.outputs['Color'], nd_normal_mix.inputs['Color2'])
+        nt.links.new(nds_normal_color, nd_normal_gt.inputs[0])
+        nt.links.new(nds_normal_color, nd_normal_mix.inputs['Color2'])
 
         return nd_normal_mapping.outputs[0]
 
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        nt_name = '.' + self.bl_name + '_nodetree'
+        nt_name = f".{self.bl_name}_nodetree"
         nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
         nd_output = nt.nodes.new('NodeGroupOutput')
         nd_principled = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        nd_principled.inputs['Specular'].default_value = PBR_SPECULAR_VALUE
 
         # Image texture for main texture
-        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
-        nd_mainTex.name = 'Main Texture'
+        nd_main_tex = nt.nodes.new('ShaderNodeTexImage')
+        nd_main_tex.name = 'Main Texture'
 
         # Image texture for PBR data (gloss) map
-        nd_dataMap = nt.nodes.new('ShaderNodeTexImage')
-        nd_dataMap.name = 'Data Map'
+        nd_data_map = nt.nodes.new('ShaderNodeTexImage')
+        nd_data_map.name = 'Data Map'
 
-        # PBR data maps color is treated as data
-        if nd_dataMap.image:
-            nd_dataMap.image.colorspace_settings.is_data = True
+        # PBR data map color is treated as data
+        if nd_data_map.image:
+            nd_data_map.image.colorspace_settings.is_data = True
 
         # Image texture for normal map
-        nd_normalMap = nt.nodes.new('ShaderNodeTexImage')
-        nd_normalMap.name = 'Normal Map'
+        nd_normal_map = nt.nodes.new('ShaderNodeTexImage')
+        nd_normal_map.name = 'Normal Map'
 
-        # Normal maps color is treated as data
-        if nd_normalMap.image:
-            nd_normalMap.image.colorspace_settings.is_data = True
+        # Normal map color is treated as data
+        if nd_normal_map.image:
+            nd_normal_map.image.colorspace_settings.is_data = True
 
         # Image texture for colorization mask
-        nd_colorizationMask = nt.nodes.new('ShaderNodeTexImage')
-        nd_colorizationMask.name = 'Colorization Mask'
+        nd_colorization_mask = nt.nodes.new('ShaderNodeTexImage')
+        nd_colorization_mask.name = 'Colorization Mask'
 
         # Colorization multiplier (for masking/enabling colorization)
         nd_colorizable = nt.nodes.new('ShaderNodeValue')
         nd_colorizable.name = 'Colorizable'
         nd_colorizable.outputs[0].default_value = 0.0
+
+        # Colorization factor (for tweaking saturation)
+        nd_colorization_factor = nt.nodes.new('ShaderNodeValue')
+        nd_colorization_factor.name = 'Colorization Factor'
+        nd_colorization_factor.outputs[0].default_value = 0.0
 
         # Colorization hue
         nd_hue = nt.nodes.new('ShaderNodeValue')
@@ -283,65 +609,60 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         nt.links.new(nd_principled.outputs[0], nd_output.inputs[0])
 
-        nds_basecolor = self.setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_colorizationMask, nd_hue)
-        nds_pbr = self.setup_datamap(nt, nd_mainTex, nd_dataMap)
-        nds_normal = self.setup_normal(nt, nd_normalMap)
+        # Build tree
+        nds_basecolor = self.setup_basecolor(
+            nt,
+            nd_main_tex.outputs['Color'],
+            nd_main_tex.outputs['Alpha'],
+            nd_colorization_mask.outputs['Alpha'],
+            nd_colorizable.outputs[0],
+            nd_colorization_factor.outputs[0],
+            nd_hue.outputs[0]
+        )
+        nds_data = self.setup_datamap(nt, nd_main_tex.outputs['Color'], nd_data_map.outputs['Color'])
+        nds_normal = self.setup_normal(nt, nd_normal_map.outputs['Color'])
 
         nt.links.new(nds_basecolor, nd_principled.inputs['Base Color'])
-        nt.links.new(nds_pbr[0], nd_principled.inputs['Specular'])
-        nt.links.new(nds_pbr[1], nd_principled.inputs['Metallic'])
-        nt.links.new(nds_pbr[1], nd_principled.inputs['Roughness'])
-        nt.links.new(nds_pbr[2], nd_principled.inputs['Emission'])
+        nt.links.new(nds_data[0], nd_principled.inputs['Roughness'])
+        nt.links.new(nds_data[1], nd_principled.inputs['Metallic'])
+        nt.links.new(nds_data[2], nd_principled.inputs['Emission'])
         nt.links.new(nds_normal, nd_principled.inputs['Normal'])
 
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
-        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+        prop_layout.template_ID(self, 'main_texture', new='image.new', open='image.open')
 
         # Data (gloss) map texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Data Map")
-        prop_layout.template_ID(self.node_tree.nodes['Data Map'], 'image', new='image.new', open='image.open')
+        prop_layout.template_ID(self, 'data_map', new='image.new', open='image.open')
 
         # Normal map texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Normal Map")
-        prop_layout.template_ID(self.node_tree.nodes['Normal Map'], 'image', new='image.new', open='image.open')
+        prop_layout.template_ID(self, 'normal_map', new='image.new', open='image.open')
 
         layout.separator()
 
         # Colorization properties
-        layout.prop(self, 'prop_colorizable')
+        layout.prop(self, 'colorizable')
 
-        if self.prop_colorizable:
-            prop_layout = layout.row().split(factor=0.3)
+        if self.colorizable:
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Colorization Mask")
-            prop_layout.template_ID(
-                self.node_tree.nodes['Colorization Mask'],
-                'image',
-                new='image.new',
-                open='image.open'
-            )
+            prop_layout.template_ID(self, 'colorization_mask', new='image.new', open='image.open')
 
-            layout.prop(self, 'prop_colorizationFactor')
-            layout.prop(self, 'prop_hue')
-            prop_layout = layout.row().split(factor=0.3)
+            layout.prop(self, 'colorization_factor')
+            layout.prop(self, 'hue')
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Hue Selection")
-            prop_layout.prop(self, 'prop_hueSelect', text="")
+            prop_layout.prop(self, 'hue_select', text="")
 
 
 class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
@@ -349,59 +670,59 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     Represents a shader node that simulates the cutout (alpha-test) physical based shader in the 'Antarctica' render
     pipeline of SuperTuxKart. This class also stores shader specific properties for export.
     """
-
     bl_name = 'AntarcticaCutoutPBR'
     bl_label = "Antarctica Cutout PBR"
     bl_description = "Simulates the SuperTuxKart Cutout PBR shader"
-    bl_width_default = 280
-    bl_width_min = 200
 
-    def __get_colorizable(self):
-        """Internal getter of the colorizable toggle."""
-        return self.node_tree.nodes['Colorizable'].outputs[0].default_value == 1.0
+    def __update_data(self, context):
+        self._set_texture('Data Map', self.data_map)
 
-    def __set_colorizable(self, value):
-        """Internal setter of the colorizable toggle."""
-        self.node_tree.nodes['Colorizable'].outputs[0].default_value = 1.0 if value else 0.0
+    def __update_normal(self, context):
+        self._set_texture('Normal Map', self.normal_map)
 
-    def __get_hue(self):
-        """Internal getter of the currently displayed hue value."""
-        return self.node_tree.nodes['Hue'].outputs[0].default_value
+    def __update_alpha(self, context):
+        self._set_texture('Alpha Mask', self.alpha_mask)
 
-    def __set_hue(self, value):
-        """Internal setter of the currently displayed hue value."""
-        self.node_tree.nodes['Hue'].outputs[0].default_value = value
+    # Texture properties
+    data_map: PointerProperty(
+        type=bpy.types.Image,
+        name="Data Map",
+        update=__update_data
+    )
+    normal_map: PointerProperty(
+        type=bpy.types.Image,
+        name="Normal Map",
+        update=__update_normal
+    )
+    alpha_mask: PointerProperty(
+        type=bpy.types.Image,
+        name="Alpha Mask",
+        update=__update_alpha
+    )
 
     # Colorization and hue properties
-
-    prop_colorizable: bpy.props.BoolProperty(
+    colorizable: BoolProperty(
         name="Colorizable",
         default=False,
-        get=__get_colorizable,
-        set=__set_colorizable
+        get=AntarcticaMixin._get_colorizable,
+        set=AntarcticaMixin._set_colorizable
     )
-    prop_colorizationFactor: bpy.props.FloatProperty(
-        name="Colorization Factor",
-        default=0.0,
-        soft_min=0.0,
-        precision=3
-    )
-    prop_hue: bpy.props.FloatProperty(
-        name="Hue",
+    hue: FloatProperty(
+        name="Hue Preview",
         default=0.0,
         soft_min=0.0,
         soft_max=1.0,
         precision=3,
-        get=__get_hue,
-        set=__set_hue
+        get=AntarcticaMixin._get_hue,
+        set=AntarcticaMixin._set_hue
     )
-    prop_hueSelect: bpy.props.StringProperty(
+    hue_select: StringProperty(
         name="Hue Selection",
         default=''
     )
 
     @staticmethod
-    def setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_hue):
+    def setup_basecolor(nt: NodeTree, nds_tex_color: NodeSocket, nds_colorizable: NodeSocket, nds_hue: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
         This is the default base color for simulating the Antarctica PBR shader.
 
@@ -409,81 +730,65 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         ----------
         nt : bpy.types.ShaderNodeTree
             The node tree which should be populated
-        nd_mainTex : bpy.types.ShaderNodeTexImage
-            The image texture node that provides the main material texture
-        nd_colorizable : bpy.types.ShaderNodeValue
-            A value node used as multiplier for the colorization amount
-        nd_hue : bpy.types.ShaderNodeValue
-            A value node used for colorization hue shift
+        nds_tex_color : bpy.types.NodeSocketColor
+            The image texture color of the main material texture
+        nds_colorizable : bpy.types.NodeSocketFloat
+            A value used as multiplier for the colorization amount
+        nds_hue : bpy.types.NodeSocketFloat
+            A value used for colorization hue shift
 
         Returns
         -------
-        (bpy.types.NodeSocketColor, bpy.types.NodeSocketFloat)
-            The output node sockets for (color, alpha)
+        bpy.types.NodeSocketColor
+            An output node socket with the resulting color
         """
-        nd_saturation = nt.nodes.new('ShaderNodeHueSaturation')
-        nd_hue_add = nt.nodes.new('ShaderNodeMath')
-        nd_vertex = nt.nodes.new('ShaderNodeVertexColor')
-        nd_vertex_gt = nt.nodes.new('ShaderNodeMath')
-        nd_vertex_mix = nt.nodes.new('ShaderNodeMixRGB')
-        nd_alpha_compare = nt.nodes.new('ShaderNodeMath')
+        # For masking colorization (enable/disable)
+        nd_mask_lt = nt.nodes.new('ShaderNodeMath')
 
-        nd_hue_add.operation = 'ADD'
-        nd_hue_add.inputs[1].default_value = 0.5
+        nd_mask_lt.operation = 'LESS_THAN'
+        nd_mask_lt.inputs[1].default_value = 1.0   # toggle on < 1.0
+        nd_mask_lt.use_clamp = True
 
-        nd_vertex.outputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+        nt.links.new(nds_colorizable, nd_mask_lt.inputs[0])
 
-        nd_vertex_gt.operation = 'GREATER_THAN'
-        nd_vertex_gt.use_clamp = True
-        nd_vertex_gt.inputs[1].default_value = 0.0
-        nd_vertex_mix.blend_type = 'MULTIPLY'
-        nd_vertex_mix.inputs['Fac'].default_value = 1.0
-
-        nd_alpha_compare.operation = 'COMPARE'
-        nd_alpha_compare.use_clamp = True
-        nd_alpha_compare.inputs[1].default_value = 1.0
-
-        # Hue/saturation hue input
-        nt.links.new(nd_hue_add.outputs[0], nd_saturation.inputs['Hue'])
-        nt.links.new(nd_hue.outputs[0], nd_hue_add.inputs[0])
-
-        # Hue/stauration factor input
-        nt.links.new(nd_colorizable.outputs[0], nd_saturation.inputs['Fac'])
-
-        # Hue/stauration color input
-        nt.links.new(nd_vertex_mix.outputs[0], nd_saturation.inputs['Color'])
-        nt.links.new(nd_mainTex.outputs['Color'], nd_vertex_mix.inputs['Color1'])
-        nt.links.new(nd_vertex_gt.outputs[0], nd_vertex_mix.inputs['Fac'])
-        nt.links.new(nd_vertex.outputs['Color'], nd_vertex_gt.inputs[0])
-        nt.links.new(nd_vertex.outputs['Color'], nd_vertex_mix.inputs['Color2'])
-
-        # Alpha value input
-        nt.links.new(nd_mainTex.outputs['Alpha'], nd_alpha_compare.inputs[0])
-
-        return (nd_saturation.outputs[0], nd_alpha_compare.outputs[0])
+        nds_color = AntarcticaSolidPBR.setup_vertexcolor(nt, nds_tex_color)
+        return AntarcticaSolidPBR.setup_colorization(nt, nds_color, nd_mask_lt.outputs[0], nds_hue)
 
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
         # Setup node tree
-        nt_name = '.' + self.bl_name + '_nodetree'
+        nt_name = f".{self.bl_name}_nodetree"
         nt = bpy.data.node_groups.new(nt_name, 'ShaderNodeTree')
         nt.outputs.new('NodeSocketShader', 'Output')
 
         # Output node
         nd_output = nt.nodes.new('NodeGroupOutput')
         nd_principled = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        nd_principled.inputs['Specular'].default_value = PBR_SPECULAR_VALUE
 
         # Image texture for main texture
-        nd_mainTex = nt.nodes.new('ShaderNodeTexImage')
-        nd_mainTex.name = 'Main Texture'
+        nd_main_tex = nt.nodes.new('ShaderNodeTexImage')
+        nd_main_tex.name = 'Main Texture'
 
         # Image texture for PBR data (gloss) map
-        nd_dataMap = nt.nodes.new('ShaderNodeTexImage')
-        nd_dataMap.name = 'Data Map'
+        nd_data_map = nt.nodes.new('ShaderNodeTexImage')
+        nd_data_map.name = 'Data Map'
 
-        # PBR data maps color is treated as data
-        if nd_dataMap.image:
-            nd_dataMap.image.colorspace_settings.is_data = True
+        # PBR data map color is treated as data
+        if nd_data_map.image:
+            nd_data_map.image.colorspace_settings.is_data = True
+
+        # Image texture for normal map
+        nd_normal_map = nt.nodes.new('ShaderNodeTexImage')
+        nd_normal_map.name = 'Normal Map'
+
+        # Normal map color is treated as data
+        if nd_normal_map.image:
+            nd_normal_map.image.colorspace_settings.is_data = True
+
+        # Image texture for alpha mask
+        nd_alpha_mask = nt.nodes.new('ShaderNodeTexImage')
+        nd_alpha_mask.name = 'Alpha Mask'
 
         # Colorization multiplier (for masking/enabling colorization)
         nd_colorizable = nt.nodes.new('ShaderNodeValue')
@@ -497,50 +802,57 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         nt.links.new(nd_principled.outputs[0], nd_output.inputs[0])
 
-        nds_basecolor = self.setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_hue)
-        nds_pbr = AntarcticaSolidPBR.setup_datamap(nt, nd_mainTex, nd_dataMap)
+        # Build tree
+        nds_basecolor = self.setup_basecolor(
+            nt,
+            nd_main_tex.outputs['Color'],
+            nd_colorizable.outputs[0],
+            nd_hue.outputs[0]
+        )
+        nds_data = AntarcticaSolidPBR.setup_datamap(nt, nd_main_tex.outputs['Color'], nd_data_map.outputs['Color'])
+        nds_normal = AntarcticaSolidPBR.setup_normal(nt, nd_normal_map.outputs['Color'])
 
-        nt.links.new(nds_basecolor[0], nd_principled.inputs['Base Color'])
-        nt.links.new(nds_basecolor[1], nd_principled.inputs['Alpha'])
-        nt.links.new(nds_pbr[0], nd_principled.inputs['Specular'])
-        nt.links.new(nds_pbr[1], nd_principled.inputs['Metallic'])
-        nt.links.new(nds_pbr[1], nd_principled.inputs['Roughness'])
-        nt.links.new(nds_pbr[2], nd_principled.inputs['Emission'])
+        nt.links.new(nds_basecolor, nd_principled.inputs['Base Color'])
+        nt.links.new(nds_data[0], nd_principled.inputs['Roughness'])
+        nt.links.new(nds_data[1], nd_principled.inputs['Metallic'])
+        nt.links.new(nds_data[2], nd_principled.inputs['Emission'])
+        nt.links.new(nds_normal, nd_principled.inputs['Normal'])
 
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
-        prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
+        prop_layout.template_ID(self, 'main_texture', new='image.new', open='image.open')
 
         # Data (gloss) map texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Data Map")
-        prop_layout.template_ID(self.node_tree.nodes['Data Map'], 'image', new='image.new', open='image.open')
+        prop_layout.template_ID(self, 'data_map', new='image.new', open='image.open')
+
+        # Normal map texture
+        prop_layout = layout.row().split(factor=0.4)
+        prop_layout.label(text="Normal Map")
+        prop_layout.template_ID(self, 'normal_map', new='image.new', open='image.open')
+
+        # Alpha mask texture
+        prop_layout = layout.row().split(factor=0.4)
+        prop_layout.label(text="Alpha Mask")
+        prop_layout.template_ID(self, 'alpha_mask', new='image.new', open='image.open')
 
         layout.separator()
 
         # Colorization properties
-        layout.prop(self, 'prop_colorizable')
+        layout.prop(self, 'colorizable')
 
-        if self.prop_colorizable:
-            layout.prop(self, 'prop_colorizationFactor')
-            layout.prop(self, 'prop_hue')
-            prop_layout = layout.row().split(factor=0.3)
+        if self.colorizable:
+            layout.prop(self, 'hue')
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Hue Selection")
-            prop_layout.prop(self, 'prop_hueSelect', text="")
+            prop_layout.prop(self, 'hue_select', text="")
 
 
 class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
@@ -676,18 +988,10 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -697,7 +1001,7 @@ class AntarcticaTransparent(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         layout.prop(self, 'prop_mask')
 
         if self.prop_mask:
-            prop_layout = layout.row().split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Alpha Mask")
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
@@ -804,18 +1108,10 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup, AntarcticaM
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -825,7 +1121,7 @@ class AntarcticaTransparentAdditive(bpy.types.ShaderNodeCustomGroup, AntarcticaM
         layout.prop(self, 'prop_mask')
 
         if self.prop_mask:
-            prop_layout = layout.row().split(factor=0.3)
+            prop_layout = layout.row().split(factor=0.4)
             prop_layout.label(text="Alpha Mask")
             prop_layout.template_ID(self.node_tree.nodes['Alpha Mask'], 'image', new='image.new', open='image.open')
 
@@ -875,18 +1171,10 @@ class AntarcticaUnlit(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
         # Main texture
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Main Texture")
         prop_layout.template_ID(self.node_tree.nodes['Main Texture'], 'image', new='image.new', open='image.open')
 
@@ -941,19 +1229,19 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     )
     prop_texture3: bpy.props.PointerProperty(
         type=bpy.types.Image,
-        name="Texture Layer 2"
+        name="Texture Layer 3"
     )
     prop_texture4: bpy.props.PointerProperty(
         type=bpy.types.Image,
-        name="Texture Layer 2"
+        name="Texture Layer 4"
     )
     prop_texture5: bpy.props.PointerProperty(
         type=bpy.types.Image,
-        name="Texture Layer 2"
+        name="Texture Layer 5"
     )
     prop_mask: bpy.props.PointerProperty(
         type=bpy.types.Image,
-        name="Texture Layer 2"
+        name="Mask"
     )
 
     # Colorization and hue properties
@@ -1013,7 +1301,7 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nd_hue.outputs[0].default_value = 0.0
 
         # Default material
-        nd_principled.inputs['Specular'].default_value = 0.0
+        nd_principled.inputs['Specular'].default_value = PBR_SPECULAR_VALUE
         nd_principled.inputs['Roughness'].default_value = 1.0
 
         nds_basecolor = AntarcticaSolidPBR.setup_basecolor(nt, nd_mainTex, nd_colorizable, nd_colorizationMask, nd_hue)
@@ -1023,14 +1311,6 @@ class AntarcticaCustom(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         # Assign generated node tree
         self.node_tree = nt
-
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
 
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
@@ -1181,14 +1461,6 @@ class AntarcticaBackground(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         # Assign generated node tree
         self.node_tree = nt
-
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
 
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
@@ -1486,37 +1758,29 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         # Assign generated node tree
         self.node_tree = nt
 
-    def copy(self, node):
-        """Initialize a new instance of this node from an existing node."""
-        self.node_tree = node.node_tree.copy()
-
-    def free(self):
-        """Clean up node on removal"""
-        bpy.data.node_groups.remove(self.node_tree, do_unlink=True)
-
     def draw_buttons(self, context, layout):
         """Draw node buttons."""
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="North")
         prop_layout.template_ID(self.node_tree.nodes['Texture North'], 'image', new='image.new', open='image.open')
 
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="East")
         prop_layout.template_ID(self.node_tree.nodes['Texture East'], 'image', new='image.new', open='image.open')
 
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="South")
         prop_layout.template_ID(self.node_tree.nodes['Texture South'], 'image', new='image.new', open='image.open')
 
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="West")
         prop_layout.template_ID(self.node_tree.nodes['Texture West'], 'image', new='image.new', open='image.open')
 
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Top")
         prop_layout.template_ID(self.node_tree.nodes['Texture Top'], 'image', new='image.new', open='image.open')
 
-        prop_layout = layout.row().split(factor=0.3)
+        prop_layout = layout.row().split(factor=0.4)
         prop_layout.label(text="Bottom")
         prop_layout.template_ID(self.node_tree.nodes['Texture Bottom'], 'image', new='image.new', open='image.open')
 
@@ -1526,30 +1790,30 @@ class AntarcticaSkybox(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         if self.prop_use_map:
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="North")
             prop_layout.template_ID(self.node_tree.nodes['Ambient North'], 'image', new='image.new', open='image.open')
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="East")
             prop_layout.template_ID(self.node_tree.nodes['Ambient East'], 'image', new='image.new', open='image.open')
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="South")
             prop_layout.template_ID(self.node_tree.nodes['Ambient South'], 'image', new='image.new', open='image.open')
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="West")
             prop_layout.template_ID(self.node_tree.nodes['Ambient West'], 'image', new='image.new', open='image.open')
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="Top")
             prop_layout.template_ID(self.node_tree.nodes['Ambient Top'], 'image', new='image.new', open='image.open')
 
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="Bottom")
             prop_layout.template_ID(self.node_tree.nodes['Ambient Bottom'], 'image', new='image.new', open='image.open')
         else:
-            prop_layout = box.row().split(factor=0.3)
+            prop_layout = box.row().split(factor=0.4)
             prop_layout.label(text="Color")
             prop_layout.prop(self, 'prop_ambient', text="")

@@ -151,7 +151,7 @@ def get_main_texture_stk_material(mat: bpy.types.Material):
 
                 # Shader node must implement the Antarctica mixin
                 if isinstance(shader_node, stk_shaders.AntarcticaMixin):
-                    return shader_node.get_texture('Main Texture')
+                    return shader_node._get_texture('Main Texture')  # TODO(julian): change this to property
 
     return None
 
