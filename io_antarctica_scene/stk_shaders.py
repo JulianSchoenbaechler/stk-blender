@@ -135,6 +135,10 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     bl_label = "Antarctica Solid PBR"
     bl_description = "Simulates the SuperTuxKart Solid PBR shader"
 
+    def _use_mask(self, value: bool):
+        """Internal setter of the toggle for using the assigned colorization mask."""
+        self.node_tree.nodes['Use Mask'].outputs[0].default_value = 1.0 if value else 0.0
+
     def __update_data(self, context):
         self._set_texture('Data Map', self.data_map)
 
@@ -142,7 +146,9 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         self._set_texture('Normal Map', self.normal_map)
 
     def __update_colorization(self, context):
+        # Colorization only works with the main textures alpha or an assigned colorization mask on solid shaders
         self._set_texture('Colorization Mask', self.colorization_mask)
+        self._use_mask(self.colorization_mask is not None)
 
     # Texture properties
     data_map: PointerProperty(
@@ -229,7 +235,8 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
     @staticmethod
     def setup_colorization_mask(nt: NodeTree, nds_tex_alpha: NodeSocket, nds_mask_alpha: NodeSocket,
-                                nds_colorizable: NodeSocket, nds_colorization_factor: NodeSocket):
+                                nds_colorizable: NodeSocket, nds_use_mask: NodeSocket,
+                                nds_colorization_factor: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the masking output.
         This is the default colorization mask interpretation simulating the one from the Antarctica shaders.
 
@@ -243,6 +250,8 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
             The alpha value of the mask texture
         nds_colorizable : bpy.types.NodeSocketFloat
             A value used as multiplier for the colorization amount
+        nds_use_mask : bpy.types.NodeSocketFloat
+            A value indicating if an colorization mask has been assigned (0.0 or 1.0)
         nds_colorization_factor : bpy.types.NodeSocketFloat
             A value representing the applied colorization factor
 
@@ -255,6 +264,10 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nd_mask_lt = nt.nodes.new('ShaderNodeMath')
         nd_mask_add = nt.nodes.new('ShaderNodeMath')
 
+        # For using colorization mask (internal: is a mask assigned?)
+        nd_use_mask_lt = nt.nodes.new('ShaderNodeMath')
+        nd_use_mask_add = nt.nodes.new('ShaderNodeMath')
+
         # For combining mask and texture alpha values
         nd_combine_min = nt.nodes.new('ShaderNodeMath')
         nd_combine_mul = nt.nodes.new('ShaderNodeMath')
@@ -266,6 +279,12 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nd_mask_lt.use_clamp = True
         nd_mask_add.operation = 'ADD'
         nd_mask_add.use_clamp = True
+
+        nd_use_mask_lt.operation = 'LESS_THAN'
+        nd_use_mask_lt.inputs[1].default_value = 1.0   # toggle on < 1.0
+        nd_use_mask_lt.use_clamp = True
+        nd_use_mask_add.operation = 'ADD'
+        nd_use_mask_add.use_clamp = True
 
         nd_combine_min.operation = 'MINIMUM'
         nd_combine_min.use_clamp = True
@@ -284,9 +303,14 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nt.links.new(nds_colorizable, nd_mask_lt.inputs[0])
         nt.links.new(nd_mask_lt.outputs[0], nd_mask_add.inputs[0])
 
+        # Colorization mask assigned
+        nt.links.new(nds_use_mask, nd_use_mask_lt.inputs[0])
+        nt.links.new(nd_use_mask_lt.outputs[0], nd_use_mask_add.inputs[0])
+
         # Masking colorization
-        nt.links.new(nds_tex_alpha, nd_combine_min.inputs[0])
-        nt.links.new(nds_mask_alpha, nd_combine_min.inputs[1])
+        nt.links.new(nds_mask_alpha, nd_use_mask_add.inputs[1])
+        nt.links.new(nd_use_mask_add.outputs[0], nd_combine_min.inputs[0])
+        nt.links.new(nds_tex_alpha, nd_combine_min.inputs[1])
         nt.links.new(nds_colorization_factor, nd_combine_mul.inputs[0])
         nt.links.new(nd_combine_min.outputs[0], nd_combine_lt.inputs[0])
         nt.links.new(nd_combine_lt.outputs[0], nd_combine_range.inputs['Value'])
@@ -384,7 +408,8 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
     @staticmethod
     def setup_basecolor(nt: NodeTree, nds_tex_color: NodeSocket, nds_tex_alpha: NodeSocket, nds_mask_alpha: NodeSocket,
-                        nds_colorizable: NodeSocket, nds_colorization_factor: NodeSocket, nds_hue: NodeSocket):
+                        nds_colorizable: NodeSocket, nds_use_mask: NodeSocket, nds_colorization_factor: NodeSocket,
+                        nds_hue: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
         This is the default base color for simulating the Antarctica PBR shader.
 
@@ -400,6 +425,8 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
             The alpha value of the mask texture
         nds_colorizable : bpy.types.NodeSocketFloat
             A value used as multiplier for the colorization amount
+        nds_use_mask : bpy.types.NodeSocketFloat
+            A value indicating if an alpha mask has been assigned (0.0 or 1.0)
         nds_colorization_factor : bpy.types.NodeSocketFloat
             A value representing the applied colorization factor
         nds_hue : bpy.types.NodeSocketFloat
@@ -416,6 +443,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
             nds_tex_alpha,
             nds_mask_alpha,
             nds_colorizable,
+            nds_use_mask,
             nds_colorization_factor
         )
         return AntarcticaSolidPBR.setup_colorization(nt, nds_color, nds_colorization_mask, nds_hue)
@@ -597,6 +625,11 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nd_colorizable.name = 'Colorizable'
         nd_colorizable.outputs[0].default_value = 0.0
 
+        # Colorization mask toggle (for using colorization mask)
+        nd_use_mask = nt.nodes.new('ShaderNodeValue')
+        nd_use_mask.name = 'Use Mask'
+        nd_use_mask.outputs[0].default_value = 1.0
+
         # Colorization factor (for tweaking saturation)
         nd_colorization_factor = nt.nodes.new('ShaderNodeValue')
         nd_colorization_factor.name = 'Colorization Factor'
@@ -616,6 +649,7 @@ class AntarcticaSolidPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
             nd_main_tex.outputs['Alpha'],
             nd_colorization_mask.outputs['Alpha'],
             nd_colorizable.outputs[0],
+            nd_use_mask.outputs[0],
             nd_colorization_factor.outputs[0],
             nd_hue.outputs[0]
         )
@@ -674,6 +708,10 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     bl_label = "Antarctica Cutout PBR"
     bl_description = "Simulates the SuperTuxKart Cutout PBR shader"
 
+    def _use_mask(self, value: bool):
+        """Internal setter of the toggle for using the assigned alpha mask."""
+        self.node_tree.nodes['Use Mask'].outputs[0].default_value = 1.0 if value else 0.0
+
     def __update_data(self, context):
         self._set_texture('Data Map', self.data_map)
 
@@ -681,7 +719,9 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         self._set_texture('Normal Map', self.normal_map)
 
     def __update_alpha(self, context):
+        # Only use alpha mask if it is actually assigned
         self._set_texture('Alpha Mask', self.alpha_mask)
+        self._use_mask(self.alpha_mask is not None)
 
     # Texture properties
     data_map: PointerProperty(
@@ -724,7 +764,7 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
     @staticmethod
     def setup_basecolor(nt: NodeTree, nds_tex_color: NodeSocket, nds_colorizable: NodeSocket, nds_hue: NodeSocket):
         """Setup a node tree in a given node group object and return the node socket that represents the color output.
-        This is the default base color for simulating the Antarctica PBR shader.
+        This is the default base color for simulating the Antarctica Cutout PBR shader.
 
         Parameters
         ----------
@@ -753,6 +793,66 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
 
         nds_color = AntarcticaSolidPBR.setup_vertexcolor(nt, nds_tex_color)
         return AntarcticaSolidPBR.setup_colorization(nt, nds_color, nd_mask_lt.outputs[0], nds_hue)
+
+    @staticmethod
+    def setup_alpha(nt: NodeTree, nds_tex_color: NodeSocket, nds_tex_alpha: NodeSocket, nds_mask_color: NodeSocket,
+                    nds_use_mask: NodeSocket):
+        """Setup a node tree in a given node group object and return the node socket that represents the alpha output.
+        This is the default alpha mask implementation for simulating the Antarctica Cutout PBR shader.
+
+        Parameters
+        ----------
+        nt : bpy.types.ShaderNodeTree
+            The node tree which should be populated
+        nds_tex_color : bpy.types.NodeSocketColor
+            The image texture color of the main material texture
+        nds_tex_alpha : bpy.types.NodeSocketFloat
+            The alpha value of the main material texture
+        nds_mask_color : bpy.types.NodeSocketColor
+            The image texture color of the alpha mask texture
+        nds_use_mask : bpy.types.NodeSocketFloat
+            A value indicating if an alpha mask has been assigned (0.0 or 1.0)
+
+        Returns
+        -------
+        bpy.types.NodeSocketFloat
+            An output node socket with the resulting alpha value
+        """
+        # For using alpha mask (internal: is a mask assigned?)
+        nd_use_mask_lt = nt.nodes.new('ShaderNodeMath')
+        nd_use_mask_add = nt.nodes.new('ShaderNodeMath')
+
+        # Extract the red color channel for alpha masking
+        nd_mask_sep = nt.nodes.new('ShaderNodeSeparateRGB')
+
+        # For combining mask and texture alpha values
+        nd_combine_min = nt.nodes.new('ShaderNodeMath')
+        nd_combine_gt = nt.nodes.new('ShaderNodeMath')
+
+        nd_use_mask_lt.operation = 'LESS_THAN'
+        nd_use_mask_lt.inputs[1].default_value = 1.0   # toggle on < 1.0
+        nd_use_mask_lt.use_clamp = True
+        nd_use_mask_add.operation = 'ADD'
+        nd_use_mask_add.use_clamp = True
+
+        nd_combine_min.operation = 'MINIMUM'
+        nd_combine_min.use_clamp = True
+        nd_combine_gt.operation = 'GREATER_THAN'
+        nd_combine_gt.inputs[1].default_value = 0.5    # toggle on > 0.5
+        nd_combine_gt.use_clamp = True
+
+        # Alpha mask assigned
+        nt.links.new(nds_use_mask, nd_use_mask_lt.inputs[0])
+        nt.links.new(nd_use_mask_lt.outputs[0], nd_use_mask_add.inputs[0])
+
+        # Masking
+        nt.links.new(nds_mask_color, nd_mask_sep.inputs[0])
+        nt.links.new(nd_mask_sep.outputs['R'], nd_use_mask_add.inputs[1])
+        nt.links.new(nd_use_mask_add.outputs[0], nd_combine_min.inputs[0])
+        nt.links.new(nds_tex_alpha, nd_combine_min.inputs[1])
+        nt.links.new(nd_combine_min.outputs[0], nd_combine_gt.inputs[0])
+
+        return nd_combine_gt.outputs[0]
 
     def init(self, context):
         """Initialize a new instance of this node. Setup all main input and output nodes for this custom group."""
@@ -790,6 +890,11 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         nd_alpha_mask = nt.nodes.new('ShaderNodeTexImage')
         nd_alpha_mask.name = 'Alpha Mask'
 
+        # Alpha mask toggle (for using alpha mask)
+        nd_use_mask = nt.nodes.new('ShaderNodeValue')
+        nd_use_mask.name = 'Use Mask'
+        nd_use_mask.outputs[0].default_value = 0.0
+
         # Colorization multiplier (for masking/enabling colorization)
         nd_colorizable = nt.nodes.new('ShaderNodeValue')
         nd_colorizable.name = 'Colorizable'
@@ -811,12 +916,20 @@ class AntarcticaCutoutPBR(bpy.types.ShaderNodeCustomGroup, AntarcticaMixin):
         )
         nds_data = AntarcticaSolidPBR.setup_datamap(nt, nd_main_tex.outputs['Color'], nd_data_map.outputs['Color'])
         nds_normal = AntarcticaSolidPBR.setup_normal(nt, nd_normal_map.outputs['Color'])
+        nds_alpha = self.setup_alpha(
+            nt,
+            nd_main_tex.outputs['Color'],
+            nd_main_tex.outputs['Alpha'],
+            nd_alpha_mask.outputs['Color'],
+            nd_use_mask.outputs[0]
+        )
 
         nt.links.new(nds_basecolor, nd_principled.inputs['Base Color'])
         nt.links.new(nds_data[0], nd_principled.inputs['Roughness'])
         nt.links.new(nds_data[1], nd_principled.inputs['Metallic'])
         nt.links.new(nds_data[2], nd_principled.inputs['Emission'])
         nt.links.new(nds_normal, nd_principled.inputs['Normal'])
+        nt.links.new(nds_alpha, nd_principled.inputs['Alpha'])
 
         # Assign generated node tree
         self.node_tree = nt
